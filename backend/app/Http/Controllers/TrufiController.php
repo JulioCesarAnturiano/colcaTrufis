@@ -26,4 +26,18 @@ class TrufiController extends Controller
             Trufi::with('rutas')->findOrFail($id)
         );
     }
+
+    public function update(Request $request, $id)
+    {
+        $trufi = Trufi::findOrFail($id);
+        $trufi->update($request->all());
+        return response()->json($trufi);
+    }
+
+    public function destroy($id)
+    {
+        $trufi = Trufi::findOrFail($id);
+        $trufi->delete();
+        return response()->json(['message' => 'Trufi eliminado']);
+    }
 }
