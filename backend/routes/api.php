@@ -8,3 +8,10 @@ Route::apiResource('trufis', TrufiController::class);
 Route::apiResource('trufi-rutas', TrufiRutaController::class);
 
 Route::get('trufis/{idtrufi}/rutas', [TrufiRutaController::class, 'rutasPorTrufi']);
+
+
+Route::get('trufis', [TrufiController::class, 'index']);
+Route::get('trufis/{id}', [TrufiController::class, 'show']);
+Route::get('trufis/{idtrufi}/rutas', [TrufiRutaController::class, 'rutasPorTrufi']);
+Route::get('trufi-rutas', [TrufiRutaController::class, 'index']);
+Route::get('trufi-rutas/{id}', [TrufiRutaController::class, 'show']);
