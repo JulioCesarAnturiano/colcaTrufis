@@ -36,13 +36,16 @@ class Kernel extends HttpKernel
      * Middleware con alias (los que podemos usar en rutas)
      * SOLO PONEMOS LOS QUE REALMENTE TENEMOS
      */
-    protected $middlewareAliases = [
-        // Solo estos dos que sabemos que existen
-        'auth' => \App\Http\Middleware\Authenticate::class,
-        'role' => \App\Http\Middleware\CheckRole::class,
-        
-        // Estos son de Laravel y SÍ existen por defecto:
-        'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
-        'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
+   protected $middlewareAliases = [
+    // Laravel
+    'auth' => \App\Http\Middleware\Authenticate::class,
+    'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+    'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
+
+    // ✅ Spatie Permission
+    'role' => \Spatie\Permission\Middlewares\RoleMiddleware::class,
+    'permission' => \Spatie\Permission\Middlewares\PermissionMiddleware::class,
+    'role_or_permission' => \Spatie\Permission\Middlewares\RoleOrPermissionMiddleware::class,
     ];
+
 }

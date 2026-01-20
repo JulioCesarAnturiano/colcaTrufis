@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -9,59 +10,74 @@ class FilePondController extends Controller
 {
     public function subirArchivo(Request $request)
     {
-        // Verificar si hay usuario autenticado
         $usuario = $request->user();
-        
-        if (!$usuario) {
+
+        if (! $usuario) {
             return response()->json(['error' => 'No autenticado'], 401);
         }
-        
-        // Verificar rol
-        if (!in_array($usuario->rol, ['admin', 'encargado'])) {
+
+        // ✅ Spatie: primero rol, luego permiso (si quieres hacerlo fino)
+        if (! $usuario->hasAnyRole(['admin', 'encargado'])) {
             return response()->json(['error' => 'No autorizado'], 403);
         }
-        
-        // Obtener contenido del archivo
+
+        // Si ya creaste permisos, puedes activar esta validación:
+        if (! $usuario->can('archivos.subir')) {
+            return response()->json(['error' => 'Sin permiso para subir archivos'], 403);
+        }
+
         $contenido = $request->getContent();
-        
+
         if (empty($contenido)) {
             return response()->json(['error' => 'Archivo vacío'], 400);
         }
-        
-        // Obtener nombre del archivo desde headers
-        $nombreOriginal = $request->header('Upload-Name') ?: 'imagen_' . time() . '.jpg';
-        
-        // Extraer extensión
+
+        $nombreOriginal = $request->header('Upload-Name') ?: ('imagen_' . time() . '.jpg');
+
         $extension = pathinfo($nombreOriginal, PATHINFO_EXTENSION);
         if (empty($extension)) {
             $extension = 'jpg';
         }
-        
-        // Generar nombre único
+
         $nombreArchivo = 'temp_' . time() . '_' . uniqid() . '.' . $extension;
         $rutaTemporal = 'temp/' . $nombreArchivo;
-        
-        // Guardar archivo
+
         Storage::disk('public')->put($rutaTemporal, $contenido);
-        
+
         return response()->json([
             'success' => true,
             'filename' => $nombreArchivo,
-            'url' => Storage::url($rutaTemporal)
+            'url' => Storage::url($rutaTemporal),
         ]);
     }
-    
+
     public function eliminarArchivo(Request $request)
     {
+        $usuario = $request->user();
+
+        if (! $usuario) {
+            return response()->json(['error' => 'No autenticado'], 401);
+        }
+
+        if (! $usuario->hasAnyRole(['admin', 'encargado'])) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        // Si ya creaste permisos, puedes activar esta validación:
+        if (! $usuario->can('archivos.eliminar')) {
+            return response()->json(['error' => 'Sin permiso para eliminar archivos'], 403);
+        }
+
         $nombreArchivo = $request->getContent();
-        
+
         if ($nombreArchivo) {
             $ruta = 'temp/' . $nombreArchivo;
+
             if (Storage::disk('public')->exists($ruta)) {
                 Storage::disk('public')->delete($ruta);
             }
         }
-        
+
         return response()->json(['success' => true]);
     }
 }

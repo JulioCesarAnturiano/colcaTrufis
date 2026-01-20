@@ -1,166 +1,75 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\FilePondController;
-use App\Http\Controllers\TrufiAdminController;
-use App\Http\Controllers\RutaAdminController;
 use Illuminate\Support\Facades\Auth;
 
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\FilePondController;
+use App\Http\Controllers\Admin\TrufiAdminController;
+use App\Http\Controllers\Admin\RutaAdminController;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Si tienes Breeze/Jetstream, este archivo existe.
+// Si no existe, déjalo, pero si te da error coméntalo.
+require __DIR__ . '/auth.php';
 
-
-require __DIR__.'/auth.php';
-// ===========================================
-// RUTAS PÚBLICAS
-// ===========================================
+// ===========================
+// LOGIN ADMIN (PÚBLICO)
+// ===========================
+// Si ya usas Breeze y su login, puedes borrar estas 2 rutas y usar /login normal.
 Route::get('/admin/login', [LoginController::class, 'mostrarFormulario'])->name('login');
 Route::post('/admin/login', [LoginController::class, 'autenticar'])->name('login.submit');
 
-// ===========================================
-// FUNCIÓN PARA VERIFICAR ACCESO ADMIN
-// ===========================================
-function verificarAdminAcceso()
-{
-    if (!Auth::check()) {
-        return redirect()->route('login');
-    }
-    
-    $usuario = Auth::user();
-    if (!in_array($usuario->rol, ['admin', 'encargado'])) {
-        // Limpiar sesión
-        Auth::logout();
-        session()->invalidate();
-        session()->regenerateToken();
-        
-        return redirect()->route('login')
-            ->with('error', 'Acceso no autorizado al panel admin');
-    }
-    
-    return null; // Todo OK
-}
+// ===========================
+// PANEL ADMIN (PROTEGIDO)
+// auth = debe estar logueado
+// role:admin|encargado = debe tener rol Spatie
+// ===========================
+Route::middleware(['auth', 'role:admin|encargado'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
 
-// ===========================================
-// RUTAS PROTEGIDAS - CON VERIFICACIÓN MANUAL
-// ===========================================
+        // Dashboard
+        Route::get('/dashboard', [DashboardController::class, 'mostrarDashboard'])->name('dashboard');
 
-// Logout
-Route::post('/admin/logout', function () {
-    Auth::logout();
-    session()->invalidate();
-    session()->regenerateToken();
-    return redirect()->route('login');
-})->name('admin.logout');
+        // Logout
+        Route::post('/logout', function () {
+            Auth::logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+            return redirect()->route('login');
+        })->name('logout');
 
-// Dashboard
-Route::get('/admin/dashboard', function () {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(DashboardController::class)->mostrarDashboard();
-})->name('admin.dashboard');
+        // ===========================
+        // FILEPOND (PROTEGIDO)
+        // ===========================
+        Route::post('/filepond/upload', [FilePondController::class, 'subirArchivo'])->name('filepond.upload');
+        Route::delete('/filepond/revert', [FilePondController::class, 'eliminarArchivo'])->name('filepond.revert');
 
-// FilePond
-Route::post('/admin/filepond/upload', function (Illuminate\Http\Request $request) {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(FilePondController::class)->subirArchivo($request);
-})->name('admin.filepond.upload');
+        // ===========================
+        // TRUFIS ADMIN (BLADE)
+        // ===========================
+        Route::get('/trufis', [TrufiAdminController::class, 'listarTrufis'])->name('trufis.index');
+        Route::get('/trufis/crear', [TrufiAdminController::class, 'mostrarCrear'])->name('trufis.crear');
+        Route::post('/trufis', [TrufiAdminController::class, 'guardarTrufi'])->name('trufis.guardar');
 
-Route::delete('/admin/filepond/revert', function (Illuminate\Http\Request $request) {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(FilePondController::class)->eliminarArchivo($request);
-})->name('admin.filepond.revert');
+        Route::get('/trufis/{id}/editar', [TrufiAdminController::class, 'mostrarEditar'])->name('trufis.editar');
+        Route::put('/trufis/{id}', [TrufiAdminController::class, 'actualizarTrufi'])->name('trufis.actualizar');
+        Route::delete('/trufis/{id}', [TrufiAdminController::class, 'eliminarTrufi'])->name('trufis.eliminar');
 
-// Trufis - Rutas individuales
-Route::get('/admin/trufis', function () {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(TrufiAdminController::class)->listarTrufis();
-})->name('admin.trufis.index');
+        // ===========================
+        // RUTAS ADMIN (BLADE)
+        // ===========================
+        Route::get('/rutas', [RutaAdminController::class, 'listarRutas'])->name('rutas.index');
+        Route::get('/rutas/crear', [RutaAdminController::class, 'mostrarCrearRuta'])->name('rutas.crear');
+        Route::post('/rutas', [RutaAdminController::class, 'guardarRuta'])->name('rutas.guardar');
 
-Route::get('/admin/trufis/crear', function () {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(TrufiAdminController::class)->mostrarCrear();
-})->name('admin.trufis.crear');
-
-Route::post('/admin/trufis', function (Illuminate\Http\Request $request) {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(TrufiAdminController::class)->guardarTrufi($request);
-})->name('admin.trufis.guardar');
-
-Route::get('/admin/trufis/{id}/editar', function ($id) {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(TrufiAdminController::class)->mostrarEditar($id);
-})->name('admin.trufis.editar');
-
-Route::put('/admin/trufis/{id}', function (Illuminate\Http\Request $request, $id) {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(TrufiAdminController::class)->actualizarTrufi($request, $id);
-})->name('admin.trufis.actualizar');
-
-Route::delete('/admin/trufis/{id}', function ($id) {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(TrufiAdminController::class)->eliminarTrufi($id);
-})->name('admin.trufis.eliminar');
-
-// Rutas - Rutas individuales
-Route::get('/admin/rutas', function (Illuminate\Http\Request $request) {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(RutaAdminController::class)->listarRutas($request);
-})->name('admin.rutas.index');
-
-Route::get('/admin/rutas/crear', function () {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(RutaAdminController::class)->mostrarCrearRuta();
-})->name('admin.rutas.crear');
-
-Route::post('/admin/rutas', function (Illuminate\Http\Request $request) {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(RutaAdminController::class)->guardarRuta($request);
-})->name('admin.rutas.guardar');
-
-Route::get('/admin/rutas/{id}/editar', function ($id) {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(RutaAdminController::class)->mostrarEditarRuta($id);
-})->name('admin.rutas.editar');
-
-Route::put('/admin/rutas/{id}', function (Illuminate\Http\Request $request, $id) {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(RutaAdminController::class)->actualizarRuta($request, $id);
-})->name('admin.rutas.actualizar');
-
-Route::delete('/admin/rutas/{id}', function ($id) {
-    $verificacion = verificarAdminAcceso();
-    if ($verificacion) return $verificacion;
-    return app()->make(RutaAdminController::class)->eliminarRuta($id);
-})->name('admin.rutas.eliminar');
-
-// ===========================================
-// RUTAS API (mantén tus rutas existentes)
-// ===========================================
-Route::prefix('api')->group(function () {
-    // Tus rutas API actuales aquí - NO las cambies
-    // Route::get('/trufis', [App\Http\Controllers\TrufiController::class, 'index']);
-    // Route::get('/trufis/{id}', [App\Http\Controllers\TrufiController::class, 'show']);
-});
-
+        Route::get('/rutas/{id}/editar', [RutaAdminController::class, 'mostrarEditarRuta'])->name('rutas.editar');
+        Route::put('/rutas/{id}', [RutaAdminController::class, 'actualizarRuta'])->name('rutas.actualizar');
+        Route::delete('/rutas/{id}', [RutaAdminController::class, 'eliminarRuta'])->name('rutas.eliminar');
+    });
