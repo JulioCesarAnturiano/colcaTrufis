@@ -10,59 +10,32 @@ class RolesSeeder extends Seeder
 {
     public function run(): void
     {
-        // =========================
-        // ROLES
-        // =========================
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $encargado = Role::firstOrCreate(['name' => 'encargado']);
 
-        // =========================
-        // PERMISOS - TRUFIS
-        // =========================
         $permisos = [
-            // Trufis
-            'trufis.ver',
-            'trufis.crear',
-            'trufis.editar',
-            'trufis.eliminar',
+            'admin.trufis.crear',
+            'admin.trufis.ver',
+            'admin.trufis.editar',
+            'admin.trufis.eliminar',
 
-            // Rutas
-            'rutas.ver',
-            'rutas.crear',
-            'rutas.editar',
-            'rutas.eliminar',
-
-            // FilePond / Archivos
-            'archivos.subir',
-            'archivos.eliminar',
-
-            // Dashboard
-            'dashboard.ver',
+            'admin.rutas.crear',
+            'admin.rutas.ver',
+            'admin.rutas.editar',
+            'admin.rutas.eliminar',
         ];
 
-        foreach ($permisos as $permiso) {
-            Permission::firstOrCreate(['name' => $permiso]);
+        foreach ($permisos as $p) {
+            Permission::firstOrCreate(['name' => $p]);
         }
 
-        // =========================
-        // ASIGNACIÓN DE PERMISOS
-        // =========================
+        // Admin: todos los permisos
+        $admin->syncPermissions($permisos);
 
-        // Admin -> TODO
-        $admin->givePermissionTo($permisos);
-
-        // Encargado -> SIN eliminar
-        $encargado->givePermissionTo([
-            'trufis.ver',
-            'trufis.crear',
-            'trufis.editar',
-
-            'rutas.ver',
-            'rutas.crear',
-            'rutas.editar',
-
-            'archivos.subir',
-            'dashboard.ver',
+        // Encargado: solo crear
+        $encargado->syncPermissions([
+            'admin.trufis.crear',
+            'admin.rutas.crear',
         ]);
     }
 }

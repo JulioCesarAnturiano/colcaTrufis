@@ -36,7 +36,7 @@ class TrufiAdminController extends Controller
             return redirect()->route('login');
         }
         
-        return view('admin.trufis.crear', ['usuario' => $usuario]);
+        return view('admin.trufis.create', ['usuario' => $usuario]);
     }
     
     // Guardar trufi
@@ -66,8 +66,6 @@ class TrufiAdminController extends Controller
             'descripcion' => $request->descripcion,
             'nombre_sindicato' => $request->nombre_sindicato,
             'estado' => $request->has('estado') ? 1 : 0,
-            'creado_por' => $usuario->id,
-            'actualizado_por' => $usuario->id,
         ]);
         
         // Procesar imagen si existe
@@ -90,7 +88,7 @@ class TrufiAdminController extends Controller
         
         $trufi = Trufi::findOrFail($id);
         
-        return view('admin.trufis.editar', [
+        return view('admin.trufis.edit', [
             'trufi' => $trufi,
             'usuario' => $usuario
         ]);
@@ -125,7 +123,6 @@ class TrufiAdminController extends Controller
             'descripcion' => $request->descripcion,
             'nombre_sindicato' => $request->nombre_sindicato,
             'estado' => $request->has('estado') ? 1 : 0,
-            'actualizado_por' => $usuario->id,
         ]);
         
         // Procesar imagen
@@ -142,10 +139,10 @@ class TrufiAdminController extends Controller
     {
         $usuario = request()->user();
         
-        if (!$usuario || !$usuario->esAdmin()) {
-            return redirect()->route('login')
-                ->with('error', 'No autorizado');
+        if (!$usuario || !$usuario->hasRole('admin')) {
+            return redirect()->route('login')->with('error', 'No autorizado');
         }
+
         
         $trufi = Trufi::findOrFail($id);
         $trufi->delete();

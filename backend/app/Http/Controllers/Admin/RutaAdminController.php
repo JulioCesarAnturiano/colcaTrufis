@@ -49,7 +49,7 @@ class RutaAdminController extends Controller
         
         $trufis = Trufi::orderBy('nombre')->get();
         
-        return view('admin.rutas.crear', [
+        return view('admin.rutas.create', [
             'trufis' => $trufis,
             'usuario' => $usuario
         ]);
@@ -96,7 +96,7 @@ class RutaAdminController extends Controller
         $ruta = TrufiRuta::with('trufi')->findOrFail($id);
         $trufis = Trufi::orderBy('nombre')->get();
         
-        return view('admin.rutas.editar', [
+        return view('admin.rutas.edit', [
             'ruta' => $ruta,
             'trufis' => $trufis,
             'usuario' => $usuario

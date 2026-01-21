@@ -1,75 +1,84 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\FilePondController;
 use App\Http\Controllers\Admin\TrufiAdminController;
 use App\Http\Controllers\Admin\RutaAdminController;
+use App\Http\Controllers\Admin\FilePondController;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', fn() => redirect()->route('login'));
 
-// Si tienes Breeze/Jetstream, este archivo existe.
-// Si no existe, déjalo, pero si te da error coméntalo.
-require __DIR__ . '/auth.php';
-
-// ===========================
-// LOGIN ADMIN (PÚBLICO)
-// ===========================
-// Si ya usas Breeze y su login, puedes borrar estas 2 rutas y usar /login normal.
+// Login Admin
 Route::get('/admin/login', [LoginController::class, 'mostrarFormulario'])->name('login');
 Route::post('/admin/login', [LoginController::class, 'autenticar'])->name('login.submit');
+Route::post('/admin/logout', [LoginController::class, 'cerrarSesion'])->name('admin.logout');
 
-// ===========================
-// PANEL ADMIN (PROTEGIDO)
-// auth = debe estar logueado
-// role:admin|encargado = debe tener rol Spatie
-// ===========================
-Route::middleware(['auth', 'role:admin|encargado'])
-    ->prefix('admin')
-    ->name('admin.')
-    ->group(function () {
+// Panel Admin (protegido)
+Route::prefix('admin')->middleware(['auth', 'role:admin|encargado'])->group(function () {
 
-        // Dashboard
-        Route::get('/dashboard', [DashboardController::class, 'mostrarDashboard'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'mostrarDashboard'])->name('admin.dashboard');
 
-        // Logout
-        Route::post('/logout', function () {
-            Auth::logout();
-            request()->session()->invalidate();
-            request()->session()->regenerateToken();
-            return redirect()->route('login');
-        })->name('logout');
+    // FilePond (si solo admin/encargado suben)
+    Route::post('/filepond/upload', [FilePondController::class, 'subirArchivo'])
+        ->middleware('permission:admin.trufis.crear|admin.rutas.crear')
+        ->name('admin.filepond.upload');
 
-        // ===========================
-        // FILEPOND (PROTEGIDO)
-        // ===========================
-        Route::post('/filepond/upload', [FilePondController::class, 'subirArchivo'])->name('filepond.upload');
-        Route::delete('/filepond/revert', [FilePondController::class, 'eliminarArchivo'])->name('filepond.revert');
+    Route::delete('/filepond/revert', [FilePondController::class, 'eliminarArchivo'])
+        ->middleware('permission:admin.trufis.crear|admin.rutas.crear')
+        ->name('admin.filepond.revert');
 
-        // ===========================
-        // TRUFIS ADMIN (BLADE)
-        // ===========================
-        Route::get('/trufis', [TrufiAdminController::class, 'listarTrufis'])->name('trufis.index');
-        Route::get('/trufis/crear', [TrufiAdminController::class, 'mostrarCrear'])->name('trufis.crear');
-        Route::post('/trufis', [TrufiAdminController::class, 'guardarTrufi'])->name('trufis.guardar');
+    // ===========================
+    // TRUFIS (CRUD)
+    // ===========================
+    Route::get('/trufis', [TrufiAdminController::class, 'listarTrufis'])
+        ->middleware('permission:admin.trufis.ver')
+        ->name('admin.trufis.index');
 
-        Route::get('/trufis/{id}/editar', [TrufiAdminController::class, 'mostrarEditar'])->name('trufis.editar');
-        Route::put('/trufis/{id}', [TrufiAdminController::class, 'actualizarTrufi'])->name('trufis.actualizar');
-        Route::delete('/trufis/{id}', [TrufiAdminController::class, 'eliminarTrufi'])->name('trufis.eliminar');
+    Route::get('/trufis/crear', [TrufiAdminController::class, 'mostrarCrear'])
+        ->middleware('permission:admin.trufis.crear')
+        ->name('admin.trufis.crear');
 
-        // ===========================
-        // RUTAS ADMIN (BLADE)
-        // ===========================
-        Route::get('/rutas', [RutaAdminController::class, 'listarRutas'])->name('rutas.index');
-        Route::get('/rutas/crear', [RutaAdminController::class, 'mostrarCrearRuta'])->name('rutas.crear');
-        Route::post('/rutas', [RutaAdminController::class, 'guardarRuta'])->name('rutas.guardar');
+    Route::post('/trufis', [TrufiAdminController::class, 'guardarTrufi'])
+        ->middleware('permission:admin.trufis.crear')
+        ->name('admin.trufis.guardar');
 
-        Route::get('/rutas/{id}/editar', [RutaAdminController::class, 'mostrarEditarRuta'])->name('rutas.editar');
-        Route::put('/rutas/{id}', [RutaAdminController::class, 'actualizarRuta'])->name('rutas.actualizar');
-        Route::delete('/rutas/{id}', [RutaAdminController::class, 'eliminarRuta'])->name('rutas.eliminar');
-    });
+    Route::get('/trufis/{id}/editar', [TrufiAdminController::class, 'mostrarEditar'])
+        ->middleware('permission:admin.trufis.editar')
+        ->name('admin.trufis.editar');
+
+    Route::put('/trufis/{id}', [TrufiAdminController::class, 'actualizarTrufi'])
+        ->middleware('permission:admin.trufis.editar')
+        ->name('admin.trufis.actualizar');
+
+    Route::delete('/trufis/{id}', [TrufiAdminController::class, 'eliminarTrufi'])
+        ->middleware('permission:admin.trufis.eliminar')
+        ->name('admin.trufis.eliminar');
+
+    // ===========================
+    // RUTAS (CRUD)
+    // ===========================
+    Route::get('/rutas', [RutaAdminController::class, 'listarRutas'])
+        ->middleware('permission:admin.rutas.ver')
+        ->name('admin.rutas.index');
+
+    Route::get('/rutas/crear', [RutaAdminController::class, 'mostrarCrearRuta'])
+        ->middleware('permission:admin.rutas.crear')
+        ->name('admin.rutas.crear');
+
+    Route::post('/rutas', [RutaAdminController::class, 'guardarRuta'])
+        ->middleware('permission:admin.rutas.crear')
+        ->name('admin.rutas.guardar');
+
+    Route::get('/rutas/{id}/editar', [RutaAdminController::class, 'mostrarEditarRuta'])
+        ->middleware('permission:admin.rutas.editar')
+        ->name('admin.rutas.editar');
+
+    Route::put('/rutas/{id}', [RutaAdminController::class, 'actualizarRuta'])
+        ->middleware('permission:admin.rutas.editar')
+        ->name('admin.rutas.actualizar');
+
+    Route::delete('/rutas/{id}', [RutaAdminController::class, 'eliminarRuta'])
+        ->middleware('permission:admin.rutas.eliminar')
+        ->name('admin.rutas.eliminar');
+});
