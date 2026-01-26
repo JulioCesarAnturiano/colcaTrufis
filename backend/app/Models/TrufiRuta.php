@@ -6,18 +6,32 @@ use Illuminate\Database\Eloquent\Model;
 
 class TrufiRuta extends Model
 {
+    protected $table = 'trufi_rutas'; // Especificar tabla
+    
     protected $fillable = [
-    'idtrufi',
-    'latitud',
-    'longitud',
-    'orden',
-    'es_parada',
-    'estado',
-];
+        'idtrufi',
+        'sindicato_radiotaxi_id', // Agregué este campo (está en tu BD)
+        'latitud',
+        'longitud',
+        'orden',
+        'puntos',                // Agregué este campo (está en tu BD)
+        'es_parada',
+        'estado'
+    ];
 
-public function trufi()
-{
-    return $this->belongsTo(Trufi::class, 'idtrufi', 'idtrufi');
-}
+    protected $casts = [
+        'estado' => 'boolean',
+        'es_parada' => 'boolean',
+        'puntos' => 'boolean'
+    ];
 
+    public function trufi()
+    {
+        return $this->belongsTo(Trufi::class, 'idtrufi', 'idtrufi');
+    }
+
+    public function sindicatoRadiotaxi()
+    {
+        return $this->belongsTo(SindicatoRadiotaxi::class, 'sindicato_radiotaxi_id');
+    }
 }

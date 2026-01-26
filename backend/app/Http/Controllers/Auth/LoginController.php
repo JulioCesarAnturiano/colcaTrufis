@@ -25,8 +25,7 @@ class LoginController extends Controller
 
             $usuario = Auth::user();
 
-            // ✅ Verificar roles con Spatie
-            if (! $usuario->hasAnyRole(['admin', 'encargado'])) {
+            if (! $usuario()::hasAnyRole(['admin', 'encargado'])) {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();

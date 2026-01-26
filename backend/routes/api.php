@@ -3,7 +3,17 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TrufiController;
 use App\Http\Controllers\TrufiRutaController;
-
+Route::get('/test', function () {
+    return response()->json([
+        'success' => true,
+        'message' => 'API Colcatrufis funcionando',
+        'timestamp' => now()->toDateTimeString(),
+        'endpoints' => [
+            '/api/trufis' => 'Lista de trufis',
+            '/api/test' => 'Prueba de conexión',
+        ]
+    ]);
+});
 // ===========================
 // API PÚBLICA (FLUTTER) - SOLO LECTURA
 // ===========================
