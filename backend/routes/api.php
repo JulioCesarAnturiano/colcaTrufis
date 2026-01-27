@@ -27,9 +27,10 @@ Route::get('/trufis/{id}', [TrufiController::class, 'show']);
 Route::get('/trufi-rutas', [TrufiRutaController::class, 'index']);
 Route::get('/trufi-rutas/{id}', [TrufiRutaController::class, 'show']);
 Route::get('/trufis/{idtrufi}/rutas', [TrufiRutaController::class, 'rutasPorTrufi']);
-// sindicato 
-Route::get('/sindicato', [SindicatoController::class, 'index']);
-Route::get('/sindicato/{id}', [SindicatoController::class, 'show']);
-//sindicato radio taxis
-Route::get('/sindicato', [SindicatoRadioTaxisController::class, 'index']);
-Route::get('/sindicato/{id}', [SindicatoRadioTaxisController::class, 'show']);
+// Sindicatos
+Route::get('/sindicatos', [SindicatoController::class, 'index']);
+Route::get('/sindicatos/{id}', [SindicatoController::class, 'show']);
+
+// Sindicato radiotaxis
+Route::get('/sindicato-radiotaxis', [SindicatoRadioTaxisController::class, 'index']);
+Route::get('/sindicato-radiotaxis/{id}', [SindicatoRadioTaxisController::class, 'show']);
