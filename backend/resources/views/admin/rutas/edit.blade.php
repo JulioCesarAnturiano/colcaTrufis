@@ -1,3 +1,4 @@
+{{-- resources/views/admin/rutas/edit.blade.php --}}
 @extends('admin.layout')
 
 @section('title', 'Editar Ruta')
@@ -5,7 +6,7 @@
 @section('content')
     <h2 class="mb-3">Editar Ruta</h2>
 
-    <form action="{{ route('admin.rutas.actualizar', $ruta->id) }}" method="POST">
+    <form action="{{ route('admin.rutas.actualizar', ['idtrufi' => $ruta->idtrufi, 'orden' => $ruta->orden]) }}" method="POST">
         @csrf
         @method('PUT')
 

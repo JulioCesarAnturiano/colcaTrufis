@@ -1,3 +1,4 @@
+{{-- resources/views/admin/rutas/index.blade.php --}}
 @extends('admin.layout')
 
 @section('title', 'Rutas - Admin')
@@ -16,7 +17,6 @@
             <table class="table table-bordered align-middle">
                 <thead class="table-dark">
                 <tr>
-                    <th>ID</th>
                     <th>ID Trufi</th>
                     <th>Latitud</th>
                     <th>Longitud</th>
@@ -29,7 +29,6 @@
                 <tbody>
                 @foreach($rutas as $r)
                     <tr>
-                        <td>{{ $r->id }}</td>
                         <td>{{ $r->idtrufi }}</td>
                         <td>{{ $r->latitud }}</td>
                         <td>{{ $r->longitud }}</td>
@@ -38,11 +37,14 @@
                         <td>{{ $r->estado ? 'Activo' : 'Inactivo' }}</td>
                         <td>
                             @can('admin.rutas.editar')
-                                <a class="btn btn-sm btn-primary" href="{{ route('admin.rutas.editar', $r->id) }}">Editar</a>
+                                <a class="btn btn-sm btn-primary"
+                                   href="{{ route('admin.rutas.editar', ['idtrufi' => $r->idtrufi, 'orden' => $r->orden]) }}">
+                                    Editar
+                                </a>
                             @endcan
 
                             @can('admin.rutas.eliminar')
-                                <form action="{{ route('admin.rutas.eliminar', $r->id) }}"
+                                <form action="{{ route('admin.rutas.eliminar', ['idtrufi' => $r->idtrufi, 'orden' => $r->orden]) }}"
                                       method="POST" class="d-inline"
                                       onsubmit="return confirm('¿Eliminar esta ruta?');">
                                     @csrf
@@ -55,6 +57,11 @@
                 @endforeach
                 </tbody>
             </table>
+        </div>
+
+        {{-- Paginación --}}
+        <div class="mt-3">
+            {{ $rutas->links() }}
         </div>
     @else
         <div class="alert alert-info">No hay rutas registradas.</div>

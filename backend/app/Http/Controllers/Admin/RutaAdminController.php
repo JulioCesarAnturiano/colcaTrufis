@@ -3,151 +3,202 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-
 use App\Models\Trufi;
 use App\Models\TrufiRuta;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class RutaAdminController extends Controller
 {
     // Listar rutas
-    public function listarRutas(Request $request)
-    {
-        $usuario = $request->user();
-        
-        if (!$usuario) {
-            return redirect()->route('login');
-        }
-        
-        $trufiId = $request->query('trufi_id');
-        
-        $query = TrufiRuta::query();
-        
-        if ($trufiId) {
-            $query->where('idtrufi', $trufiId);
-        }
-        
-        $rutas = $query->orderBy('orden')->paginate(20);
-        $trufis = Trufi::orderBy('nombre')->get();
-        
-        return view('admin.rutas.index', [
-            'rutas' => $rutas,
-            'trufis' => $trufis,
-            'trufiId' => $trufiId,
-            'usuario' => $usuario
-        ]);
+   public function listarRutas(Request $request)
+{
+    $usuario = $request->user();
+    if (!$usuario) return redirect()->route('login');
+
+    $trufiId = $request->query('trufi_id');
+
+    // 1 fila por idtrufi (resumen)
+    $query = DB::table('trufi_rutas')
+        ->select(
+            'idtrufi',
+            DB::raw('MIN(orden) as orden_inicio'),
+            DB::raw('MAX(orden) as orden_fin'),
+            DB::raw('COUNT(*) as total_puntos')
+        )
+        ->groupBy('idtrufi')
+        ->orderBy('idtrufi', 'asc');
+
+    if ($trufiId) {
+        $query->where('idtrufi', $trufiId);
     }
-    
+
+    $rutas = $query->paginate(20);
+
+    $trufis = Trufi::orderBy('nom_linea')->get();
+
+    return view('admin.rutas.index', [
+        'rutas' => $rutas,
+        'trufis' => $trufis,
+        'trufiId' => $trufiId,
+        'usuario' => $usuario
+    ]);
+}
+
+
     // Mostrar formulario crear
     public function mostrarCrearRuta()
     {
-        $usuario = request()->user();
-        
-        if (!$usuario) {
-            return redirect()->route('login');
-        }
-        
-        $trufis = Trufi::orderBy('nombre')->get();
-        
-        return view('admin.rutas.create', [
-            'trufis' => $trufis,
-            'usuario' => $usuario
-        ]);
+        $trufis = DB::table('trufis')->select('idtrufi', 'nom_linea')->orderBy('nom_linea')->get();
+        return view('admin.rutas.create', compact('trufis'));
     }
-    
-    // Guardar ruta
+
+    // Guardar ruta (Opción 2: continuar el orden desde el último punto)
     public function guardarRuta(Request $request)
     {
-        $usuario = $request->user();
-        
-        if (!$usuario) {
-            return redirect()->route('login');
-        }
-        
         $request->validate([
-            'idtrufi' => 'required|exists:trufis,idtrufi',
-            'latitud' => 'required|numeric',
-            'longitud' => 'required|numeric',
-            'orden' => 'required|integer',
+            'idtrufi' => 'required|integer',
+            'geojson' => 'required|string',
         ]);
-        
-        TrufiRuta::create([
-            'idtrufi' => $request->idtrufi,
-            'latitud' => $request->latitud,
-            'longitud' => $request->longitud,
-            'orden' => $request->orden,
-            'es_parada' => $request->has('es_parada') ? 1 : 0,
-            'estado' => $request->has('estado') ? 1 : 0,
-        ]);
-        
-        return redirect()->route('admin.rutas.index', ['trufi_id' => $request->idtrufi])
-            ->with('success', 'Ruta creada exitosamente');
-    }
-    
-    // Mostrar formulario editar
-    public function mostrarEditarRuta($id)
-    {
-        $usuario = request()->user();
-        
-        if (!$usuario) {
-            return redirect()->route('login');
+
+        $geo = json_decode($request->geojson, true);
+
+        if (!$geo || empty($geo['features'])) {
+            return back()->with('error', 'GeoJSON inválido.')->withInput();
         }
-        
-        $ruta = TrufiRuta::with('trufi')->findOrFail($id);
-        $trufis = Trufi::orderBy('nombre')->get();
-        
-        return view('admin.rutas.edit', [
-            'ruta' => $ruta,
-            'trufis' => $trufis,
-            'usuario' => $usuario
-        ]);
-    }
-    
-    // Actualizar ruta
-    public function actualizarRuta(Request $request, $id)
-    {
-        $usuario = $request->user();
-        
-        if (!$usuario) {
-            return redirect()->route('login');
+
+        $feature = $geo['features'][0] ?? null;
+        if (!$feature || ($feature['geometry']['type'] ?? '') !== 'LineString') {
+            return back()->with('error', 'Debes dibujar una línea (ruta).')->withInput();
         }
-        
-        $ruta = TrufiRuta::findOrFail($id);
-        
-        $request->validate([
-            'idtrufi' => 'required|exists:trufis,idtrufi',
-            'latitud' => 'required|numeric',
-            'longitud' => 'required|numeric',
-            'orden' => 'required|integer',
-        ]);
-        
-        $ruta->update([
-            'idtrufi' => $request->idtrufi,
-            'latitud' => $request->latitud,
-            'longitud' => $request->longitud,
-            'orden' => $request->orden,
-            'es_parada' => $request->has('es_parada') ? 1 : 0,
-            'estado' => $request->has('estado') ? 1 : 0,
-        ]);
-        
-        return redirect()->route('admin.rutas.index', ['trufi_id' => $request->idtrufi])
-            ->with('success', 'Ruta actualizada exitosamente');
-    }
-    
-    // Eliminar ruta
-    public function eliminarRuta($id)
-    {
-        $usuario = request()->user();
-        
-        if (!$usuario) {
-            return redirect()->route('login');
+
+        $coords = $feature['geometry']['coordinates'] ?? [];
+        if (count($coords) < 2) {
+            return back()->with('error', 'La ruta debe tener al menos 2 puntos.')->withInput();
         }
-        
-        $ruta = TrufiRuta::findOrFail($id);
-        $trufiId = $ruta->idtrufi;
-        $ruta->delete();
-        
-        return redirect()->route('admin.rutas.index', ['trufi_id' => $trufiId])
-            ->with('success', 'Ruta eliminada');
+
+        $idtrufi = (int) $request->idtrufi;
+
+        // ✅ AQUÍ: calcular el orden inicial según el último orden existente
+        $ultimo = DB::table('trufi_rutas')
+            ->where('idtrufi', $idtrufi)
+            ->max('orden');
+
+        $orden = ($ultimo ?? 0) + 1;
+
+        $rows = [];
+
+        foreach ($coords as $c) {
+            // GeoJSON viene como [lng, lat]
+            $lng = $c[0];
+            $lat = $c[1];
+
+            $rows[] = [
+                'idtrufi'    => $idtrufi,
+                'latitud'    => $lat,
+                'longitud'   => $lng,
+                'orden'      => $orden,
+                'estado'     => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            $orden++;
+        }
+
+        DB::table('trufi_rutas')->insert($rows);
+
+        return redirect()->route('admin.rutas.index')->with('success', 'Ruta guardada correctamente.');
     }
+
+    public function mostrarEditarRuta($idtrufi, $orden)
+{
+    $usuario = request()->user();
+    if (!$usuario) return redirect()->route('login');
+
+    $ruta = TrufiRuta::where('idtrufi', $idtrufi)
+        ->where('orden', $orden)
+        ->firstOrFail();
+
+    $trufis = Trufi::orderBy('nom_linea')->get();
+
+    return view('admin.rutas.edit', [
+        'ruta' => $ruta,
+        'trufis' => $trufis,
+        'usuario' => $usuario
+    ]);
+}
+
+public function actualizarRuta(Request $request, $idtrufi)
+{
+    $usuario = $request->user();
+    if (!$usuario) return redirect()->route('login');
+
+    $request->validate([
+        'geojson' => 'required|string',
+    ]);
+
+    $geo = json_decode($request->geojson, true);
+
+    if (!$geo || empty($geo['features'])) {
+        return back()->with('error', 'GeoJSON inválido.')->withInput();
+    }
+
+    $feature = $geo['features'][0] ?? null;
+    if (!$feature || ($feature['geometry']['type'] ?? '') !== 'LineString') {
+        return back()->with('error', 'Debes dibujar una línea (ruta).')->withInput();
+    }
+
+    $coords = $feature['geometry']['coordinates'] ?? [];
+    if (count($coords) < 2) {
+        return back()->with('error', 'La ruta debe tener al menos 2 puntos.')->withInput();
+    }
+
+    DB::beginTransaction();
+    try {
+        // Eliminar todos los puntos de esa ruta
+        DB::table('trufi_rutas')->where('idtrufi', $idtrufi)->delete();
+
+        // Insertar de nuevo desde orden 1
+        $rows = [];
+        $orden = 1;
+
+        foreach ($coords as $c) {
+            $lng = $c[0];
+            $lat = $c[1];
+
+            $rows[] = [
+                'idtrufi'    => (int) $idtrufi,
+                'latitud'    => $lat,
+                'longitud'   => $lng,
+                'orden'      => $orden,
+                'estado'     => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+            $orden++;
+        }
+
+        DB::table('trufi_rutas')->insert($rows);
+
+        DB::commit();
+        return redirect()->route('admin.rutas.index')->with('success', 'Ruta actualizada correctamente.');
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        return back()->with('error', 'Error al actualizar la ruta.')->withInput();
+    }
+}
+
+
+public function eliminarRuta($idtrufi)
+{
+    $usuario = request()->user();
+    if (!$usuario) return redirect()->route('login');
+
+    DB::table('trufi_rutas')->where('idtrufi', $idtrufi)->delete();
+
+    return redirect()->route('admin.rutas.index')
+        ->with('success', 'Ruta eliminada.');
+}
+
 }

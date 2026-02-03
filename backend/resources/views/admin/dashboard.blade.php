@@ -115,6 +115,25 @@
                     @endcannot
                 @endcannot
             </div>
+            {{-- USUARIOS --}}
+            <div class="mb-3">
+                <strong class="d-block mb-2">Usuarios</strong>
+
+                @can('admin.usuarios.ver')
+                    <a href="{{ route('admin.usuarios.index') }}" class="btn btn-warning me-2">Ver Usuarios</a>
+                @endcan
+
+                @can('admin.usuarios.crear')
+                    <a href="{{ route('admin.usuarios.crear') }}" class="btn btn-success me-2">Crear Usuario</a>
+                @endcan
+
+                @cannot('admin.usuarios.ver')
+                    @cannot('admin.usuarios.crear')
+                        <span class="text-muted">No tienes permisos para Usuarios.</span>
+                    @endcannot
+                @endcannot
+            </div>
+
         </div>
 
         <div class="mt-4">

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Trufi;
 use App\Models\TrufiRuta;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TrufiRutaController extends Controller
 {
@@ -59,4 +60,39 @@ class TrufiRutaController extends Controller
                 ->get()
         );
     }
+    public function geojsonPorTrufi($idtrufi)
+{
+    $puntos = DB::table('trufi_rutas')
+        ->where('idtrufi', $idtrufi)
+        ->orderBy('orden', 'asc')
+        ->get(['longitud', 'latitud']);
+
+    if ($puntos->isEmpty()) {
+        return response()->json([
+            'type' => 'FeatureCollection',
+            'features' => []
+        ], 404);
+    }
+
+    $coords = $puntos->map(function ($p) {
+        return [(float) $p->longitud, (float) $p->latitud];
+    })->values()->all();
+
+    return response()->json([
+        'type' => 'FeatureCollection',
+        'features' => [
+            [
+                'type' => 'Feature',
+                'properties' => (object) [],
+                'geometry' => [
+                    'type' => 'LineString',
+                    'coordinates' => $coords
+                ]
+            ]
+        ]
+    ]);
+}
+
+
+
 }
