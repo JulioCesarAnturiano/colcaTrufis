@@ -14,12 +14,10 @@ Route::get('/test', function () {
         ]
     ]);
 });
-// ===========================
-// API PÚBLICA (FLUTTER) - SOLO LECTURA
-// ===========================
+//trufis
 Route::get('/trufis', [TrufiController::class, 'index']);
 Route::get('/trufis/{id}', [TrufiController::class, 'show']);
-
+//trufi_rutas
 Route::get('/trufi-rutas', [TrufiRutaController::class, 'index']);
 Route::get('/trufi-rutas/{id}', [TrufiRutaController::class, 'show']);
 Route::get('/trufis/{idtrufi}/rutas', [TrufiRutaController::class, 'rutasPorTrufi']);
