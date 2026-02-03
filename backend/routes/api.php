@@ -3,6 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TrufiController;
 use App\Http\Controllers\TrufiRutaController;
+use App\Http\Controllers\SindicatoController;
+use App\Http\Controllers\SindicatoRadioTaxisController;
+
 Route::get('/test', function () {
     return response()->json([
         'success' => true,
@@ -14,10 +17,26 @@ Route::get('/test', function () {
         ]
     ]);
 });
-//trufis
+// ===========================
+// API PÚBLICA (FLUTTER) - SOLO LECTURA
+// ===========================
+//trufi normales
 Route::get('/trufis', [TrufiController::class, 'index']);
 Route::get('/trufis/{id}', [TrufiController::class, 'show']);
-//trufi_rutas
+//trufi rutas
 Route::get('/trufi-rutas', [TrufiRutaController::class, 'index']);
 Route::get('/trufi-rutas/{id}', [TrufiRutaController::class, 'show']);
 Route::get('/trufis/{idtrufi}/rutas', [TrufiRutaController::class, 'rutasPorTrufi']);
+// ===========================
+// GEOJSON
+// ===========================
+// Ruta completa (LineString) por idtrufi
+Route::get('/trufis/{idtrufi}/rutas/geojson', [TrufiRutaController::class, 'geojsonPorTrufi']);
+
+// Sindicatos
+Route::get('/sindicatos', [SindicatoController::class, 'index']);
+Route::get('/sindicatos/{id}', [SindicatoController::class, 'show']);
+
+// Sindicato radiotaxis
+Route::get('/sindicato-radiotaxis', [SindicatoRadioTaxisController::class, 'index']);
+Route::get('/sindicato-radiotaxis/{id}', [SindicatoRadioTaxisController::class, 'show']);

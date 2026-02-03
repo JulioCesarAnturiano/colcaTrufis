@@ -3,6 +3,8 @@
 <head>
     <title>@yield('title', 'Admin')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    @stack('styles')
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -40,10 +42,22 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
+    @if ($errors->any())
+    <div class="alert alert-danger alert-dismissible fade show">
+        <ul class="mb-0">
+            @foreach ($errors->all() as $e)
+                <li>{{ $e }}</li>
+            @endforeach
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
 
     @yield('content')
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+@stack('scripts')
 </body>
 </html>

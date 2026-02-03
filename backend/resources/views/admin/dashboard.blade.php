@@ -115,6 +115,64 @@
                     @endcannot
                 @endcannot
             </div>
+
+            {{-- USUARIOS --}}
+            <div class="mb-3">
+                <strong class="d-block mb-2">Usuarios</strong>
+
+                @can('admin.usuarios.ver')
+                    <a href="{{ route('admin.usuarios.index') }}" class="btn btn-warning me-2">Ver Usuarios</a>
+                @endcan
+
+                @can('admin.usuarios.crear')
+                    <a href="{{ route('admin.usuarios.crear') }}" class="btn btn-success me-2">Crear Usuario</a>
+                @endcan
+
+                @cannot('admin.usuarios.ver')
+                    @cannot('admin.usuarios.crear')
+                        <span class="text-muted">No tienes permisos para Usuarios.</span>
+                    @endcannot
+                @endcannot
+            </div>
+
+            {{-- SINDICATOS --}}
+            <div class="mb-3">
+                <strong class="d-block mb-2">Sindicatos</strong>
+
+                @can('admin.sindicatos.ver')
+                    <a href="{{ route('admin.sindicatos.index') }}" class="btn btn-info me-2">Ver Sindicatos</a>
+                @endcan
+
+                @can('admin.sindicatos.crear')
+                    <a href="{{ route('admin.sindicatos.crear') }}" class="btn btn-success me-2">Crear Sindicato</a>
+                @endcan
+
+                @cannot('admin.sindicatos.ver')
+                    @cannot('admin.sindicatos.crear')
+                        <span class="text-muted">No tienes permisos para Sindicatos.</span>
+                    @endcannot
+                @endcannot
+            </div>
+
+            {{-- RADIOTAXIS --}}
+            <div class="mb-3">
+                <strong class="d-block mb-2">RadioTaxis</strong>
+
+                @can('admin.radiotaxis.ver')
+                    <a href="{{ route('admin.radiotaxis.index') }}" class="btn btn-dark me-2">Ver RadioTaxis</a>
+                @endcan
+
+                @can('admin.radiotaxis.crear')
+                    <a href="{{ route('admin.radiotaxis.crear') }}" class="btn btn-success me-2">Crear RadioTaxi</a>
+                @endcan
+
+                @cannot('admin.radiotaxis.ver')
+                    @cannot('admin.radiotaxis.crear')
+                        <span class="text-muted">No tienes permisos para RadioTaxis.</span>
+                    @endcannot
+                @endcannot
+            </div>
+
         </div>
 
         <div class="mt-4">

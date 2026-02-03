@@ -13,17 +13,48 @@ class RolesSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $encargado = Role::firstOrCreate(['name' => 'encargado']);
 
-        $permisos = [
-            'admin.trufis.crear',
-            'admin.trufis.ver',
-            'admin.trufis.editar',
-            'admin.trufis.eliminar',
+       $permisos = [
+        // =====================
+        // TRUFIS
+        // =====================
+        'admin.trufis.crear',
+        'admin.trufis.ver',
+        'admin.trufis.editar',
+        'admin.trufis.eliminar',
 
-            'admin.rutas.crear',
-            'admin.rutas.ver',
-            'admin.rutas.editar',
-            'admin.rutas.eliminar',
-        ];
+        // =====================
+        // RUTAS
+        // =====================
+        'admin.rutas.crear',
+        'admin.rutas.ver',
+        'admin.rutas.editar',
+        'admin.rutas.eliminar',
+
+        // =====================
+        // USUARIOS
+        // =====================
+        'admin.usuarios.crear',
+        'admin.usuarios.ver',
+        'admin.usuarios.editar',
+        'admin.usuarios.eliminar',
+        // =====================
+        // SINDICATOS
+        // =====================
+        'admin.sindicatos.crear',
+        'admin.sindicatos.ver',
+        'admin.sindicatos.editar',
+        'admin.sindicatos.eliminar',
+
+        // =====================
+        // RADIOTAXIS
+        // =====================
+        'admin.radiotaxis.crear',
+        'admin.radiotaxis.ver',
+        'admin.radiotaxis.editar',
+        'admin.radiotaxis.eliminar',
+
+    ];
+
 
         foreach ($permisos as $p) {
             Permission::firstOrCreate(['name' => $p]);

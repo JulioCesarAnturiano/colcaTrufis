@@ -1,4 +1,5 @@
 <?php
+// routes/web.php
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
@@ -6,6 +7,9 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\TrufiAdminController;
 use App\Http\Controllers\Admin\RutaAdminController;
 use App\Http\Controllers\Admin\FilePondController;
+use App\Http\Controllers\Admin\UsuarioAdminController;
+use App\Http\Controllers\Admin\SindicatoAdminController;
+use App\Http\Controllers\Admin\RadioTaxiAdminController;
 
 Route::get('/', fn() => redirect()->route('login'));
 
@@ -56,7 +60,7 @@ Route::prefix('admin')->middleware(['auth', 'role:admin|encargado'])->group(func
         ->name('admin.trufis.eliminar');
 
     // ===========================
-    // RUTAS (CRUD)
+    // RUTAS (CRUD)  ✅ (PK compuesta: idtrufi + orden)
     // ===========================
     Route::get('/rutas', [RutaAdminController::class, 'listarRutas'])
         ->middleware('permission:admin.rutas.ver')
@@ -70,15 +74,99 @@ Route::prefix('admin')->middleware(['auth', 'role:admin|encargado'])->group(func
         ->middleware('permission:admin.rutas.crear')
         ->name('admin.rutas.guardar');
 
-    Route::get('/rutas/{id}/editar', [RutaAdminController::class, 'mostrarEditarRuta'])
-        ->middleware('permission:admin.rutas.editar')
-        ->name('admin.rutas.editar');
+    Route::get('/rutas/{idtrufi}/editar', [RutaAdminController::class, 'mostrarEditarRuta'])
+    ->middleware('permission:admin.rutas.editar')
+    ->name('admin.rutas.editar');
 
-    Route::put('/rutas/{id}', [RutaAdminController::class, 'actualizarRuta'])
-        ->middleware('permission:admin.rutas.editar')
-        ->name('admin.rutas.actualizar');
+    Route::put('/rutas/{idtrufi}', [RutaAdminController::class, 'actualizarRuta'])
+    ->middleware('permission:admin.rutas.editar')
+    ->name('admin.rutas.actualizar');
 
-    Route::delete('/rutas/{id}', [RutaAdminController::class, 'eliminarRuta'])
-        ->middleware('permission:admin.rutas.eliminar')
-        ->name('admin.rutas.eliminar');
+    Route::delete('/rutas/{idtrufi}', [RutaAdminController::class, 'eliminarRuta'])
+    ->middleware('permission:admin.rutas.eliminar')
+    ->name('admin.rutas.eliminar');
+
+    // ===========================
+// SINDICATOS (CRUD)
+// ===========================
+Route::get('/sindicatos', [SindicatoAdminController::class, 'index'])
+    ->middleware('permission:admin.sindicatos.ver')
+    ->name('admin.sindicatos.index');
+
+Route::get('/sindicatos/crear', [SindicatoAdminController::class, 'create'])
+    ->middleware('permission:admin.sindicatos.crear')
+    ->name('admin.sindicatos.crear');
+
+Route::post('/sindicatos', [SindicatoAdminController::class, 'store'])
+    ->middleware('permission:admin.sindicatos.crear')
+    ->name('admin.sindicatos.guardar');
+
+Route::get('/sindicatos/{id}/editar', [SindicatoAdminController::class, 'edit'])
+    ->middleware('permission:admin.sindicatos.editar')
+    ->name('admin.sindicatos.editar');
+
+Route::put('/sindicatos/{id}', [SindicatoAdminController::class, 'update'])
+    ->middleware('permission:admin.sindicatos.editar')
+    ->name('admin.sindicatos.actualizar');
+
+Route::delete('/sindicatos/{id}', [SindicatoAdminController::class, 'destroy'])
+    ->middleware('permission:admin.sindicatos.eliminar')
+    ->name('admin.sindicatos.eliminar');
+
+
+// ===========================
+// SINDICATO RADIOTAXIS (CRUD)
+// ===========================
+Route::get('/radiotaxis', [RadioTaxiAdminController::class, 'index'])
+    ->middleware('permission:admin.radiotaxis.ver')
+    ->name('admin.radiotaxis.index');
+
+Route::get('/radiotaxis/crear', [RadioTaxiAdminController::class, 'create'])
+    ->middleware('permission:admin.radiotaxis.crear')
+    ->name('admin.radiotaxis.crear');
+
+Route::post('/radiotaxis', [RadioTaxiAdminController::class, 'store'])
+    ->middleware('permission:admin.radiotaxis.crear')
+    ->name('admin.radiotaxis.guardar');
+
+Route::get('/radiotaxis/{id}/editar', [RadioTaxiAdminController::class, 'edit'])
+    ->middleware('permission:admin.radiotaxis.editar')
+    ->name('admin.radiotaxis.editar');
+
+Route::put('/radiotaxis/{id}', [RadioTaxiAdminController::class, 'update'])
+    ->middleware('permission:admin.radiotaxis.editar')
+    ->name('admin.radiotaxis.actualizar');
+
+Route::delete('/radiotaxis/{id}', [RadioTaxiAdminController::class, 'destroy'])
+    ->middleware('permission:admin.radiotaxis.eliminar')
+    ->name('admin.radiotaxis.eliminar');
+
+
+
+    // ===========================
+    // USUARIOS (CRUD)
+    // ===========================
+    Route::get('/usuarios', [UsuarioAdminController::class, 'index'])
+        ->middleware('permission:admin.usuarios.ver')
+        ->name('admin.usuarios.index');
+
+    Route::get('/usuarios/crear', [UsuarioAdminController::class, 'create'])
+        ->middleware('permission:admin.usuarios.crear')
+        ->name('admin.usuarios.crear');
+
+    Route::post('/usuarios', [UsuarioAdminController::class, 'store'])
+        ->middleware('permission:admin.usuarios.crear')
+        ->name('admin.usuarios.guardar');
+
+    Route::get('/usuarios/{id}/editar', [UsuarioAdminController::class, 'edit'])
+        ->middleware('permission:admin.usuarios.editar')
+        ->name('admin.usuarios.editar');
+
+    Route::put('/usuarios/{id}', [UsuarioAdminController::class, 'update'])
+        ->middleware('permission:admin.usuarios.editar')
+        ->name('admin.usuarios.actualizar');
+
+    Route::delete('/usuarios/{id}', [UsuarioAdminController::class, 'destroy'])
+        ->middleware('permission:admin.usuarios.eliminar')
+        ->name('admin.usuarios.eliminar');
 });

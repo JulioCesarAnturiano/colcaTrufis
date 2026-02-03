@@ -11,13 +11,13 @@
         @endcan
     </div>
 
-    @if(isset($trufis) && count($trufis) > 0)
+    @if($trufis->count())
         <div class="table-responsive">
             <table class="table table-bordered align-middle">
                 <thead class="table-dark">
                 <tr>
                     <th>ID</th>
-                    <th>Nombre</th>
+                    <th>Línea</th>
                     <th>Costo</th>
                     <th>Frecuencia</th>
                     <th>Tipo</th>
@@ -30,21 +30,20 @@
                 @foreach($trufis as $t)
                     <tr>
                         <td>{{ $t->idtrufi }}</td>
-                        <td>{{ $t->nombre }}</td>
+                        <td>{{ $t->nom_linea }}</td>
                         <td>{{ $t->costo }}</td>
                         <td>{{ $t->frecuencia }}</td>
                         <td>{{ $t->tipo }}</td>
-                        <td>{{ $t->nombre_sindicato }}</td>
+                        <td>{{ $t->sindicato->nombre ?? '-' }}</td>
                         <td>
-                            @if($t->estado)
-                                <span class="badge bg-success">Activo</span>
-                            @else
-                                <span class="badge bg-secondary">Inactivo</span>
-                            @endif
+                            <span class="badge {{ $t->estado ? 'bg-success' : 'bg-secondary' }}">
+                                {{ $t->estado ? 'Activo' : 'Inactivo' }}
+                            </span>
                         </td>
                         <td>
                             @can('admin.trufis.editar')
-                                <a class="btn btn-sm btn-primary" href="{{ route('admin.trufis.editar', $t->idtrufi) }}">
+                                <a class="btn btn-sm btn-primary"
+                                   href="{{ route('admin.trufis.editar', $t->idtrufi) }}">
                                     Editar
                                 </a>
                             @endcan
@@ -63,6 +62,10 @@
                 @endforeach
                 </tbody>
             </table>
+        </div>
+
+        <div class="mt-3">
+            {{ $trufis->links() }}
         </div>
     @else
         <div class="alert alert-info">No hay trufis registrados.</div>

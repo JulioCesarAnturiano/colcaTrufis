@@ -8,47 +8,106 @@
     <form action="{{ route('admin.rutas.guardar') }}" method="POST">
         @csrf
 
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <label class="form-label">ID Trufi</label>
-                <input type="number" name="idtrufi" class="form-control" required value="{{ old('idtrufi') }}">
-            </div>
-
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Latitud</label>
-                <input type="text" name="latitud" class="form-control" required value="{{ old('latitud') }}">
-            </div>
-
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Longitud</label>
-                <input type="text" name="longitud" class="form-control" required value="{{ old('longitud') }}">
-            </div>
-
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Orden</label>
-                <input type="number" name="orden" class="form-control" value="{{ old('orden', 1) }}">
-            </div>
-
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Es Parada</label>
-                <select name="es_parada" class="form-select">
-                    <option value="1" selected>Sí</option>
-                    <option value="0">No</option>
-                </select>
-            </div>
-
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Estado</label>
-                <select name="estado" class="form-select">
-                    <option value="1" selected>Activo</option>
-                    <option value="0">Inactivo</option>
-                </select>
-            </div>
+        <div class="mb-3">
+            <label class="form-label">Trufi</label>
+            <select name="idtrufi" class="form-select" required>
+                <option value="">Seleccione un trufi</option>
+                @foreach($trufis as $t)
+                    <option value="{{ $t->idtrufi }}">{{ $t->nom_linea }}</option>
+                @endforeach
+            </select>
         </div>
 
-        <div class="d-flex gap-2">
+        <div class="alert alert-info">
+            Dibuja la ruta en el mapa. Usa la herramienta de línea y agrega puntos. Luego guarda.
+        </div>
+
+        <div id="map" style="height: 520px; border-radius: 8px;"></div>
+
+        {{-- Aquí se guardará el GeoJSON de la línea --}}
+        <input type="hidden" name="geojson" id="geojson" required>
+
+        <div class="d-flex gap-2 mt-3">
             <button class="btn btn-success">Guardar</button>
             <a href="{{ route('admin.rutas.index') }}" class="btn btn-secondary">Volver</a>
         </div>
     </form>
 @endsection
+
+@push('styles')
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+@endpush
+
+@push('scripts')
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
+    <script>
+        // 1) Centro aproximado de Colcapirhua (ajustable)
+        const map = L.map('map').setView([-17.389, -66.247], 14);
+
+        // 2) Mapa base (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        // 3) Capa donde se guardan los dibujos
+        const drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        // 4) Controles de dibujo: permitimos SOLO Polyline (ruta)
+        const drawControl = new L.Control.Draw({
+            edit: {
+                featureGroup: drawnItems
+            },
+            draw: {
+                polygon: false,
+                rectangle: false,
+                circle: false,
+                circlemarker: false,
+                marker: false,
+                polyline: {
+                    shapeOptions: { }
+                }
+            }
+        });
+        map.addControl(drawControl);
+
+        function updateGeojsonInput() {
+            const data = drawnItems.toGeoJSON();
+
+            // Debe existir 1 sola línea (1 Feature)
+            if (!data.features || data.features.length === 0) {
+                document.getElementById('geojson').value = '';
+                return;
+            }
+
+            // Guardamos el GeoJSON completo
+            document.getElementById('geojson').value = JSON.stringify(data);
+        }
+
+        map.on(L.Draw.Event.CREATED, function (event) {
+            drawnItems.clearLayers(); // solo 1 ruta a la vez
+            drawnItems.addLayer(event.layer);
+            updateGeojsonInput();
+        });
+
+        map.on(L.Draw.Event.EDITED, function () {
+            updateGeojsonInput();
+        });
+
+        map.on(L.Draw.Event.DELETED, function () {
+            updateGeojsonInput();
+        });
+
+        // Validación antes de enviar
+        document.querySelector('form').addEventListener('submit', function (e) {
+            if (!document.getElementById('geojson').value) {
+                e.preventDefault();
+                alert('Debes dibujar una ruta (línea) en el mapa antes de guardar.');
+            }
+        });
+    </script>
+@endpush
