@@ -1,4 +1,3 @@
-{{-- resources/views/admin/rutas/index.blade.php --}}
 @extends('admin.layout')
 
 @section('title', 'Rutas - Admin')
@@ -18,35 +17,36 @@
                 <thead class="table-dark">
                 <tr>
                     <th>ID Trufi</th>
-                    <th>Latitud</th>
-                    <th>Longitud</th>
-                    <th>Orden</th>
-                    <th>Es Parada</th>
-                    <th>Estado</th>
+                    <th>Trufi</th>
+                    <th>Puntos</th>
+                    <th>Orden Inicio</th>
+                    <th>Orden Fin</th>
                     <th style="width: 220px;">Acciones</th>
                 </tr>
                 </thead>
                 <tbody>
                 @foreach($rutas as $r)
+                    @php
+                        $trufi = $trufis->firstWhere('idtrufi', $r->idtrufi);
+                    @endphp
                     <tr>
                         <td>{{ $r->idtrufi }}</td>
-                        <td>{{ $r->latitud }}</td>
-                        <td>{{ $r->longitud }}</td>
-                        <td>{{ $r->orden }}</td>
-                        <td>{{ $r->es_parada ? 'Sí' : 'No' }}</td>
-                        <td>{{ $r->estado ? 'Activo' : 'Inactivo' }}</td>
+                        <td>{{ $trufi ? $trufi->nom_linea : 'Sin nombre' }}</td>
+                        <td>{{ $r->total_puntos }}</td>
+                        <td>{{ $r->orden_inicio }}</td>
+                        <td>{{ $r->orden_fin }}</td>
                         <td>
                             @can('admin.rutas.editar')
                                 <a class="btn btn-sm btn-primary"
-                                   href="{{ route('admin.rutas.editar', ['idtrufi' => $r->idtrufi, 'orden' => $r->orden]) }}">
+                                   href="{{ route('admin.rutas.editar', ['idtrufi' => $r->idtrufi]) }}">
                                     Editar
                                 </a>
                             @endcan
 
                             @can('admin.rutas.eliminar')
-                                <form action="{{ route('admin.rutas.eliminar', ['idtrufi' => $r->idtrufi, 'orden' => $r->orden]) }}"
+                                <form action="{{ route('admin.rutas.eliminar', ['idtrufi' => $r->idtrufi]) }}"
                                       method="POST" class="d-inline"
-                                      onsubmit="return confirm('¿Eliminar esta ruta?');">
+                                      onsubmit="return confirm('¿Eliminar toda la ruta de este trufi?');">
                                     @csrf
                                     @method('DELETE')
                                     <button class="btn btn-sm btn-danger">Eliminar</button>
@@ -59,7 +59,6 @@
             </table>
         </div>
 
-        {{-- Paginación --}}
         <div class="mt-3">
             {{ $rutas->links() }}
         </div>

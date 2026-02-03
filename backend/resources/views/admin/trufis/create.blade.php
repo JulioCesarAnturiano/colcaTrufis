@@ -10,8 +10,8 @@
 
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label class="form-label">Nombre</label>
-                <input type="text" name="nombre" class="form-control" required value="{{ old('nombre') }}">
+                <label class="form-label">Nombre de Línea</label>
+                <input type="text" name="nom_linea" class="form-control" required value="{{ old('nom_linea') }}">
             </div>
 
             <div class="col-md-3 mb-3">
@@ -21,18 +21,26 @@
 
             <div class="col-md-3 mb-3">
                 <label class="form-label">Frecuencia</label>
-                <input type="text" name="frecuencia" class="form-control" value="{{ old('frecuencia') }}">
+                <input type="number" name="frecuencia" class="form-control" required value="{{ old('frecuencia') }}">
             </div>
 
             <div class="col-md-4 mb-3">
                 <label class="form-label">Tipo</label>
-                <input type="text" name="tipo" class="form-control" value="{{ old('tipo') }}">
+                <input type="text" name="tipo" class="form-control" required value="{{ old('tipo') }}">
             </div>
 
             <div class="col-md-4 mb-3">
                 <label class="form-label">Sindicato</label>
-                <input type="text" name="nombre_sindicato" class="form-control" value="{{ old('nombre_sindicato') }}">
+                <select name="sindicato_id" class="form-select" required>
+                    <option value="">Seleccione</option>
+                    @foreach($sindicatos as $s)
+                        <option value="{{ $s->id }}" @selected(old('sindicato_id') == $s->id)>
+                            {{ $s->nombre }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
+
 
             <div class="col-md-4 mb-3">
                 <label class="form-label">Estado</label>

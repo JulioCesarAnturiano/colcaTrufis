@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-
 use App\Models\Trufi;
+use App\Models\Sindicato;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class TrufiAdminController extends Controller
 {
@@ -14,156 +13,132 @@ class TrufiAdminController extends Controller
     public function listarTrufis()
     {
         $usuario = request()->user();
-        
+
         if (!$usuario) {
             return redirect()->route('login');
         }
-        
-        $trufis = Trufi::orderBy('nombre')->paginate(10);
-        
+
+        $trufis = Trufi::with('sindicato')
+            ->orderBy('nom_linea')
+            ->paginate(10);
+
         return view('admin.trufis.index', [
             'trufis' => $trufis,
             'usuario' => $usuario
         ]);
     }
-    
-    // Mostrar formulario crear
+
+
     public function mostrarCrear()
-    {
-        $usuario = request()->user();
-        
-        if (!$usuario) {
-            return redirect()->route('login');
-        }
-        
-        return view('admin.trufis.create', ['usuario' => $usuario]);
-    }
-    
+{
+    $usuario = request()->user();
+    if (!$usuario) return redirect()->route('login');
+
+    $sindicatos = Sindicato::orderBy('nombre')->get();
+
+    return view('admin.trufis.create', [
+        'usuario' => $usuario,
+        'sindicatos' => $sindicatos,
+    ]);
+}
+
+
     // Guardar trufi
     public function guardarTrufi(Request $request)
     {
         $usuario = $request->user();
-        
         if (!$usuario) {
             return redirect()->route('login');
         }
-        
-        // Validar
+
         $request->validate([
-            'nombre' => 'required|string|max:100',
-            'tipo' => 'required|in:trufi,radiomovil',
-            'costo' => 'required|numeric|min:0',
-            'frecuencia' => 'required|integer|min:1',
-            'nombre_sindicato' => 'required|string|max:100',
+            'nom_linea'    => 'required|string|max:255',
+            'costo'        => 'required|numeric|min:0',
+            'frecuencia'   => 'required|integer|min:1',
+            'tipo'         => 'required|string|max:255',
+            'descripcion'  => 'nullable|string',
+            'sindicato_id' => 'required|exists:sindicatos,id',
+            'estado'       => 'nullable|in:0,1',
         ]);
-        
-        // Crear trufi
-        $trufi = Trufi::create([
-            'nombre' => $request->nombre,
-            'tipo' => $request->tipo,
-            'costo' => $request->costo,
-            'frecuencia' => $request->frecuencia,
-            'descripcion' => $request->descripcion,
-            'nombre_sindicato' => $request->nombre_sindicato,
-            'estado' => $request->has('estado') ? 1 : 0,
+
+        Trufi::create([
+            'nom_linea'    => $request->nom_linea,
+            'costo'        => $request->costo,
+            'frecuencia'   => $request->frecuencia,
+            'tipo'         => $request->tipo,
+            'descripcion'  => $request->descripcion,
+            'sindicato_id' => $request->sindicato_id,
+            'estado'       => $request->estado ?? 1,
         ]);
-        
-        // Procesar imagen si existe
-        if ($request->imagen_temp) {
-            $this->procesarImagen($trufi, $request->imagen_temp);
-        }
-        
+
         return redirect()->route('admin.trufis.index')
             ->with('success', 'Trufi creado exitosamente');
     }
-    
+
     // Mostrar formulario editar
     public function mostrarEditar($id)
-    {
-        $usuario = request()->user();
-        
-        if (!$usuario) {
-            return redirect()->route('login');
-        }
-        
-        $trufi = Trufi::findOrFail($id);
-        
-        return view('admin.trufis.edit', [
-            'trufi' => $trufi,
-            'usuario' => $usuario
-        ]);
-    }
-    
+{
+    $usuario = request()->user();
+    if (!$usuario) return redirect()->route('login');
+
+    $trufi = Trufi::findOrFail($id);
+    $sindicatos = Sindicato::orderBy('nombre')->get();
+
+    return view('admin.trufis.edit', [
+        'trufi' => $trufi,
+        'usuario' => $usuario,
+        'sindicatos' => $sindicatos,
+    ]);
+}
+
+
     // Actualizar trufi
     public function actualizarTrufi(Request $request, $id)
     {
         $usuario = $request->user();
-        
         if (!$usuario) {
             return redirect()->route('login');
         }
-        
+
         $trufi = Trufi::findOrFail($id);
-        
-        // Validar
+
         $request->validate([
-            'nombre' => 'required|string|max:100',
-            'tipo' => 'required|in:trufi,radiomovil',
-            'costo' => 'required|numeric|min:0',
-            'frecuencia' => 'required|integer|min:1',
-            'nombre_sindicato' => 'required|string|max:100',
+            'nom_linea'    => 'required|string|max:255',
+            'costo'        => 'required|numeric|min:0',
+            'frecuencia'   => 'required|integer|min:1',
+            'tipo'         => 'required|string|max:255',
+            'descripcion'  => 'nullable|string',
+            'sindicato_id' => 'required|exists:sindicatos,id',
+            'estado'       => 'nullable|in:0,1',
         ]);
-        
-        // Actualizar
+
         $trufi->update([
-            'nombre' => $request->nombre,
-            'tipo' => $request->tipo,
-            'costo' => $request->costo,
-            'frecuencia' => $request->frecuencia,
-            'descripcion' => $request->descripcion,
-            'nombre_sindicato' => $request->nombre_sindicato,
-            'estado' => $request->has('estado') ? 1 : 0,
+            'nom_linea'    => $request->nom_linea,
+            'costo'        => $request->costo,
+            'frecuencia'   => $request->frecuencia,
+            'tipo'         => $request->tipo,
+            'descripcion'  => $request->descripcion,
+            'sindicato_id' => $request->sindicato_id,
+            'estado'       => $request->estado ?? 1,
         ]);
-        
-        // Procesar imagen
-        if ($request->imagen_temp) {
-            $this->procesarImagen($trufi, $request->imagen_temp);
-        }
-        
+
         return redirect()->route('admin.trufis.index')
             ->with('success', 'Trufi actualizado exitosamente');
     }
-    
+
     // Eliminar trufi
     public function eliminarTrufi($id)
     {
         $usuario = request()->user();
-        
+
         if (!$usuario || !$usuario->hasRole('admin')) {
             return redirect()->route('login')->with('error', 'No autorizado');
         }
 
-        
         $trufi = Trufi::findOrFail($id);
         $trufi->delete();
-        
+
         return redirect()->route('admin.trufis.index')
             ->with('success', 'Trufi eliminado');
-    }
-    
-    // Método auxiliar para procesar imagen
-    private function procesarImagen($trufi, $nombreTemporal)
-    {
-        $rutaOrigen = 'temp/' . $nombreTemporal;
-        $rutaDestino = 'trufis/' . $trufi->idtrufi . '_' . time() . '.jpg';
-        
-        if (Storage::disk('public')->exists($rutaOrigen)) {
-            Storage::disk('public')->move($rutaOrigen, $rutaDestino);
-            
-            $trufi->update([
-                'imagen_url' => Storage::url($rutaDestino),
-                'imagen_path' => $rutaDestino
-            ]);
-        }
     }
 }

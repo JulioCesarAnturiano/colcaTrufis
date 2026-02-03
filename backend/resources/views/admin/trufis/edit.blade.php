@@ -11,35 +11,46 @@
 
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label class="form-label">Nombre</label>
-                <input type="text" name="nombre" class="form-control" required value="{{ old('nombre', $trufi->nombre) }}">
+                <label class="form-label">Nombre de Línea</label>
+                <input type="text" name="nom_linea" class="form-control" required
+                       value="{{ old('nom_linea', $trufi->nom_linea) }}">
             </div>
 
             <div class="col-md-3 mb-3">
                 <label class="form-label">Costo</label>
-                <input type="number" step="0.01" name="costo" class="form-control" required value="{{ old('costo', $trufi->costo) }}">
+                <input type="number" step="0.01" name="costo" class="form-control" required
+                       value="{{ old('costo', $trufi->costo) }}">
             </div>
 
             <div class="col-md-3 mb-3">
                 <label class="form-label">Frecuencia</label>
-                <input type="text" name="frecuencia" class="form-control" value="{{ old('frecuencia', $trufi->frecuencia) }}">
+                <input type="number" name="frecuencia" class="form-control" required
+                       value="{{ old('frecuencia', $trufi->frecuencia) }}">
             </div>
 
             <div class="col-md-4 mb-3">
                 <label class="form-label">Tipo</label>
-                <input type="text" name="tipo" class="form-control" value="{{ old('tipo', $trufi->tipo) }}">
+                <input type="text" name="tipo" class="form-control" required
+                       value="{{ old('tipo', $trufi->tipo) }}">
             </div>
 
             <div class="col-md-4 mb-3">
                 <label class="form-label">Sindicato</label>
-                <input type="text" name="nombre_sindicato" class="form-control" value="{{ old('nombre_sindicato', $trufi->nombre_sindicato) }}">
+                <select name="sindicato_id" class="form-select" required>
+                    <option value="">Seleccione</option>
+                    @foreach($sindicatos as $s)
+                        <option value="{{ $s->id }}" @selected(old('sindicato_id', $trufi->sindicato_id) == $s->id)>
+                            {{ $s->nombre }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
 
             <div class="col-md-4 mb-3">
                 <label class="form-label">Estado</label>
                 <select name="estado" class="form-select">
-                    <option value="1" @selected(old('estado', $trufi->estado) == 1)>Activo</option>
-                    <option value="0" @selected(old('estado', $trufi->estado) == 0)>Inactivo</option>
+                    <option value="1" @selected($trufi->estado == 1)>Activo</option>
+                    <option value="0" @selected($trufi->estado == 0)>Inactivo</option>
                 </select>
             </div>
 

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 class RutaAdminController extends Controller
 {
     // Listar rutas
-   public function listarRutas(Request $request)
+public function listarRutas(Request $request)
 {
     $usuario = $request->user();
     if (!$usuario) return redirect()->route('login');
@@ -44,6 +44,7 @@ class RutaAdminController extends Controller
         'usuario' => $usuario
     ]);
 }
+
 
 
     // Mostrar formulario crear
@@ -111,23 +112,18 @@ class RutaAdminController extends Controller
         return redirect()->route('admin.rutas.index')->with('success', 'Ruta guardada correctamente.');
     }
 
-    public function mostrarEditarRuta($idtrufi, $orden)
+public function mostrarEditarRuta($idtrufi)
 {
     $usuario = request()->user();
     if (!$usuario) return redirect()->route('login');
 
-    $ruta = TrufiRuta::where('idtrufi', $idtrufi)
-        ->where('orden', $orden)
-        ->firstOrFail();
+    $trufis = DB::table('trufis')->select('idtrufi', 'nom_linea')->orderBy('nom_linea')->get();
+    $trufiSeleccionado = DB::table('trufis')->where('idtrufi', $idtrufi)->first();
 
-    $trufis = Trufi::orderBy('nom_linea')->get();
-
-    return view('admin.rutas.edit', [
-        'ruta' => $ruta,
-        'trufis' => $trufis,
-        'usuario' => $usuario
-    ]);
+    return view('admin.rutas.edit', compact('trufis', 'idtrufi', 'trufiSeleccionado', 'usuario'));
 }
+
+
 
 public function actualizarRuta(Request $request, $idtrufi)
 {
@@ -156,10 +152,10 @@ public function actualizarRuta(Request $request, $idtrufi)
 
     DB::beginTransaction();
     try {
-        // Eliminar todos los puntos de esa ruta
+        // 1) Eliminar ruta anterior completa
         DB::table('trufi_rutas')->where('idtrufi', $idtrufi)->delete();
 
-        // Insertar de nuevo desde orden 1
+        // 2) Insertar la nueva desde orden 1
         $rows = [];
         $orden = 1;
 
@@ -182,12 +178,15 @@ public function actualizarRuta(Request $request, $idtrufi)
         DB::table('trufi_rutas')->insert($rows);
 
         DB::commit();
-        return redirect()->route('admin.rutas.index')->with('success', 'Ruta actualizada correctamente.');
+        return redirect()->route('admin.rutas.index')
+            ->with('success', 'Ruta reemplazada correctamente.');
     } catch (\Throwable $e) {
         DB::rollBack();
-        return back()->with('error', 'Error al actualizar la ruta.')->withInput();
+        return back()->with('error', 'Error al reemplazar la ruta.')->withInput();
     }
 }
+
+
 
 
 public function eliminarRuta($idtrufi)
@@ -200,5 +199,6 @@ public function eliminarRuta($idtrufi)
     return redirect()->route('admin.rutas.index')
         ->with('success', 'Ruta eliminada.');
 }
+
 
 }

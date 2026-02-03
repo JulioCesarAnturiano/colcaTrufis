@@ -37,6 +37,22 @@ class RolesSeeder extends Seeder
         'admin.usuarios.ver',
         'admin.usuarios.editar',
         'admin.usuarios.eliminar',
+        // =====================
+        // SINDICATOS
+        // =====================
+        'admin.sindicatos.crear',
+        'admin.sindicatos.ver',
+        'admin.sindicatos.editar',
+        'admin.sindicatos.eliminar',
+
+        // =====================
+        // RADIOTAXIS
+        // =====================
+        'admin.radiotaxis.crear',
+        'admin.radiotaxis.ver',
+        'admin.radiotaxis.editar',
+        'admin.radiotaxis.eliminar',
+
     ];
 
 
