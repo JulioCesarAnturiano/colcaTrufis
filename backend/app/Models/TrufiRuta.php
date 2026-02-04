@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class TrufiRuta extends Model
 {
     protected $table = 'trufi_rutas'; // Especificar tabla
-    
+
     protected $fillable = [
         'idtrufi',
         'sindicato_radiotaxi_id', // Agregué este campo (está en tu BD)

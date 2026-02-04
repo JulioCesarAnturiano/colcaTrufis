@@ -45,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final lang = AppSettings.language.value;
 
     final Map<String, Map<String, String>> dict = {
-      // Drawer/Settings
       "menu": {"es": "Menú", "en": "Menu", "qu": "Menu"},
       "sindicatos": {"es": "Sindicatos", "en": "Unions", "qu": "Sindicato-kuna"},
       "radiotaxis": {"es": "Radiotaxis", "en": "Radio taxis", "qu": "RadioTaxi-kuna"},
@@ -57,8 +56,6 @@ class _HomeScreenState extends State<HomeScreen> {
       "base": {"es": "Base", "en": "Base", "qu": "Base"},
       "selected": {"es": "Seleccionaste", "en": "You selected", "qu": "Akllarirqanki"},
       "id": {"es": "ID", "en": "ID", "qu": "ID"},
-
-      // Home/Bottomsheet
       "of_colcapirhua": {"es": "de Colcapirhua", "en": "in Colcapirhua", "qu": "Colcapirhua-pi"},
       "available_each": {"es": "Disponible cada 10 min", "en": "Available every 10 min", "qu": "Sapa 10 min kachkan"},
       "trufi": {"es": "Trufi", "en": "Trufi", "qu": "Trufi"},
@@ -76,7 +73,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchSindicatos(); // Obtener los sindicatos desde el backend
     _fetchRadioTaxis(); // Obtener los radiotaxis desde el backend
     _fetchTrufis(); // Obtener los trufis desde el backend
-    _fetchTrufiRutas(); // Obtener las rutas de los trufis desde el backend
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (AppSettings.centerOnStart.value) {
@@ -122,9 +118,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Fetch trufi rutas desde el API
-  Future<void> _fetchTrufiRutas() async {
+  Future<void> _fetchTrufiRutas(int idtrufi) async {
     try {
-      final trufiRutas = await _apiService.getTrufiRutas(1); // Ejemplo con idtrufi = 1
+      final trufiRutas = await _apiService.getTrufiRutas(idtrufi);
       setState(() {
         _trufiRutas = List<Map<String, dynamic>>.from(trufiRutas);
       });
@@ -273,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 12),
                           _buildMapButton3D(
-                            icon: Icons.directions_car,
+                            icon: Icons.local_taxi, // Cambié de trufi a radiotaxi
                             isActive: !isTrufiSelected,
                             onPressed: () {
                               setState(() => isTrufiSelected = false);
@@ -400,7 +396,7 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(
                 height: 300,
                 child: ListView.separated(
-                  itemCount: _trufis.length, // Ahora el número de elementos es dinámico basado en los trufis obtenidos
+                  itemCount: _trufis.length,
                   separatorBuilder: (_, __) => const Divider(),
                   itemBuilder: (context, index) => ListTile(
                     leading: CircleAvatar(
@@ -517,7 +513,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               }).toList(),
             ),
-
             const Divider(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class SindicatoRadiotaxi extends Model
 {
     protected $table = 'sindicato_radiotaxis';
-    
+
     protected $fillable = [
         'nombre_comercial',
         'telefono_base'
