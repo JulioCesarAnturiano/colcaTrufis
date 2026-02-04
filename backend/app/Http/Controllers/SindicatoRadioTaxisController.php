@@ -8,12 +8,11 @@ use Illuminate\Http\Request;
 class SindicatoRadioTaxisController extends Controller
 {
     // GET /api/sindicato-radiotaxis
-    public function index()
-    {
-        return response()->json(
-            SindicatoRadioTaxi::with('trufiRutas.trufi')->get()
-        );
-    }
+   public function index()
+{
+    return response()->json(SindicatoRadioTaxi::all());
+}
+
 
     // POST /api/sindicato-radiotaxis
     public function store(Request $request)
