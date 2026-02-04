@@ -1,0 +1,291 @@
+:root{
+    --ct-sky-50: #eef9ff;
+    --ct-sky-100: #d9f2ff;
+    --ct-sky-200: #bfe8ff;
+    --ct-sky-300: #97d9ff;
+    --ct-sky-500: #30b7ff;
+
+    --ct-green-200: #c8f7d4;
+    --ct-green-300: #a7efbf;
+    --ct-green-600: #169a4a;
+
+    --ct-ink: #0b2b3a;
+    --ct-muted: #5b7280;
+
+    --ct-radius: 18px;
+    --ct-shadow: 0 12px 30px rgba(2, 19, 29, 0.10);
+    --ct-shadow-soft: 0 10px 22px rgba(2, 19, 29, 0.08);
+}
+
+/* Base */
+.ct-body{
+    background: linear-gradient(180deg, var(--ct-sky-50), #ffffff 55%);
+    color: var(--ct-ink);
+}
+
+.ct-container{
+    padding-bottom: 40px;
+}
+
+.ct-header{
+    background: rgba(217, 242, 255, 0.65);
+    border: 1px solid rgba(48, 183, 255, 0.25);
+    border-radius: var(--ct-radius);
+    padding: 18px 18px;
+    box-shadow: var(--ct-shadow-soft);
+}
+
+.ct-title{
+    margin: 0;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+}
+
+.ct-subtitle{
+    margin-top: 6px;
+    color: var(--ct-muted);
+    font-weight: 600;
+}
+
+.ct-section-title{
+    font-weight: 800;
+    letter-spacing: .2px;
+}
+
+.ct-hint{
+    color: var(--ct-muted);
+    font-size: .92rem;
+    font-weight: 600;
+}
+
+/* Navbar */
+.ct-navbar{
+    background: linear-gradient(90deg, #0b5fa8, var(--ct-sky-500));
+    box-shadow: 0 10px 24px rgba(2, 19, 29, 0.18);
+}
+
+.ct-brand{
+    font-weight: 800;
+    letter-spacing: .2px;
+}
+
+/* Stat Cards */
+.ct-stat-card{
+    border: 1px solid rgba(48, 183, 255, 0.22);
+    border-radius: var(--ct-radius);
+    box-shadow: var(--ct-shadow-soft);
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.ct-stat-label{
+    color: var(--ct-muted);
+    font-weight: 700;
+}
+
+.ct-stat-value{
+    font-size: 2rem;
+    font-weight: 900;
+    margin-top: 6px;
+    color: var(--ct-ink);
+}
+
+/* Action Cards */
+.ct-action-card{
+    border: 1px solid rgba(48, 183, 255, 0.28);
+    border-radius: var(--ct-radius);
+    box-shadow: var(--ct-shadow);
+    overflow: hidden;
+    transition: transform .15s ease, box-shadow .15s ease;
+    position: relative;
+}
+
+.ct-action-card:hover{
+    transform: translateY(-3px);
+    box-shadow: 0 16px 38px rgba(2, 19, 29, 0.14);
+}
+
+.ct-action-header{
+    background: linear-gradient(90deg, rgba(191, 232, 255, 0.95), rgba(217, 242, 255, 0.95));
+    color: var(--ct-ink);
+    font-weight: 900;
+    text-align: center;
+    border-bottom: 1px solid rgba(48, 183, 255, 0.22);
+    padding: 14px 12px;
+}
+
+/* Contenedores con color */
+.ct-card-trufis{
+    background: linear-gradient(180deg, rgba(217, 242, 255, 0.55), #ffffff 55%);
+}
+.ct-card-radiotaxis{
+    background: linear-gradient(180deg, rgba(191, 232, 255, 0.55), #ffffff 55%);
+}
+.ct-card-usuarios{
+    background: linear-gradient(180deg, rgba(151, 217, 255, 0.40), #ffffff 60%);
+}
+
+/* ===========================
+   HOVER: OCULTAR OPCIONES
+   (NO SE VE NADA HASTA HOVER)
+   =========================== */
+.ct-action-body{
+    padding: 0 14px;
+
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+
+    pointer-events: none;
+    transform: translateY(10px);
+
+    transition: max-height .25s ease, opacity .25s ease, transform .25s ease, padding .25s ease;
+}
+
+.ct-action-card:hover .ct-action-body{
+    padding: 14px 14px 10px 14px;
+
+    max-height: 700px;
+    opacity: 1;
+
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.ct-action-footer{
+    padding: 10px 12px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--ct-muted);
+    background: rgba(238, 249, 255, 0.75);
+    border-top: 1px solid rgba(48, 183, 255, 0.18);
+}
+
+/* Groups */
+.ct-action-group-title{
+    font-weight: 900;
+    margin-bottom: 10px;
+    color: var(--ct-ink);
+    letter-spacing: .15px;
+}
+
+.ct-divider{
+    margin: 14px 0;
+    opacity: .18;
+}
+
+.ct-muted{
+    color: var(--ct-muted);
+    font-size: .9rem;
+    font-weight: 600;
+}
+
+/* ===========================
+   BOTONES (UNIFICADO)
+   =========================== */
+.ct-btn{
+    border-radius: 999px !important;
+    padding: 10px 16px !important;
+    font-weight: 800 !important;
+    letter-spacing: .15px;
+    border: 1px solid transparent !important;
+    transition: transform .12s ease, filter .12s ease;
+}
+
+.ct-btn:active{
+    transform: scale(0.99);
+}
+
+/* Crear / Guardar: Verde Claro */
+.ct-btn-create,
+.ct-btn-save{
+    background: linear-gradient(180deg, #baf3c9, #d7f9df) !important;
+    border-color: rgba(22, 154, 74, 0.25) !important;
+    color: #0b3a1f !important;
+}
+
+.ct-btn-create:hover,
+.ct-btn-save:hover{
+    filter: brightness(0.98);
+}
+
+/* Ver / Actualizar (principal celeste) */
+.ct-btn-view{
+    background: linear-gradient(180deg, #bfe8ff, #d9f2ff) !important;
+    border-color: rgba(48, 183, 255, 0.35) !important;
+    color: #06324a !important;
+}
+
+.ct-btn-view:hover{
+    filter: brightness(0.98);
+}
+
+/* Volver / Cancelar */
+.ct-btn-back,
+.ct-btn-cancel{
+    background: linear-gradient(180deg, #e9eef3, #f6f8fb) !important;
+    border-color: rgba(20, 35, 45, 0.15) !important;
+    color: #23343f !important;
+}
+
+.ct-btn-back:hover,
+.ct-btn-cancel:hover{
+    filter: brightness(0.985);
+}
+
+/* Eliminar */
+.ct-btn-danger{
+    background: linear-gradient(180deg, #ffb3b3, #ffd6d6);
+    border-color: rgba(200, 40, 40, 0.25);
+    color: #5a0f0f;
+}
+.ct-btn-danger:hover{
+    filter: brightness(0.97);
+}
+
+/* Mapa */
+.ct-map{
+    height: 520px;
+    border-radius: 18px;
+    border: 1px solid rgba(48, 183, 255, 0.28);
+    box-shadow: 0 10px 22px rgba(2, 19, 29, 0.08);
+    overflow: hidden;
+}
+/* ===== LOGIN COLCATRUFIS ===== */
+.ct-login-header{
+    background: linear-gradient(90deg, #0b5fa8, var(--ct-sky-500));
+    padding: 18px 16px;
+    color: #ffffff;
+}
+
+.ct-login-logo{
+    font-weight: 900;
+    font-size: 1.35rem;
+    letter-spacing: .2px;
+}
+
+.ct-login-sub{
+    opacity: .9;
+    font-weight: 700;
+    font-size: .95rem;
+    margin-top: 2px;
+}
+/* Botón Home Navbar */
+.ct-btn-home{
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 1.05rem;
+    color: #0b2b3a;
+    border: 1px solid rgba(255,255,255,0.55);
+    background: rgba(255,255,255,0.85);
+    transition: transform .15s ease, filter .15s ease;
+}
+
+.ct-btn-home:hover{
+    filter: brightness(0.95);
+    transform: translateY(-1px);
+}
+
+.ct-btn-home i{
+    font-size: 1.1rem;
+}

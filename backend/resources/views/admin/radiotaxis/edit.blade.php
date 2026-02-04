@@ -3,27 +3,63 @@
 @section('title', 'Editar RadioTaxi')
 
 @section('content')
-    <h2 class="mb-3">Editar RadioTaxi</h2>
 
-    <form action="{{ route('admin.radiotaxis.actualizar', $radiotaxi->id) }}" method="POST">
-        @csrf
-        @method('PUT')
-
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Nombre Comercial</label>
-                <input type="text" name="nombre_comercial" class="form-control" required value="{{ old('nombre_comercial', $radiotaxi->nombre_comercial) }}">
-            </div>
-
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Teléfono Base</label>
-                <input type="text" name="telefono_base" class="form-control" required value="{{ old('telefono_base', $radiotaxi->telefono_base) }}">
-            </div>
+    {{-- Header --}}
+    <div class="ct-header mb-4">
+        <h2 class="ct-title">Editar RadioTaxi</h2>
+        <div class="ct-subtitle">
+            Actualización De Información Del RadioTaxi En El Sistema ColcaTrufis
         </div>
+    </div>
 
-        <div class="d-flex gap-2">
-            <button class="btn btn-primary">Actualizar</button>
-            <a href="{{ route('admin.radiotaxis.index') }}" class="btn btn-secondary">Volver</a>
+    {{-- Formulario --}}
+    <div class="card ct-stat-card">
+        <div class="card-body">
+
+            <form action="{{ route('admin.radiotaxis.actualizar', $radiotaxi->id) }}" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Nombre Comercial</label>
+                        <input
+                            type="text"
+                            name="nombre_comercial"
+                            class="form-control"
+                            required
+                            value="{{ old('nombre_comercial', $radiotaxi->nombre_comercial) }}"
+                        >
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Teléfono Base</label>
+                        <input
+                            type="text"
+                            name="telefono_base"
+                            class="form-control"
+                            required
+                            value="{{ old('telefono_base', $radiotaxi->telefono_base) }}"
+                        >
+                    </div>
+
+                </div>
+
+                {{-- Acciones --}}
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn ct-btn ct-btn-view">
+                        Actualizar
+                    </button>
+
+                    <a href="{{ route('admin.radiotaxis.index') }}" class="btn ct-btn ct-btn-back">
+                        Volver
+                    </a>
+                </div>
+
+            </form>
+
         </div>
-    </form>
+    </div>
+
 @endsection

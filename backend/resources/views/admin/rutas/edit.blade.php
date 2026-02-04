@@ -3,50 +3,72 @@
 @section('title', 'Editar Ruta')
 
 @section('content')
-    <h2 class="mb-3">Editar Ruta</h2>
 
-    <div class="alert alert-warning">
-        Esta acción reemplazará la ruta anterior. Dibuja una nueva ruta desde cero y guarda.
+    {{-- Header --}}
+    <div class="ct-header mb-4">
+        <h2 class="ct-title">Editar Ruta</h2>
+        <div class="ct-subtitle">
+            Reemplazo De Ruta Existente. Dibuja Una Nueva Ruta Desde Cero Y Guarda.
+        </div>
     </div>
 
-    <form action="{{ route('admin.rutas.actualizar', ['idtrufi' => $idtrufi]) }}" method="POST">
-        @csrf
-        @method('PUT')
+    <div class="alert alert-warning">
+        Esta Acción Reemplazará La Ruta Anterior. Dibuja Una Nueva Ruta Desde Cero Y Guarda.
+    </div>
 
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Trufi</label>
-                <select name="idtrufi" class="form-select" disabled>
-                    @foreach($trufis as $t)
-                        <option value="{{ $t->idtrufi }}" @selected((int)$t->idtrufi === (int)$idtrufi)>
-                            {{ $t->idtrufi }} - {{ $t->nom_linea }}
-                        </option>
-                    @endforeach
-                </select>
-                <div class="form-text">
-                    No se puede cambiar el trufi al editar. Si quieres otro, crea una ruta nueva.
+    <div class="card ct-stat-card">
+        <div class="card-body">
+
+            <form action="{{ route('admin.rutas.actualizar', ['idtrufi' => $idtrufi]) }}" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Trufi</label>
+                        <select name="idtrufi" class="form-select" disabled>
+                            @foreach($trufis as $t)
+                                <option value="{{ $t->idtrufi }}" @selected((int)$t->idtrufi === (int)$idtrufi)>
+                                    {{ $t->idtrufi }} - {{ $t->nom_linea }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">
+                            No Se Puede Cambiar El Trufi Al Editar. Si Quieres Otro, Crea Una Ruta Nueva.
+                        </div>
+                    </div>
                 </div>
-            </div>
+
+                <input type="hidden" name="geojson" id="geojson">
+
+                <div class="alert alert-info">
+                    Dibuja La Ruta En El Mapa. Usa La Herramienta De Línea Y Agrega Puntos. Luego Guarda.
+                </div>
+
+                <div id="map" class="ct-map"></div>
+
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn ct-btn ct-btn-view">
+                        Reemplazar Ruta
+                    </button>
+
+                    <a href="{{ route('admin.rutas.index') }}" class="btn ct-btn ct-btn-back">
+                        Volver
+                    </a>
+                </div>
+            </form>
+
         </div>
+    </div>
 
-        <input type="hidden" name="geojson" id="geojson">
+@endsection
 
-        <div class="alert alert-info">
-            Dibuja la ruta en el mapa. Usa la herramienta de línea y agrega puntos. Luego guarda.
-        </div>
-
-        <div id="map" style="height: 500px; width: 100%; border: 1px solid #ddd;"></div>
-
-        <div class="d-flex gap-2 mt-3">
-            <button class="btn btn-primary">Reemplazar Ruta</button>
-            <a href="{{ route('admin.rutas.index') }}" class="btn btn-secondary">Volver</a>
-        </div>
-    </form>
-
-    {{-- Leaflet + Draw --}}
+@push('styles')
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+@endpush
 
+@push('scripts')
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
@@ -78,24 +100,24 @@
         });
         map.addControl(drawControl);
 
-        // Solo 1 ruta a la vez (si dibuja otra, se reemplaza en el mapa)
+        function updateGeojson() {
+            const geojson = drawnItems.toGeoJSON();
+            document.getElementById('geojson').value = geojson.features?.length ? JSON.stringify(geojson) : '';
+        }
+
+        // Solo 1 ruta a la vez
         map.on(L.Draw.Event.CREATED, function (e) {
             drawnItems.clearLayers();
             drawnItems.addLayer(e.layer);
-
-            const geojson = drawnItems.toGeoJSON();
-            document.getElementById('geojson').value = JSON.stringify(geojson);
+            updateGeojson();
         });
 
-        // Si edita la línea, actualizar geojson
         map.on(L.Draw.Event.EDITED, function () {
-            const geojson = drawnItems.toGeoJSON();
-            document.getElementById('geojson').value = JSON.stringify(geojson);
+            updateGeojson();
         });
 
-        // Si borra, vaciar geojson
         map.on(L.Draw.Event.DELETED, function () {
-            document.getElementById('geojson').value = '';
+            updateGeojson();
         });
 
         // Validación simple antes de enviar
@@ -106,4 +128,4 @@
             }
         });
     </script>
-@endsection
+@endpush

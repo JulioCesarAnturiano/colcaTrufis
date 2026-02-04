@@ -3,56 +3,87 @@
 @section('title', 'Usuarios - Admin')
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Usuarios</h2>
+
+    {{-- Header --}}
+    <div class="ct-header mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="ct-title">Usuarios</h2>
+            <div class="ct-subtitle">
+                Gestión De Usuarios Y Roles Del Panel Administrativo ColcaTrufis
+            </div>
+        </div>
 
         @can('admin.usuarios.crear')
-            <a class="btn btn-success" href="{{ route('admin.usuarios.crear') }}">Crear Usuario</a>
+            <a href="{{ route('admin.usuarios.crear') }}" class="btn ct-btn ct-btn-create">
+                Crear Usuario
+            </a>
         @endcan
     </div>
 
+    {{-- Tabla --}}
     @if(isset($usuarios) && count($usuarios) > 0)
-        <div class="table-responsive">
-            <table class="table table-bordered align-middle">
-                <thead class="table-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>Nombre</th>
-                    <th>Email</th>
-                    <th>Roles</th>
-                    <th style="width: 220px;">Acciones</th>
-                </tr>
-                </thead>
-                <tbody>
-                @foreach($usuarios as $u)
-                    <tr>
-                        <td>{{ $u->id }}</td>
-                        <td>{{ $u->name }}</td>
-                        <td>{{ $u->email }}</td>
-                        <td>{{ $u->getRoleNames()->join(', ') ?: 'Sin rol' }}</td>
-                        <td>
-                            @can('admin.usuarios.editar')
-                                <a class="btn btn-sm btn-primary" href="{{ route('admin.usuarios.editar', $u->id) }}">
-                                    Editar
-                                </a>
-                            @endcan
+        <div class="card ct-stat-card">
+            <div class="card-body">
 
-                            @can('admin.usuarios.eliminar')
-                                <form action="{{ route('admin.usuarios.eliminar', $u->id) }}"
-                                      method="POST" class="d-inline"
-                                      onsubmit="return confirm('¿Eliminar este usuario?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-sm btn-danger">Eliminar</button>
-                                </form>
-                            @endcan
-                        </td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr class="table-light">
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Roles</th>
+                                <th style="width: 200px;">Acciones</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach($usuarios as $u)
+                                <tr>
+                                    <td>{{ $u->id }}</td>
+                                    <td class="fw-semibold">{{ $u->name }}</td>
+                                    <td>{{ $u->email }}</td>
+                                    <td>{{ $u->getRoleNames()->join(', ') ?: 'Sin rol' }}</td>
+                                    <td>
+                                        <div class="d-flex gap-1">
+
+                                            @can('admin.usuarios.editar')
+                                                <a
+                                                    href="{{ route('admin.usuarios.editar', $u->id) }}"
+                                                    class="btn ct-btn ct-btn-view btn-sm"
+                                                >
+                                                    Editar
+                                                </a>
+                                            @endcan
+
+                                            @can('admin.usuarios.eliminar')
+                                                <form
+                                                    action="{{ route('admin.usuarios.eliminar', $u->id) }}"
+                                                    method="POST"
+                                                    onsubmit="return confirm('¿Eliminar este usuario?');"
+                                                >
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button class="btn ct-btn ct-btn-danger btn-sm">
+                                                        Eliminar
+                                                    </button>
+                                                </form>
+                                            @endcan
+
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
         </div>
     @else
-        <div class="alert alert-info">No hay usuarios registrados.</div>
+        <div class="alert alert-info">
+            No Hay Usuarios Registrados.
+        </div>
     @endif
+
 @endsection

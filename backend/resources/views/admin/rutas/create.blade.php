@@ -3,35 +3,61 @@
 @section('title', 'Crear Ruta')
 
 @section('content')
-    <h2 class="mb-3">Crear Ruta</h2>
 
-    <form action="{{ route('admin.rutas.guardar') }}" method="POST">
-        @csrf
-
-        <div class="mb-3">
-            <label class="form-label">Trufi</label>
-            <select name="idtrufi" class="form-select" required>
-                <option value="">Seleccione un trufi</option>
-                @foreach($trufis as $t)
-                    <option value="{{ $t->idtrufi }}">{{ $t->nom_linea }}</option>
-                @endforeach
-            </select>
+    {{-- Header --}}
+    <div class="ct-header mb-4">
+        <h2 class="ct-title">Crear Ruta</h2>
+        <div class="ct-subtitle">
+            Dibuja La Ruta En El Mapa Y Guárdala Asociada A Un Trufi En ColcaTrufis
         </div>
+    </div>
 
-        <div class="alert alert-info">
-            Dibuja la ruta en el mapa. Usa la herramienta de línea y agrega puntos. Luego guarda.
+    {{-- Formulario --}}
+    <div class="card ct-stat-card">
+        <div class="card-body">
+
+            <form action="{{ route('admin.rutas.guardar') }}" method="POST">
+                @csrf
+
+                <div class="row">
+                    <div class="col-12 col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Trufi</label>
+                        <select name="idtrufi" class="form-select" required>
+                            <option value="">Seleccione Un Trufi</option>
+                            @foreach($trufis as $t)
+                                <option value="{{ $t->idtrufi }}">
+                                    {{ $t->nom_linea }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    Dibuja La Ruta En El Mapa. Usa La Herramienta De Línea Y Agrega Puntos. Luego Guarda.
+                </div>
+
+                <div id="map" class="ct-map"></div>
+
+                {{-- Aquí se guardará el GeoJSON de la línea --}}
+                <input type="hidden" name="geojson" id="geojson" required>
+
+                {{-- Acciones --}}
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn ct-btn ct-btn-save">
+                        Guardar
+                    </button>
+
+                    <a href="{{ route('admin.rutas.index') }}" class="btn ct-btn ct-btn-back">
+                        Volver
+                    </a>
+                </div>
+
+            </form>
+
         </div>
+    </div>
 
-        <div id="map" style="height: 520px; border-radius: 8px;"></div>
-
-        {{-- Aquí se guardará el GeoJSON de la línea --}}
-        <input type="hidden" name="geojson" id="geojson" required>
-
-        <div class="d-flex gap-2 mt-3">
-            <button class="btn btn-success">Guardar</button>
-            <a href="{{ route('admin.rutas.index') }}" class="btn btn-secondary">Volver</a>
-        </div>
-    </form>
 @endsection
 
 @push('styles')

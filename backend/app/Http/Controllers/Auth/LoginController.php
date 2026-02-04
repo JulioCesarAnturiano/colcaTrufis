@@ -20,25 +20,30 @@ class LoginController extends Controller
             'password' => ['required'],
         ]);
 
-        if (Auth::attempt($credenciales)) {
-            $request->session()->regenerate();
-
-            $usuario = Auth::user();
-
-            if (! $usuario->hasAnyRole(['admin', 'encargado'])) {
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-
-                return back()->with('error', 'No tienes acceso al panel admin');
-            }
-
-            return redirect()->intended('/admin/dashboard');
+        // 1) Si email/contraseña son incorrectos
+        if (!Auth::attempt($credenciales)) {
+            return back()
+                ->withInput($request->only('email'))
+                ->with('error', 'Usuario no reconocido.');
         }
 
-        return back()->withErrors([
-            'email' => 'Las credenciales no son correctas.',
-        ])->onlyInput('email');
+        // 2) Login OK
+        $request->session()->regenerate();
+
+        $usuario = Auth::user();
+
+        // 3) Si no tiene rol permitido
+        if (!$usuario->hasAnyRole(['admin', 'encargado'])) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()
+                ->withInput($request->only('email'))
+                ->with('error', 'Usuario no reconocido.');
+        }
+
+        return redirect()->intended('/admin/dashboard');
     }
 
     public function cerrarSesion(Request $request)
