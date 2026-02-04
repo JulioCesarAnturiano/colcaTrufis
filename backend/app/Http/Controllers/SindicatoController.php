@@ -11,7 +11,7 @@ class SindicatoController extends Controller
     public function index()
     {
         return response()->json(
-            Sindicato::with('trufis.trufiRutas')->get()
+            Sindicato::with('trufis.rutas')->get()
         );
     }
 

@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map_geojson/flutter_map_geojson.dart';
+import '../services/api_service.dart';  // Importamos el ApiService
 
 // Colores pedidos
 const Color kPrimary = Color(0xFF09596E);      // #09596e
@@ -29,30 +30,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Position? _currentPosition;
   final GeoJsonParser geoJsonParser = GeoJsonParser();
 
-  // MOCK (luego vendrá de API)
-  final List<Map<String, dynamic>> mockSindicatos = [
-    {
-      "id": 1,
-      "nombre": "Sindicato Central",
-      "trufis": [
-        {"idtrufi": 101, "nom_linea": "Línea 150", "estado": 1},
-        {"idtrufi": 102, "nom_linea": "Línea 230", "estado": 1},
-      ],
-    },
-    {
-      "id": 2,
-      "nombre": "Sindicato Norte",
-      "trufis": [
-        {"idtrufi": 201, "nom_linea": "Línea 110", "estado": 1},
-        {"idtrufi": 202, "nom_linea": "Línea 180", "estado": 0},
-      ],
-    },
-  ];
-
-  final List<Map<String, dynamic>> mockRadioTaxis = [
-    {"id": 1, "nombre_comercial": "RadioTaxi Colca", "telefono_base": "76400000"},
-    {"id": 2, "nombre_comercial": "Taxi Amigo", "telefono_base": "70707070"},
-  ];
+  // Conexión con el ApiService
+  final ApiService _apiService = ApiService(baseUrl: 'http://localhost:8000/api');
+  List<Map<String, dynamic>> _sindicatos = [];
+  List<Map<String, dynamic>> _radioTaxis = [];
+  List<Map<String, dynamic>> _trufis = [];
+  List<Map<String, dynamic>> _trufiRutas = [];
 
   // Polígonos
   List<Polygon> colcapirhuaPolygons = [];
@@ -90,12 +73,64 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _getCurrentLocation();
     _loadGeoJson();
+    _fetchSindicatos(); // Obtener los sindicatos desde el backend
+    _fetchRadioTaxis(); // Obtener los radiotaxis desde el backend
+    _fetchTrufis(); // Obtener los trufis desde el backend
+    _fetchTrufiRutas(); // Obtener las rutas de los trufis desde el backend
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (AppSettings.centerOnStart.value) {
         _mapController.move(LatLng(-17.3860, -66.2340), 13);
       }
     });
+  }
+
+  // Fetch sindicatos desde el API
+  Future<void> _fetchSindicatos() async {
+    try {
+      final sindicatos = await _apiService.getSindicatos();
+      setState(() {
+        _sindicatos = List<Map<String, dynamic>>.from(sindicatos);
+      });
+    } catch (e) {
+      print("Error obteniendo sindicatos: $e");
+    }
+  }
+
+  // Fetch radiotaxis desde el API
+  Future<void> _fetchRadioTaxis() async {
+    try {
+      final radioTaxis = await _apiService.getRadioTaxis();
+      setState(() {
+        _radioTaxis = List<Map<String, dynamic>>.from(radioTaxis);
+      });
+    } catch (e) {
+      print("Error obteniendo radiotaxis: $e");
+    }
+  }
+
+  // Fetch trufis desde el API
+  Future<void> _fetchTrufis() async {
+    try {
+      final trufis = await _apiService.getTrufis();
+      setState(() {
+        _trufis = List<Map<String, dynamic>>.from(trufis);
+      });
+    } catch (e) {
+      print("Error obteniendo trufis: $e");
+    }
+  }
+
+  // Fetch trufi rutas desde el API
+  Future<void> _fetchTrufiRutas() async {
+    try {
+      final trufiRutas = await _apiService.getTrufiRutas(1); // Ejemplo con idtrufi = 1
+      setState(() {
+        _trufiRutas = List<Map<String, dynamic>>.from(trufiRutas);
+      });
+    } catch (e) {
+      print("Error obteniendo rutas de trufis: $e");
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -135,8 +170,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _fetchSindicatos();  // Llama a la función para obtener los sindicatos cuando la pantalla esté activa
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Rebuild cuando cambie idioma o modo oscuro (global)
     return ValueListenableBuilder<bool>(
       valueListenable: AppSettings.darkMode,
       builder: (context, isDarkMode, _) {
@@ -157,7 +197,6 @@ class _HomeScreenState extends State<HomeScreen> {
               data: theme,
               child: Scaffold(
                 extendBodyBehindAppBar: true,
-
                 drawer: _buildSidebarDrawer(),
 
                 appBar: AppBar(
@@ -181,7 +220,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   title: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    
                     children: [
                       Image.asset('assets/images/logo_colca1.png', width: 110),
                       Image.asset('assets/images/logo_appp.png', width: 65),
@@ -362,7 +400,7 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(
                 height: 300,
                 child: ListView.separated(
-                  itemCount: 8,
+                  itemCount: _trufis.length, // Ahora el número de elementos es dinámico basado en los trufis obtenidos
                   separatorBuilder: (_, __) => const Divider(),
                   itemBuilder: (context, index) => ListTile(
                     leading: CircleAvatar(
@@ -372,10 +410,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: kPrimary,
                       ),
                     ),
-                    title: Text("Línea ${index + 100}", style: TextStyle(color: textColor)),
-                    subtitle: Text(t("available_each"), style: TextStyle(color: subTextColor)),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.pop(context),
+                    title: Text(_trufis[index]["nom_linea"], style: TextStyle(color: textColor)),
+                    subtitle: Text("${t("id")}: ${_trufis[index]["idtrufi"]}", style: TextStyle(color: subTextColor)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('${t("selected")} ${_trufis[index]["nom_linea"]}')),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -431,7 +473,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ExpansionTile(
               leading: const Icon(Icons.groups, color: kPrimary),
               title: Text(t("sindicatos")),
-              children: mockSindicatos.map((s) {
+              children: _sindicatos.map((s) {
                 final String sindicatoNombre = s["nombre"];
                 final List trufis = (s["trufis"] as List);
 
@@ -460,7 +502,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ExpansionTile(
               leading: const Icon(Icons.local_taxi, color: kPrimary),
               title: Text(t("radiotaxis")),
-              children: mockRadioTaxis.map((rt) {
+              children: _radioTaxis.map((rt) {
                 return ListTile(
                   dense: true,
                   leading: const Icon(Icons.phone, color: kPrimary),
@@ -477,7 +519,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             const Divider(),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Text(
@@ -487,69 +528,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: AppSettings.darkMode.value ? Colors.white70 : Colors.grey[700],
                 ),
               ),
-            ),
-
-            // Idioma global
-            ListTile(
-              leading: const Icon(Icons.language, color: kPrimary),
-              title: Text(t("language")),
-              trailing: DropdownButton<String>(
-                value: AppSettings.language.value,
-                underline: const SizedBox.shrink(),
-                items: const [
-                  DropdownMenuItem(value: "es", child: Text("Español")),
-                  DropdownMenuItem(value: "en", child: Text("English")),
-                  DropdownMenuItem(value: "qu", child: Text("Quechua")),
-                ],
-                onChanged: (v) {
-                  if (v == null) return;
-                  AppSettings.language.value = v;
-                },
-              ),
-            ),
-
-            // Modo oscuro global
-            SwitchListTile(
-              secondary: const Icon(Icons.dark_mode, color: kPrimary),
-              title: Text(t("darkmode")),
-              value: AppSettings.darkMode.value,
-              onChanged: (v) => AppSettings.darkMode.value = v,
-            ),
-
-            // Centrar al abrir global
-            SwitchListTile(
-              secondary: const Icon(Icons.center_focus_strong, color: kPrimary),
-              title: Text(t("center_on_start")),
-              value: AppSettings.centerOnStart.value,
-              onChanged: (v) {
-                AppSettings.centerOnStart.value = v;
-                if (v) {
-                  _mapController.move(LatLng(-17.3860, -66.2340), 13);
-                }
-              },
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.info_outline, color: kPrimary),
-              title: Text(t("about")),
-              onTap: () {
-                Navigator.pop(context);
-                showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text("ColcaTrufis"),
-                    content: const Text(
-                      "App de rutas y servicios de transporte para Colcapirhua.\n\n"
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text("OK"),
-                      ),
-                    ],
-                  ),
-                );
-              },
             ),
           ],
         ),

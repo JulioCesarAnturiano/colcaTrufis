@@ -2,25 +2,74 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  final String baseUrl = 'https://localhost:3000';
+  final String baseUrl;
 
-  Future<List<dynamic>> fetchTrufis() async {
-    final response = await http.get(Uri.parse('$baseUrl/trufis'));
+  ApiService({required this.baseUrl});
 
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception('Failed to load trufis');
+  Uri _u(String path) => Uri.parse('$baseUrl$path');
+
+  Future<dynamic> _get(String path) async {
+    try {
+      final res = await http
+          .get(
+            _u(path),
+            headers: const {
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 12));
+
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw Exception('HTTP ${res.statusCode}: ${res.body}');
+      }
+
+      final body = jsonDecode(res.body);
+
+      // Soporta:
+      // 1) [ ... ]
+      // 2) { "data": [ ... ] }
+      // 3) { "success": true, "data": [ ... ] }
+
+      if (body is List) return body;
+      if (body is Map && body['data'] is List) return body['data'];
+      if (body is Map && body['success'] == true && body['data'] is List) {
+        return body['data'];
+      }
+      return body; // En caso de que el formato sea inesperado
+    } catch (e) {
+      throw Exception('Error al obtener datos: $e');
     }
   }
 
-  Future<List<dynamic>> fetchRadiotaxis() async {
-    final response = await http.get(Uri.parse('$baseUrl/radiotaxis'));
+  // =========================
+  // ENDPOINTS (según tu api.php)
+  // =========================
 
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception('Failed to load radiotaxis');
+  Future<List<dynamic>> getSindicatos() async {
+    final data = await _get('/sindicatos');
+    return (data as List).cast<dynamic>();
+  }
+
+  Future<List<dynamic>> getRadioTaxis() async {
+    final data = await _get('/sindicato-radiotaxis');
+    return (data as List).cast<dynamic>();
+  }
+
+  Future<List<dynamic>> getTrufis() async {
+    final data = await _get('/trufis');
+    return (data as List).cast<dynamic>();
+  }
+
+  Future<List<dynamic>> getTrufiRutas(int idtrufi) async {
+    final data = await _get('/trufis/$idtrufi/rutas');
+    return (data as List).cast<dynamic>();
+  }
+
+  Future<Map<String, dynamic>> getGeoJsonPorTrufi(int idtrufi) async {
+    final data = await _get('/trufis/$idtrufi/rutas/geojson');
+    if (data is Map<String, dynamic>) {
+      return data;
     }
+    throw Exception('Formato inesperado para GeoJSON');
   }
 }
