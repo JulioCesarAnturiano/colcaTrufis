@@ -13,47 +13,43 @@ class RolesSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $encargado = Role::firstOrCreate(['name' => 'encargado']);
 
-       $permisos = [
-        // =====================
-        // TRUFIS
-        // =====================
-        'admin.trufis.crear',
-        'admin.trufis.ver',
-        'admin.trufis.editar',
-        'admin.trufis.eliminar',
+    $permisos = [
+    // TRUFIS...
+    'admin.trufis.crear',
+    'admin.trufis.ver',
+    'admin.trufis.editar',
+    'admin.trufis.eliminar',
 
-        // =====================
-        // RUTAS
-        // =====================
-        'admin.rutas.crear',
-        'admin.rutas.ver',
-        'admin.rutas.editar',
-        'admin.rutas.eliminar',
+    // RUTAS...
+    'admin.rutas.crear',
+    'admin.rutas.ver',
+    'admin.rutas.editar',
+    'admin.rutas.eliminar',
 
-        // =====================
-        // USUARIOS
-        // =====================
-        'admin.usuarios.crear',
-        'admin.usuarios.ver',
-        'admin.usuarios.editar',
-        'admin.usuarios.eliminar',
-        // =====================
-        // SINDICATOS
-        // =====================
-        'admin.sindicatos.crear',
-        'admin.sindicatos.ver',
-        'admin.sindicatos.editar',
-        'admin.sindicatos.eliminar',
+    // USUARIOS...
+    'admin.usuarios.crear',
+    'admin.usuarios.ver',
+    'admin.usuarios.editar',
+    'admin.usuarios.eliminar',
 
-        // =====================
-        // RADIOTAXIS
-        // =====================
-        'admin.radiotaxis.crear',
-        'admin.radiotaxis.ver',
-        'admin.radiotaxis.editar',
-        'admin.radiotaxis.eliminar',
+    // SINDICATOS...
+    'admin.sindicatos.crear',
+    'admin.sindicatos.ver',
+    'admin.sindicatos.editar',
+    'admin.sindicatos.eliminar',
 
-    ];
+    // RADIOTAXIS...
+    'admin.radiotaxis.crear',
+    'admin.radiotaxis.ver',
+    'admin.radiotaxis.editar',
+    'admin.radiotaxis.eliminar',
+
+    // NORMATIVAS ✅
+    'admin.normativas.crear',
+    'admin.normativas.ver',
+    'admin.normativas.editar',
+    'admin.normativas.eliminar',
+];
 
 
         foreach ($permisos as $p) {

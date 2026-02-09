@@ -120,7 +120,7 @@
             updateGeojson();
         });
 
-        // Validación simple antes de enviar
+        // Validación saimple antes de enviar
         document.querySelector('form').addEventListener('submit', function (ev) {
             if (!document.getElementById('geojson').value) {
                 ev.preventDefault();

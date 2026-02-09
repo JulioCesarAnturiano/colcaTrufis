@@ -111,14 +111,15 @@
             </div>
         </div>
 
-        {{-- CONTENEDOR 2: RADIOTAXIS (SOLO RADIOTAXIS) --}}
+        {{-- CONTENEDOR 2: RADIOTAXIS + NORMATIVAS --}}
         <div class="col-12 col-md-4">
             <div class="card ct-stat-card h-100">
                 <div class="card-body">
 
-                    <h5 class="mb-3 text-center">RadioTaxis</h5>
+                    <h5 class="mb-3 text-center">RadioTaxis Y Normativas</h5>
 
-                    <div>
+                    {{-- RADIOTAXIS --}}
+                    <div class="mb-3">
                         <div class="fw-semibold mb-2">RadioTaxis</div>
 
                         @can('admin.radiotaxis.crear')
@@ -130,6 +131,25 @@
                         @can('admin.radiotaxis.ver')
                             <a href="{{ route('admin.radiotaxis.index') }}" class="btn ct-btn ct-btn-view w-100">
                                 Ver RadioTaxis
+                            </a>
+                        @endcan
+                    </div>
+
+                    <hr>
+
+                    {{-- NORMATIVAS --}}
+                    <div>
+                        <div class="fw-semibold mb-2">Normativas</div>
+
+                        @can('admin.normativas.crear')
+                            <a href="{{ route('admin.normativas.crear') }}" class="btn ct-btn ct-btn-create w-100 mb-2">
+                                Crear Normativa
+                            </a>
+                        @endcan
+
+                        @can('admin.normativas.ver')
+                            <a href="{{ route('admin.normativas.index') }}" class="btn ct-btn ct-btn-view w-100">
+                                Ver Normativas
                             </a>
                         @endcan
                     </div>
