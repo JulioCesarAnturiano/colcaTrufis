@@ -72,4 +72,10 @@ class ApiService {
     }
     throw Exception('Formato inesperado para GeoJSON');
   }
+  Future<Map<String, dynamic>> getGeoJsonTodasRutas() async {
+    final data = await _get('/trufis/rutas/geojson');
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('Formato inesperado para GeoJSON Todas Rutas');
+  }
+
 }

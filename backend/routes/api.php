@@ -28,6 +28,7 @@ Route::get('/trufis/{id}', [TrufiController::class, 'show']);
 // ===========================
 // Ruta completa (LineString) por idtrufi
 Route::get('/trufis/{idtrufi}/rutas/geojson', [TrufiRutaController::class, 'geojsonPorTrufi']);
+Route::get('/trufis/rutas/geojson', [TrufiRutaController::class, 'geojsonTodas']);
 
 // Sindicatos
 Route::get('/sindicatos', [SindicatoController::class, 'index']);

@@ -93,6 +93,40 @@ class TrufiRutaController extends Controller
     ]);
 }
 
+public function geojsonTodas()
+{
+    $rutas = \App\Models\TrufiRuta::where('estado', 1)
+        ->orderBy('idtrufi')
+        ->orderBy('orden')
+        ->get()
+        ->groupBy('idtrufi');
+
+    $features = [];
+
+    foreach ($rutas as $idtrufi => $puntos) {
+        $coords = $puntos->map(function ($p) {
+            return [(float)$p->longitud, (float)$p->latitud]; // GeoJSON: [lng, lat]
+        })->values()->all();
+
+        if (count($coords) < 2) continue;
+
+        $features[] = [
+            "type" => "Feature",
+            "properties" => [
+                "idtrufi" => (int)$idtrufi,
+            ],
+            "geometry" => [
+                "type" => "LineString",
+                "coordinates" => $coords
+            ]
+        ];
+    }
+
+    return response()->json([
+        "type" => "FeatureCollection",
+        "features" => $features
+    ]);
+}
 
 
 }
