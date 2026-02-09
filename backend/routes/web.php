@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\FilePondController;
 use App\Http\Controllers\Admin\UsuarioAdminController;
 use App\Http\Controllers\Admin\SindicatoAdminController;
 use App\Http\Controllers\Admin\RadioTaxiAdminController;
+use App\Http\Controllers\Admin\NormativaAdminController;
 
 Route::get('/', fn() => redirect()->route('login'));
 
@@ -169,4 +170,28 @@ Route::delete('/radiotaxis/{id}', [RadioTaxiAdminController::class, 'destroy'])
     Route::delete('/usuarios/{id}', [UsuarioAdminController::class, 'destroy'])
         ->middleware('permission:admin.usuarios.eliminar')
         ->name('admin.usuarios.eliminar');
+        Route::get('/normativas', [NormativaAdminController::class, 'index'])
+    ->middleware('permission:admin.normativas.ver')
+    ->name('admin.normativas.index');
+
+Route::get('/normativas/crear', [NormativaAdminController::class, 'create'])
+    ->middleware('permission:admin.normativas.crear')
+    ->name('admin.normativas.crear');
+
+Route::post('/normativas', [NormativaAdminController::class, 'store'])
+    ->middleware('permission:admin.normativas.crear')
+    ->name('admin.normativas.store');
+
+Route::get('/normativas/{id}/editar', [NormativaAdminController::class, 'edit'])
+    ->middleware('permission:admin.normativas.editar')
+    ->name('admin.normativas.editar');
+
+Route::put('/normativas/{id}', [NormativaAdminController::class, 'update'])
+    ->middleware('permission:admin.normativas.editar')
+    ->name('admin.normativas.update');
+
+Route::delete('/normativas/{id}', [NormativaAdminController::class, 'destroy'])
+    ->middleware('permission:admin.normativas.eliminar')
+    ->name('admin.normativas.destroy');
+    
 });

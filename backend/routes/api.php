@@ -5,6 +5,7 @@ use App\Http\Controllers\TrufiController;
 use App\Http\Controllers\TrufiRutaController;
 use App\Http\Controllers\SindicatoController;
 use App\Http\Controllers\SindicatoRadioTaxisController;
+use App\Http\Controllers\NormativaController;
 
 Route::get('/test', function () {
     return response()->json([
@@ -37,3 +38,7 @@ Route::get('/sindicatos/{id}', [SindicatoController::class, 'show']);
 // Sindicato radiotaxis
 Route::get('/sindicato-radiotaxis', [SindicatoRadioTaxisController::class, 'index']);
 Route::get('/sindicato-radiotaxis/{id}', [SindicatoRadioTaxisController::class, 'show']);
+//normativas
+Route::get('/normativas', [NormativaController::class, 'index']);
+Route::get('/normativas/{id}/download', [NormativaController::class, 'download']);
+
