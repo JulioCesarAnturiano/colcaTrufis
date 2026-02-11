@@ -193,5 +193,9 @@ Route::put('/normativas/{id}', [NormativaAdminController::class, 'update'])
 Route::delete('/normativas/{id}', [NormativaAdminController::class, 'destroy'])
     ->middleware('permission:admin.normativas.eliminar')
     ->name('admin.normativas.destroy');
+    Route::get('/normativas/{id}/ver', [NormativaAdminController::class, 'verPdf'])
+    ->middleware('permission:admin.normativas.ver')
+    ->name('admin.normativas.verPdf');
+
     
 });

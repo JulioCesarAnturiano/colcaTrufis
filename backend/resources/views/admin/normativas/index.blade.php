@@ -30,7 +30,7 @@
                     <th>Categoría</th>
                     <th>Versión</th>
                     <th>Activo</th>
-                    <th style="width:200px;">Acciones</th>
+                    <th style="width:320px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -48,7 +48,23 @@
                             @endif
                         </td>
                         <td>
-                            <div class="d-flex gap-2">
+                            <div class="d-flex gap-2 flex-wrap">
+
+                                {{-- VER PDF (ADMIN: web.php + NormativaAdminController@verPdf) --}}
+                                @can('admin.normativas.ver')
+                                    <a href="{{ route('admin.normativas.verPdf', $n->id) }}"
+                                       target="_blank"
+                                       class="btn btn-sm btn-info">
+                                        Ver
+                                    </a>
+                                @endcan
+
+                                {{-- DESCARGAR (API PÚBLICA) --}}
+                                <a href="{{ url('/api/normativas/'.$n->id.'/download') }}"
+                                   class="btn btn-sm btn-secondary">
+                                    Descargar
+                                </a>
+
                                 @can('admin.normativas.editar')
                                     <a href="{{ route('admin.normativas.editar', $n->id) }}"
                                        class="btn btn-sm btn-warning">
@@ -67,6 +83,7 @@
                                         </button>
                                     </form>
                                 @endcan
+
                             </div>
                         </td>
                     </tr>

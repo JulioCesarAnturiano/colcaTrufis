@@ -114,4 +114,21 @@ class NormativaAdminController extends Controller
         return redirect()->route('admin.normativas.index')
             ->with('success', 'Normativa eliminada.');
     }
+public function verPdf($id)
+{
+    $item = \App\Models\Normativa::findOrFail($id);
+
+    if (!Storage::exists($item->file_path)) {
+        abort(404, 'Archivo no encontrado en storage');
+    }
+
+    // Ruta absoluta según el disk configurado (local/public)
+    $absolutePath = Storage::path($item->file_path);
+
+    return response()->file($absolutePath, [
+        'Content-Type' => $item->mime ?: 'application/pdf',
+        'Content-Disposition' => 'inline; filename="' . ($item->original_name ?: 'normativa_'.$item->id.'.pdf') . '"',
+    ]);
+}
+
 }
