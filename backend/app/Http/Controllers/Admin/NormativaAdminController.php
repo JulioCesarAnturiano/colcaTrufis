@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Normativa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Models\SindicatoRadiotaxiParada;
+use App\Models\SindicatoRadioTaxi;
 
 class NormativaAdminController extends Controller
 {
@@ -21,41 +23,31 @@ class NormativaAdminController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $request->validate([
-            'titulo' => ['required','string','max:255'],
-            'descripcion' => ['nullable','string'],
-            'categoria' => ['nullable','string','max:100'],
-            'version' => ['nullable','string','max:50'],
-            'fecha_publicacion' => ['nullable','date'],
-            'activo' => ['nullable','boolean'],
-            'pdf' => ['required','file','mimes:pdf','max:51200'], // 50 MB
-        ]);
+{
+    $request->validate([
+        'nombre_comercial' => ['required','string','max:255'],
+        'telefono_base' => ['required','string','max:255'],
+        'latitud' => ['required','numeric'],
+        'longitud' => ['required','numeric'],
+    ]);
 
-        $file = $request->file('pdf');
+    $radiotaxi = SindicatoRadioTaxi::create([
+        'nombre_comercial' => $request->nombre_comercial,
+        'telefono_base' => $request->telefono_base,
+    ]);
 
-        // Guardado privado: storage/app/normativas/...
-        $path = $file->store('normativas');
+    SindicatoRadiotaxiParada::updateOrCreate(
+        ['sindicato_radiotaxi_id' => $radiotaxi->id],
+        [
+            'latitud' => $request->latitud,
+            'longitud' => $request->longitud,
+            'estado' => true,
+        ]
+    );
 
-        Normativa::create([
-            'titulo' => $request->titulo,
-            'descripcion' => $request->descripcion,
-            'categoria' => $request->categoria,
-            'version' => $request->version,
-            'fecha_publicacion' => $request->fecha_publicacion,
-            'activo' => $request->boolean('activo', true),
-
-            'file_path' => $path,
-            'original_name' => $file->getClientOriginalName(),
-            'mime' => $file->getMimeType(),
-            'size_bytes' => $file->getSize(),
-
-            'created_by' => optional($request->user())->id,
-        ]);
-
-        return redirect()->route('admin.normativas.index')
-            ->with('success', 'Normativa registrada correctamente.');
-    }
+    return redirect()->route('admin.radiotaxis.index')
+        ->with('success', 'RadioTaxi y parada registrados correctamente.');
+}
 
     public function edit($id)
     {

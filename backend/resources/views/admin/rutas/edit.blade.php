@@ -8,12 +8,12 @@
     <div class="ct-header mb-4">
         <h2 class="ct-title">Editar Ruta</h2>
         <div class="ct-subtitle">
-            Reemplazo De Ruta Existente. Dibuja Una Nueva Ruta Desde Cero Y Guarda.
+            Reemplazo De Ruta Existente. Puedes Editar La Ruta Precargada O Dibujar Una Nueva.
         </div>
     </div>
 
     <div class="alert alert-warning">
-        Esta Acción Reemplazará La Ruta Anterior. Dibuja Una Nueva Ruta Desde Cero Y Guarda.
+        Esta Acción Reemplazará La Ruta Anterior Al Guardar. Asegúrate De Dejar Solo Una Ruta.
     </div>
 
     <div class="card ct-stat-card">
@@ -39,10 +39,11 @@
                     </div>
                 </div>
 
-                <input type="hidden" name="geojson" id="geojson">
+                {{-- Aquí se guardará el GeoJSON de la línea --}}
+                <input type="hidden" name="geojson" id="geojson" required>
 
                 <div class="alert alert-info">
-                    Dibuja La Ruta En El Mapa. Usa La Herramienta De Línea Y Agrega Puntos. Luego Guarda.
+                    Edita La Ruta Precargada O Dibuja Una Nueva En El Mapa. Usa La Herramienta De Línea.
                 </div>
 
                 <div id="map" class="ct-map"></div>
@@ -73,59 +74,113 @@
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
     <script>
-        // Centro aproximado de Colcapirhua
-        const map = L.map('map').setView([-17.391, -66.237], 14);
+        document.addEventListener('DOMContentLoaded', () => {
+            const mapEl = document.getElementById('map');
+            if (!mapEl) return;
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
+            // Centro aproximado de Colcapirhua
+            const map = L.map('map').setView([-17.391, -66.237], 14);
 
-        const drawnItems = new L.FeatureGroup();
-        map.addLayer(drawnItems);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
 
-        const drawControl = new L.Control.Draw({
-            edit: {
-                featureGroup: drawnItems,
-                remove: true
-            },
-            draw: {
-                polygon: false,
-                rectangle: false,
-                circle: false,
-                circlemarker: false,
-                marker: false,
-                polyline: true
+            const drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            const drawControl = new L.Control.Draw({
+                edit: {
+                    featureGroup: drawnItems,
+                    remove: true
+                },
+                draw: {
+                    polygon: false,
+                    rectangle: false,
+                    circle: false,
+                    circlemarker: false,
+                    marker: false,
+                    polyline: true
+                }
+            });
+            map.addControl(drawControl);
+
+            function updateGeojson() {
+                const geojson = drawnItems.toGeoJSON();
+                document.getElementById('geojson').value =
+                    geojson.features && geojson.features.length ? JSON.stringify(geojson) : '';
             }
-        });
-        map.addControl(drawControl);
 
-        function updateGeojson() {
-            const geojson = drawnItems.toGeoJSON();
-            document.getElementById('geojson').value = geojson.features?.length ? JSON.stringify(geojson) : '';
+            // ✅ Precargar desde tu API pública (GeoJSON por idtrufi)
+  async function precargarRuta() {
+    const idtrufi = @json($idtrufi);
+    const baseUrl = @json(url('/'));
+
+    // ✅ Endpoint real que te funciona
+    const url = `${baseUrl}/api/trufis/${idtrufi}/rutas/geojson`;
+
+    try {
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+
+        if (!res.ok) {
+            alert(`No Se Pudo Precargar La Ruta.\nEndpoint: ${url}\nHTTP: ${res.status}`);
+            return;
         }
 
-        // Solo 1 ruta a la vez
-        map.on(L.Draw.Event.CREATED, function (e) {
-            drawnItems.clearLayers();
-            drawnItems.addLayer(e.layer);
-            updateGeojson();
+        const geojson = await res.json();
+
+        if (!geojson || geojson.type !== 'FeatureCollection') {
+            alert('La Respuesta No Es Un GeoJSON FeatureCollection Válido.');
+            return;
+        }
+
+        if (!geojson.features || geojson.features.length === 0) {
+            alert('No Hay Ruta Registrada Para Este Trufi (GeoJSON Vacío).');
+            return;
+        }
+
+        drawnItems.clearLayers();
+
+        const layer = L.geoJSON(geojson, {
+            onEachFeature: (feature, lyr) => drawnItems.addLayer(lyr)
         });
 
-        map.on(L.Draw.Event.EDITED, function () {
+        if (drawnItems.getLayers().length > 0) {
+            map.fitBounds(layer.getBounds());
             updateGeojson();
-        });
+        }
+    } catch (e) {
+        alert('Error Al Intentar Precargar La Ruta.');
+        console.error(e);
+    }
+}
 
-        map.on(L.Draw.Event.DELETED, function () {
-            updateGeojson();
-        });
 
-        // Validación saimple antes de enviar
-        document.querySelector('form').addEventListener('submit', function (ev) {
-            if (!document.getElementById('geojson').value) {
-                ev.preventDefault();
-                alert('Debes dibujar una ruta antes de guardar.');
-            }
+            // Solo 1 ruta a la vez
+            map.on(L.Draw.Event.CREATED, function (e) {
+                drawnItems.clearLayers();
+                drawnItems.addLayer(e.layer);
+                updateGeojson();
+            });
+
+            map.on(L.Draw.Event.EDITED, function () {
+                updateGeojson();
+            });
+
+            map.on(L.Draw.Event.DELETED, function () {
+                updateGeojson();
+            });
+
+            // Validación antes de enviar
+            document.querySelector('form').addEventListener('submit', function (ev) {
+                if (!document.getElementById('geojson').value) {
+                    ev.preventDefault();
+                    alert('Debes dibujar una ruta antes de guardar.');
+                }
+            });
+
+            // Cargar al iniciar
+            precargarRuta();
         });
     </script>
 @endpush

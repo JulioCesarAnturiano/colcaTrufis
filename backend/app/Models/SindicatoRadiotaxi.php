@@ -13,8 +13,8 @@ class SindicatoRadiotaxi extends Model
         'telefono_base'
     ];
 
-    public function rutasTrufi()
-    {
-        return $this->hasMany(TrufiRuta::class, 'sindicato_radiotaxi_id');
+    public function parada(){
+    return $this->hasOne(\App\Models\SindicatoRadiotaxiParada::class, 'sindicato_radiotaxi_id');
     }
+
 }
