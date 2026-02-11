@@ -6,6 +6,7 @@ use App\Http\Controllers\TrufiRutaController;
 use App\Http\Controllers\SindicatoController;
 use App\Http\Controllers\SindicatoRadioTaxisController;
 use App\Http\Controllers\NormativaController;
+use App\Http\Controllers\SindicatoRadioTaxiController;
 
 Route::get('/test', function () {
     return response()->json([
@@ -41,4 +42,12 @@ Route::get('/sindicato-radiotaxis/{id}', [SindicatoRadioTaxisController::class, 
 //normativas
 Route::get('/normativas', [NormativaController::class, 'index']);
 Route::get('/normativas/{id}/download', [NormativaController::class, 'download']);
-
+//radio taxis
+Route::get('/radiotaxis/paradas', [SindicatoRadioTaxisController::class, 'paradas']);
+Route::get('/radiotaxis/{id}/parada', [SindicatoRadioTaxisController::class, 'paradaPorRadiotaxi']);
+//ParadasFormatoNormal
+Route::get('/radiotaxis', [SindicatoRadioTaxisController::class, 'index']);
+Route::get('/radiotaxis/{id}', [SindicatoRadioTaxisController::class, 'show']);
+//ParadasFormatogeoJson
+Route::get('/radiotaxis/paradas/geojson', [SindicatoRadioTaxisController::class, 'paradasGeojson']);
+Route::get('/radiotaxis/{id}/parada/geojson', [SindicatoRadioTaxisController::class, 'paradaGeojsonPorRadiotaxi']);
