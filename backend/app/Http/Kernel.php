@@ -42,10 +42,7 @@ class Kernel extends HttpKernel
     'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
     'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
 
-    // ✅ Spatie Permission
-    'role' => \Spatie\Permission\Middlewares\RoleMiddleware::class,
-    'permission' => \Spatie\Permission\Middlewares\PermissionMiddleware::class,
-    'role_or_permission' => \Spatie\Permission\Middlewares\RoleOrPermissionMiddleware::class,
+
     ];
 
 }

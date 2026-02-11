@@ -19,7 +19,7 @@ class DashboardController extends Controller
         $estadisticas = [
             'total_trufis'   => Trufi::count(),
             'trufis_activos' => Trufi::where('estado', 1)->count(),
-            'total_rutas'    => TrufiRuta::count(),
+            'total_rutas' => TrufiRuta::distinct('id_trufi')->count('id_trufi'),
         ];
 
         return view('admin.dashboard', [
