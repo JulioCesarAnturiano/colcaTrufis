@@ -22,32 +22,42 @@ class NormativaAdminController extends Controller
         return view('admin.normativas.create');
     }
 
-    public function store(Request $request)
-{
-    $request->validate([
-        'nombre_comercial' => ['required','string','max:255'],
-        'telefono_base' => ['required','string','max:255'],
-        'latitud' => ['required','numeric'],
-        'longitud' => ['required','numeric'],
-    ]);
+  public function store(Request $request)
+    {
+        $request->validate([
+            'titulo' => ['required','string','max:255'],
+            'descripcion' => ['nullable','string'],
+            'categoria' => ['nullable','string','max:100'],
+            'version' => ['nullable','string','max:50'],
+            'fecha_publicacion' => ['nullable','date'],
+            'activo' => ['nullable','boolean'],
+            'pdf' => ['required','file','mimes:pdf','max:51200'], // 50 MB en KB
+        ]);
 
-    $radiotaxi = SindicatoRadioTaxi::create([
-        'nombre_comercial' => $request->nombre_comercial,
-        'telefono_base' => $request->telefono_base,
-    ]);
+        $file = $request->file('pdf');
 
-    SindicatoRadiotaxiParada::updateOrCreate(
-        ['sindicato_radiotaxi_id' => $radiotaxi->id],
-        [
-            'latitud' => $request->latitud,
-            'longitud' => $request->longitud,
-            'estado' => true,
-        ]
-    );
+        // Guardado privado
+        $path = $file->store('normativas'); // storage/app/normativas/...
 
-    return redirect()->route('admin.radiotaxis.index')
-        ->with('success', 'RadioTaxi y parada registrados correctamente.');
-}
+        $normativa = Normativa::create([
+            'titulo' => $request->titulo,
+            'descripcion' => $request->descripcion,
+            'categoria' => $request->categoria,
+            'version' => $request->version,
+            'fecha_publicacion' => $request->fecha_publicacion,
+            'activo' => $request->boolean('activo', true),
+
+            'file_path' => $path,
+            'original_name' => $file->getClientOriginalName(),
+            'mime' => $file->getMimeType(),
+            'size_bytes' => $file->getSize(),
+
+            'created_by' => optional($request->user())->id,
+        ]);
+
+        return redirect()->route('admin.normativas.index')
+            ->with('success', 'Normativa registrada correctamente.');
+    }
 
     public function edit($id)
     {
