@@ -7,6 +7,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_geojson/flutter_map_geojson.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
 
 import '../services/api_service.dart';
 
@@ -14,11 +16,22 @@ import '../services/api_service.dart';
 const Color kPrimary = Color(0xFF09596E); // #09596e
 const Color kPrimaryDark = Color(0xFF064656);
 
+// ✅ Verde agua para el label (coherente con tu app)
+const Color kAqua = Color(0xFF19B7B0);
+
 class AppSettings {
   static final ValueNotifier<String> language = ValueNotifier<String>("es");
   static final ValueNotifier<bool> darkMode = ValueNotifier<bool>(false);
-  static final ValueNotifier<bool> centerOnStart = ValueNotifier<bool>(false);
+
+  /// ✅ modo de centrado (por defecto Colcapirhua)
+  /// valores: 'colcapirhua' | 'ubicacion'
+  static final ValueNotifier<String> centerMode = ValueNotifier<String>("colcapirhua");
+
+  /// ✅ Nuevo: radio dinámico (por defecto 250)
+  static final ValueNotifier<double> radiusMeters = ValueNotifier<double>(250.0);
 }
+
+enum RouteFilterMode { nearby, all }
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -29,11 +42,14 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isTrufiSelected = true;
   final MapController _mapController = MapController();
 
-  // ✅ Para Colcapirhua: usamos GeoJsonParser (sirve bien para polígono/linea)
+  // ✅ GeoJSON Colcapirhua
   final GeoJsonParser _zonaParser = GeoJsonParser();
 
   // Api
   final ApiService _apiService = ApiService(baseUrl: "http://localhost:8000/api");
+
+  // ✅ Para normativas (mismo host que ApiService)
+  static const String _apiBase = "http://localhost:8000/api";
 
   Position? _currentPosition;
 
@@ -41,24 +57,50 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _radioTaxis = [];
   List<Map<String, dynamic>> _trufis = [];
 
-  // ✅ Zona Colcapirhua SIEMPRE visible
-  List<Polygon> colcapirhuaPolygons = [];
-  List<Polyline> colcapirhuaLines = []; // <-- por si tu geojson es LineString
+  // ✅ NUEVO: paradas de radiotaxis
+  List<Map<String, dynamic>> _paradasRadiotaxis = [];
 
-  // ✅ Rutas (manual)
+  // ✅ Zona Colcapirhua siempre visible
+  List<Polygon> colcapirhuaPolygons = [];
+  List<Polyline> colcapirhuaLines = [];
+
+  // ✅ Rutas
   List<Polyline> _todasRutas = [];
   List<Polyline> _rutasVisibles = [];
   List<Marker> _inicioFinMarkers = [];
 
-  // ✅ Radio real
-  static const double _radioCercaniaMetros = 250.0;
+  // ✅ Nuevo: labels de rutas (nombre de línea en la ruta)
+  List<Marker> _routeLabelMarkers = [];
 
-  // ✅ Círculo 50m: en web normalmente CircleMarker.radius es en PX.
-  // Lo convertimos de metros -> pixeles según zoom/latitud
+  // ✅ NUEVO: markers de paradas de radiotaxis
+  List<Marker> _paradasMarkers = [];
+  List<Marker> _paradasLabelMarkers = [];
+
+  // ✅ Para mostrar card del trufi seleccionado
+  int? _selectedTrufiId;
+  String? _selectedTrufiName;
+
+  // ✅ cache de nombres por idtrufi
+  final Map<int, String> _trufiNameById = {};
+
+  // ✅ NUEVO: cache de nombres por idradiotaxi
+  final Map<int, String> _radiotaxiNameById = {};
+
+  // ✅ Circle metros -> pixels (web)
   double _circleRadiusPx = 30.0;
   double? _lastZoomForCircle;
 
   bool _alreadyInit = false;
+
+  // ✅ Por defecto: "cerca"
+  RouteFilterMode _routeFilterMode = RouteFilterMode.nearby;
+
+  // ✅ Centro colcapirhua fijo
+  static const LatLng _colcapirhuaCenter = LatLng(-17.3860, -66.2340);
+  static const double _colcapirhuaZoom = 13;
+
+  // ✅ Listener para radio (para evitar setState after dispose)
+  VoidCallback? _radiusListener;
 
   // ==========================
   // Traducciones
@@ -69,35 +111,79 @@ class _HomeScreenState extends State<HomeScreen> {
       "menu": {"es": "Menú", "en": "Menu", "qu": "Menu"},
       "sindicatos": {"es": "Sindicatos", "en": "Unions", "qu": "Sindicato-kuna"},
       "radiotaxis": {"es": "Radiotaxis", "en": "Radio taxis", "qu": "RadioTaxi-kuna"},
-      "settings": {"es": "Configuración", "en": "Settings", "qu": "Ajuste-kuna"},
       "language": {"es": "Idioma", "en": "Language", "qu": "Simi"},
       "darkmode": {"es": "Modo oscuro", "en": "Dark mode", "qu": "Yanay mode"},
-      "center_on_start": {"es": "Centrar al abrir", "en": "Center on start", "qu": "Qallariypi ch'uyanchay"},
+      "center_title": {"es": "Centrar", "en": "Center", "qu": "Ch'uyanchay"},
+      "center_colcapirhua": {"es": "Centrar Colcapirhua", "en": "Center Colcapirhua", "qu": "Colcapirhua ch'uyanchay"},
+      "center_location": {"es": "Centrar ubicación", "en": "Center location", "qu": "Maypichus ch'uyanchay"},
+      "radius_title": {"es": "Distancia de rutas", "en": "Routes distance", "qu": "Ñan ch'usaq"},
+      "radius_sub": {"es": "Radio (metros)", "en": "Radius (meters)", "qu": "Radio (metro-kuna)"},
       "base": {"es": "Base", "en": "Base", "qu": "Base"},
       "selected": {"es": "Seleccionaste", "en": "You selected", "qu": "Akllarirqanki"},
       "id": {"es": "ID", "en": "ID", "qu": "ID"},
       "of_colcapirhua": {"es": "de Colcapirhua", "en": "in Colcapirhua", "qu": "Colcapirhua-pi"},
       "trufi": {"es": "Trufi", "en": "Trufi", "qu": "Trufi"},
       "radiotaxi": {"es": "Radiotaxi", "en": "Radio taxi", "qu": "RadioTaxi"},
-      "nearby_routes": {"es": "Rutas cercanas (250m)", "en": "Nearby routes (250m)", "qu": "250m ñan-kuna"},
-      "all_routes": {"es": "Todas las rutas", "en": "All routes", "qu": "Llapan ñan-kuna"},
-      "location_off": {"es": "Ubicación apagada: mostrando todas", "en": "Location off: showing all", "qu": "GPS mana llamk'anchu"},
-      "location_on": {"es": "Mostrando rutas dentro de 250m", "en": "Showing routes within 250m", "qu": "250m ukhupi"},
+      "routes_filter": {"es": "Rutas", "en": "Routes", "qu": "Ñan-kuna"},
+      "routes_nearby": {"es": "Cerca", "en": "Nearby", "qu": "Aswan qaylla"},
+      "routes_all": {"es": "Todas", "en": "All", "qu": "Llapan"},
+      "gps_off": {"es": "GPS apagado: mostrando todas", "en": "GPS off: showing all", "qu": "GPS mana llamk'anchu: llapan"},
       "no_route": {"es": "No se encontró ruta", "en": "Route not found", "qu": "Ñan mana tarikunchu"},
       "no_data": {"es": "Sin datos", "en": "No data", "qu": "Mana datos"},
+      "call_confirm": {"es": "¿Deseas llamar a este radiotaxi?", "en": "Do you want to call this radio taxi?", "qu": "Kay radiotaxi-ta waqayta munankichu?"},
+      "cancel": {"es": "Cancelar", "en": "Cancel", "qu": "Mana"},
+      "call": {"es": "Llamar", "en": "Call", "qu": "Waqay"},
+      "normativas": {"es": "Normativas", "en": "Regulations", "qu": "Kamachiykuna"},
+      "open_pdf": {"es": "Abrir PDF", "en": "Open PDF", "qu": "PDF kichay"},
+      "close": {"es": "Cerrar", "en": "Close", "qu": "Wichay"},
+      "details": {"es": "Detalle", "en": "Details", "qu": "Willay"},
+      "category": {"es": "Categoría", "en": "Category", "qu": "K'iti"},
+      "title": {"es": "Título", "en": "Title", "qu": "Sutin"},
+      "description": {"es": "Descripción", "en": "Description", "qu": "Willay"},
+      "about": {"es": "Acerca de nosotros", "en": "About us", "qu": "Imamanta"},
+      "about_title": {"es": "ColcaTrufis", "en": "ColcaTrufis", "qu": "ColcaTrufis"},
+      "about_body": {
+        "es":
+            "ColcaTrufis te ayuda a visualizar rutas de trufis y radiotaxis en Colcapirhua. Puedes ver rutas cercanas a tu ubicación (según el radio configurado) o todas las rutas disponibles, y seleccionar una línea para ver su recorrido con inicio y fin.",
+        "en":
+            "ColcaTrufis helps you visualize trufi and radio taxi routes in Colcapirhua. You can view nearby routes (based on the configured radius) or all routes, and select a line to see its path with start and end.",
+        "qu":
+            "ColcaTrufis Colcapirhua-pi trufi, radiotaxi ñan-kunata rikuchin. Radio akllasqa kaqman hina qaylla ñan-kunata utaq llapan ñan-kunata rikuyta atinki; huk linea akllaspayki qallariy, tukuyta rikunki.",
+      },
+      "stops": {"es": "Paradas", "en": "Stops", "qu": "Sayay"},
     };
     return dict[key]?[lang] ?? dict[key]?["es"] ?? key;
   }
 
   // ==========================
-  // INIT
+  // INIT / DISPOSE
   // ==========================
   @override
   void initState() {
     super.initState();
     if (_alreadyInit) return;
     _alreadyInit = true;
+
+    // ✅ Listener del radio (para recalcular círculo y filtro)
+    _radiusListener = () {
+      if (!mounted) return;
+      if (_currentPosition != null) {
+        _recalcCircleRadiusPx(_mapController.camera.zoom);
+      }
+      _aplicarFiltroRutas();
+      _aplicarFiltroParadas(); // ✅ NUEVO
+    };
+    AppSettings.radiusMeters.addListener(_radiusListener!);
+
     _initAll();
+  }
+
+  @override
+  void dispose() {
+    if (_radiusListener != null) {
+      AppSettings.radiusMeters.removeListener(_radiusListener!);
+    }
+    super.dispose();
   }
 
   Future<void> _initAll() async {
@@ -108,16 +194,20 @@ class _HomeScreenState extends State<HomeScreen> {
         _fetchSindicatos(),
         _fetchRadioTaxis(),
         _fetchTrufis(),
+        _fetchParadasRadiotaxis(), // ✅ NUEVO
       ]);
 
       await _cargarTodasLasRutas();
-      await _getCurrentLocation(); // puede quedar null
 
+      // ✅ obtenemos GPS al inicio (si se puede)
+      await _getCurrentLocation();
+
+      // ✅ Por defecto al entrar: centrar Colcapirhua (no mueve el geojson, solo el mapa)
+      _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
+
+      // ✅ Importante: al entrar debe aplicar "cerca" si hay GPS
       _aplicarFiltroRutas();
-
-      if (AppSettings.centerOnStart.value) {
-        _mapController.move(const LatLng(-17.3860, -66.2340), 13);
-      }
+      _aplicarFiltroParadas(); // ✅ NUEVO
     });
   }
 
@@ -129,23 +219,89 @@ class _HomeScreenState extends State<HomeScreen> {
       final sindicatos = await _apiService.getSindicatos();
       if (!mounted) return;
       setState(() => _sindicatos = List<Map<String, dynamic>>.from(sindicatos));
-    } catch (_) {}
+    } catch (e) {
+      print("Error fetching sindicatos: $e");
+    }
   }
 
   Future<void> _fetchRadioTaxis() async {
     try {
       final radioTaxis = await _apiService.getRadioTaxis();
       if (!mounted) return;
+
+      // ✅ NUEVO: cache de nombres por id
+      _radiotaxiNameById.clear();
+      for (final it in radioTaxis) {
+        final id = int.tryParse((it["id"] ?? "").toString());
+        final name = (it["nombre_comercial"] ?? "").toString();
+        if (id != null && name.trim().isNotEmpty) {
+          _radiotaxiNameById[id] = name;
+        }
+      }
+
       setState(() => _radioTaxis = List<Map<String, dynamic>>.from(radioTaxis));
-    } catch (_) {}
+    } catch (e) {
+      print("Error fetching radiotaxis: $e");
+    }
   }
 
   Future<void> _fetchTrufis() async {
     try {
       final trufis = await _apiService.getTrufis();
       if (!mounted) return;
+
+      // ✅ arma cache idtrufi -> nom_linea
+      _trufiNameById.clear();
+      for (final it in trufis) {
+        final id = int.tryParse((it["idtrufi"] ?? "").toString());
+        final name = (it["nom_linea"] ?? "").toString();
+        if (id != null && name.trim().isNotEmpty) {
+          _trufiNameById[id] = name;
+        }
+      }
+
       setState(() => _trufis = List<Map<String, dynamic>>.from(trufis));
-    } catch (_) {}
+
+      // ✅ si ya hay rutas visibles, reconstruye labels con nombres reales
+      _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+      if (mounted) setState(() {});
+    } catch (e) {
+      print("Error fetching trufis: $e");
+    }
+  }
+
+  // ✅ NUEVO: fetch paradas de radiotaxis
+  Future<void> _fetchParadasRadiotaxis() async {
+    try {
+      final res = await http.get(
+        Uri.parse("$_apiBase/radiotaxis/paradas"),
+        headers: const {"Accept": "application/json"},
+      );
+
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw Exception("HTTP ${res.statusCode}");
+      }
+
+      final body = jsonDecode(res.body);
+      List<dynamic> data = [];
+
+      if (body is List) {
+        data = body;
+      } else if (body is Map && body["data"] is List) {
+        data = body["data"] as List;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _paradasRadiotaxis = data.map((e) => e as Map<String, dynamic>).toList();
+      });
+
+      _aplicarFiltroParadas();
+    } catch (e) {
+      print("Error fetching paradas: $e");
+      if (!mounted) return;
+      setState(() => _paradasRadiotaxis = []);
+    }
   }
 
   // ==========================
@@ -163,7 +319,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (!mounted) return;
       setState(() {
-        // Si tu geojson trae Polygon/MultiPolygon
         colcapirhuaPolygons = _zonaParser.polygons.map((p) {
           return Polygon(
             points: p.points,
@@ -174,7 +329,6 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }).toList();
 
-        // ✅ Si tu geojson trae LineString (bordes)
         colcapirhuaLines = _zonaParser.polylines.map((l) {
           return Polyline(
             points: l.points,
@@ -184,7 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }).toList();
       });
     } catch (e) {
-      // print("Error GeoJSON Zona: $e");
+      print("Error loading zona: $e");
       if (!mounted) return;
       setState(() {
         colcapirhuaPolygons = [];
@@ -196,12 +350,18 @@ class _HomeScreenState extends State<HomeScreen> {
   // ==========================
   // PARSEO MANUAL GEOJSON (RUTAS)
   // ==========================
-  List<Polyline> _polylinesFromGeoJson(Map<String, dynamic> geo) {
+  /// Retorna: (polylines, idsPorPolyline)
+  ({List<Polyline> polylines, List<int?> ids}) _polylinesFromGeoJsonWithIds(Map<String, dynamic> geo) {
     final features = (geo['features'] as List? ?? []);
     final polylines = <Polyline>[];
+    final ids = <int?>[];
 
     for (final f in features) {
       if (f is! Map) continue;
+
+      final props = (f['properties'] is Map) ? (f['properties'] as Map) : <dynamic, dynamic>{};
+      final idtrufi = int.tryParse((props['idtrufi'] ?? "").toString());
+
       final geom = f['geometry'];
       if (geom is! Map) continue;
 
@@ -221,16 +381,17 @@ class _HomeScreenState extends State<HomeScreen> {
         polylines.add(
           Polyline(
             points: points,
-            strokeWidth: 5,
-            color: Colors.blueAccent,
-            borderColor: Colors.blueGrey.shade900,
-            borderStrokeWidth: 2,
+            strokeWidth: 3,
+            color: kAqua.withOpacity(0.95), // ✅ mismo color del label
+            borderColor: kPrimaryDark.withOpacity(0.55),
+            borderStrokeWidth: 1,
           ),
         );
+        ids.add(idtrufi);
       }
     }
 
-    return polylines;
+    return (polylines: polylines, ids: ids);
   }
 
   // ==========================
@@ -239,25 +400,61 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _cargarTodasLasRutas() async {
     try {
       final geo = await _apiService.getGeoJsonTodasRutas();
-      _todasRutas = _polylinesFromGeoJson(geo);
+      
+      // ✅ CORRECCIÓN: verificar que geo tenga features
+      if (geo == null || geo['features'] == null) {
+        print("⚠️ GeoJSON vacío o sin features");
+        _todasRutas = [];
+        _polylineIdIndex = [];
+        if (!mounted) return;
+        setState(() {
+          _rutasVisibles = [];
+          _inicioFinMarkers = [];
+          _routeLabelMarkers = [];
+        });
+        return;
+      }
+
+      final parsed = _polylinesFromGeoJsonWithIds(geo);
+
+      // guardamos ids en "tag" paralelo (por índice) usando un map
+      _todasRutas = parsed.polylines;
+      _polylineIdIndex = parsed.ids;
+
+      print("✅ Cargadas ${_todasRutas.length} rutas");
 
       if (!mounted) return;
       setState(() {
         _rutasVisibles = _todasRutas;
         _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
+        _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
       });
-    } catch (_) {
+    } catch (e) {
+      print("❌ Error cargando rutas: $e");
       _todasRutas = [];
+      _polylineIdIndex = [];
       if (!mounted) return;
       setState(() {
         _rutasVisibles = [];
         _inicioFinMarkers = [];
+        _routeLabelMarkers = [];
       });
     }
   }
 
+  // ✅ Guardamos idtrufi de cada polyline por índice
+  List<int?> _polylineIdIndex = [];
+
+  int? _idOfPolyline(Polyline pl) {
+    // busca el índice del polyline exacto en _todasRutas o _rutasVisibles
+    // (usa identidad por referencia cuando vienen de la lista)
+    final idx = _rutasVisibles.indexOf(pl);
+    if (idx >= 0 && idx < _polylineIdIndex.length) return _polylineIdIndex[idx];
+    return null;
+  }
+
   // ==========================
-  // UBICACIÓN (WEB: requiere permisos)
+  // UBICACIÓN
   // ==========================
   Future<void> _getCurrentLocation() async {
     try {
@@ -275,19 +472,18 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       setState(() => _currentPosition = pos);
 
-      // ✅ recalcula círculo 50m en px según zoom actual (flutter_map 7: camera.zoom existe)
       _recalcCircleRadiusPx(_mapController.camera.zoom);
-    } catch (_) {
+    } catch (e) {
+      print("Error getting location: $e");
       if (!mounted) return;
       setState(() => _currentPosition = null);
     }
   }
 
   // ==========================
-  // 50m REALES -> pixeles según zoom/lat (para Web)
+  // Metros -> pixeles (web)
   // ==========================
   double _metersToPixels(double meters, double latitude, double zoom) {
-    // WebMercator: metros por pixel
     final latRad = latitude * Math.pi / 180.0;
     final metersPerPixel = 156543.03392 * Math.cos(latRad) / Math.pow(2, zoom);
     return meters / metersPerPixel;
@@ -296,18 +492,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void _recalcCircleRadiusPx(double zoom) {
     if (_currentPosition == null) return;
 
-    // anti-spam
     if (_lastZoomForCircle != null && (zoom - _lastZoomForCircle!).abs() < 0.05) return;
     _lastZoomForCircle = zoom;
 
-    final px = _metersToPixels(_radioCercaniaMetros, _currentPosition!.latitude, zoom);
-    final safePx = px.clamp(6.0, 600.0);
+    final meters = AppSettings.radiusMeters.value;
+    final px = _metersToPixels(meters, _currentPosition!.latitude, zoom);
+    final safePx = px.clamp(6.0, 900.0);
 
     if (!mounted) return;
     setState(() => _circleRadiusPx = safePx);
   }
 
-  // Distancia mínima aproximada por puntos (suficiente para 50m)
   double _minDistToPolylineMeters(LatLng pos, List<LatLng> pts) {
     double minD = double.infinity;
     for (final p in pts) {
@@ -318,48 +513,195 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // FILTRO 50m
+  // FILTRO (cerca/todas) - RUTAS
   // ==========================
   void _aplicarFiltroRutas() {
+    if (!mounted) return;
+
     if (_todasRutas.isEmpty) {
       setState(() {
         _rutasVisibles = [];
         _inicioFinMarkers = [];
+        _routeLabelMarkers = [];
       });
       return;
     }
 
-    // sin ubicación => todas
+    // Si el usuario elige "todas"
+    if (_routeFilterMode == RouteFilterMode.all) {
+      setState(() {
+        _rutasVisibles = _todasRutas;
+        _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
+        _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+      });
+      return;
+    }
+
+    // Modo "cerca": si no hay ubicación, mostramos todas (según tu regla anterior)
     if (_currentPosition == null) {
       setState(() {
         _rutasVisibles = _todasRutas;
         _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
+        _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
       });
       return;
     }
 
     final user = LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
+    final radius = AppSettings.radiusMeters.value;
 
     final cerca = _todasRutas.where((pl) {
       final d = _minDistToPolylineMeters(user, pl.points);
-      return d <= _radioCercaniaMetros;
+      return d <= radius;
     }).toList();
 
     setState(() {
-      _rutasVisibles = cerca.isNotEmpty ? cerca : _todasRutas;
+      _rutasVisibles = cerca;
       _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
+      _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
     });
   }
 
   // ==========================
-  // CÍRCULO 50m (visual)
+  // ✅ NUEVO: FILTRO (cerca/todas) - PARADAS
+  // ==========================
+    void _aplicarFiltroParadas() {
+    if (!mounted) return;
+
+    if (_paradasRadiotaxis.isEmpty) {
+      setState(() {
+        _paradasMarkers = [];
+        _paradasLabelMarkers = [];
+      });
+      return;
+    }
+
+    // ✅ NUEVA LÓGICA:
+    // Radiotaxis SIEMPRE muestran TODAS las paradas
+    final todasLasParadas = _paradasRadiotaxis;
+
+    setState(() {
+      _paradasMarkers = _buildParadasMarkers(todasLasParadas);
+      _paradasLabelMarkers = _buildParadasLabels(todasLasParadas);
+    });
+  }
+
+
+  // ==========================
+  // ✅ NUEVO: BUILD PARADAS MARKERS
+  // ==========================
+  List<Marker> _buildParadasMarkers(List<Map<String, dynamic>> paradas) {
+    final markers = <Marker>[];
+
+    for (final p in paradas) {
+      final lat = double.tryParse((p["latitud"] ?? "").toString());
+      final lng = double.tryParse((p["longitud"] ?? "").toString());
+      if (lat == null || lng == null) continue;
+
+      markers.add(
+        Marker(
+          point: LatLng(lat, lng),
+          width: 38,
+          height: 38,
+          child: Container(
+            decoration: BoxDecoration(
+              color: kPrimary,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withOpacity(0.95), width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Icon(Icons.local_taxi, color: Colors.white, size: 20),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return markers;
+  }
+
+  // ==========================
+  // ✅ NUEVO: BUILD PARADAS LABELS (debajo del marker)
+  // ==========================
+  List<Marker> _buildParadasLabels(List<Map<String, dynamic>> paradas) {
+    final markers = <Marker>[];
+
+    for (final p in paradas) {
+      final lat = double.tryParse((p["latitud"] ?? "").toString());
+      final lng = double.tryParse((p["longitud"] ?? "").toString());
+      if (lat == null || lng == null) continue;
+
+      final radiotaxiId = int.tryParse((p["sindicato_radiotaxi_id"] ?? "").toString());
+      final name = (radiotaxiId != null) ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId") : "Parada";
+
+      if (name.trim().isEmpty) continue;
+
+      final estimatedWidth = 30 + 14 + (name.length * 6.4);
+      final w = estimatedWidth.clamp(90.0, 200.0);
+
+      markers.add(
+        Marker(
+          point: LatLng(lat, lng),
+          width: w,
+          height: 34,
+          alignment: Alignment.bottomCenter,
+          child: Transform.translate(
+            offset: const Offset(0, 22), // ✅ lo baja debajo del punto
+            child: _paradaNamePill(name),
+          ),
+        ),
+      );
+    }
+
+    return markers;
+  }
+
+  Widget _paradaNamePill(String name) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: kPrimary.withOpacity(0.92),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.local_taxi, size: 14, color: Colors.white),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 11.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================
+  // CÍRCULO (visual) - solo en modo "cerca"
   // ==========================
   List<CircleMarker> _buildRadioCircle() {
     if (_currentPosition == null) return [];
     return [
       CircleMarker(
         point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-        radius: _circleRadiusPx, // ✅ 50m reales convertido a px
+        radius: _circleRadiusPx,
         color: kPrimary.withOpacity(0.12),
         borderColor: kPrimary.withOpacity(0.55),
         borderStrokeWidth: 2,
@@ -368,7 +710,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // INICIO/FIN PROFESIONAL
+  // INICIO/FIN (igual que tu código)
   // ==========================
   List<Marker> _buildInicioFinMarkers(List<Polyline> polylines, {int maxRutas = 30}) {
     final markers = <Marker>[];
@@ -384,8 +726,8 @@ class _HomeScreenState extends State<HomeScreen> {
       markers.add(
         Marker(
           point: start,
-          width: 44,
-          height: 44,
+          width: 34,
+          height: 34,
           child: _flagMarker(
             tooltip: "Inicio",
             color: Colors.green.shade600,
@@ -397,8 +739,8 @@ class _HomeScreenState extends State<HomeScreen> {
       markers.add(
         Marker(
           point: end,
-          width: 44,
-          height: 44,
+          width: 34,
+          height: 34,
           child: _flagMarker(
             tooltip: "Fin",
             color: Colors.red.shade600,
@@ -429,35 +771,322 @@ class _HomeScreenState extends State<HomeScreen> {
             BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 12, offset: const Offset(0, 8)),
           ],
         ),
-        child: Center(child: Icon(icon, color: Colors.white, size: 22)),
+        child: Center(child: Icon(icon, color: Colors.white, size: 19)),
       ),
     );
   }
 
   // ==========================
-  // MOSTRAR RUTA 1 TRUFI
+  // ✅ Labels de rutas (nombre estilo pill, pequeño, verde agua)
   // ==========================
-  Future<void> _mostrarRutaDeUnTrufi(int idtrufi) async {
+  List<Marker> _buildRouteLabels(List<Polyline> polylines) {
+    final markers = <Marker>[];
+
+    for (final pl in polylines) {
+      if (pl.points.length < 2) continue;
+
+      final id = _idOfPolyline(pl);
+      final name = (id != null) ? (_trufiNameById[id] ?? "Línea $id") : null;
+      if (name == null || name.trim().isEmpty) continue;
+
+      final start = pl.points.first;
+
+      // ✅ ancho adaptativo según texto (con límites)
+      final estimatedWidth = 30 + 14 + (name.length * 6.4); // ✅ menos "por letra"
+      final w = estimatedWidth.clamp(90.0, 200.0); // ✅ límites más pequeños
+
+      markers.add(
+        Marker(
+          point: start, // ✅ ahora en el inicio
+          width: w,
+          height: 34,
+          alignment: Alignment.topCenter,
+          child: Transform.translate(
+            offset: const Offset(0, -18), // ✅ lo sube sobre el punto de inicio
+            child: _routeNamePill(name),
+          ),
+        ),
+      );
+    }
+
+    return markers;
+  }
+
+  Widget _routeNamePill(String name) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), // ✅ menos padding
+      decoration: BoxDecoration(
+        color: kAqua.withOpacity(0.92),
+        borderRadius: BorderRadius.circular(10), // ✅ menos redondo
+        border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.directions_bus_filled, size: 14, color: Colors.white), // ✅ icono más chico
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 11.5, // ✅ letra más chica
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================
+  // MOSTRAR RUTA 1 TRUFI (mantienes tu lógica)
+  // ==========================
+  Future<void> _mostrarRutaDeUnTrufi(int idtrufi, {String? nombreLinea}) async {
     try {
       final geo = await _apiService.getGeoJsonPorTrufi(idtrufi);
-      final ruta = _polylinesFromGeoJson(geo);
-
-      if (ruta.isEmpty) {
+      
+      // ✅ CORRECCIÓN: verificar que geo tenga features
+      if (geo == null || geo['features'] == null || (geo['features'] as List).isEmpty) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t("no_route"))));
         return;
       }
 
+      final parsed = _polylinesFromGeoJsonWithIds(geo);
+      final ruta = parsed.polylines;
+
+      if (ruta.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t("no_route"))));
+        return;
+      }
+
+      if (!mounted) return;
       setState(() {
+        _selectedTrufiId = idtrufi;
+        _selectedTrufiName = nombreLinea ?? _trufiNameById[idtrufi] ?? "Línea $idtrufi";
+
         _rutasVisibles = ruta;
+        _polylineIdIndex = parsed.ids; // ✅ actualizar índice
         _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 1);
+
+        // ✅ label del trufi seleccionado: se verá en la ruta también (más chico)
+        _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
       });
 
       if (ruta.first.points.isNotEmpty) {
         _mapController.move(ruta.first.points.first, 14.8);
       }
-    } catch (_) {
+    } catch (e) {
+      print("Error mostrando ruta de trufi $idtrufi: $e");
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("No se pudo cargar la ruta de este trufi")),
+      );
+    }
+  }
+
+  // ==========================
+  // CENTRADO (FAB depende del modo)
+  // ==========================
+  Future<void> _handleCenterFab() async {
+    final mode = AppSettings.centerMode.value;
+
+    if (mode == "ubicacion") {
+      await _getCurrentLocation();
+      _aplicarFiltroRutas();
+      _aplicarFiltroParadas(); // ✅ NUEVO
+      if (_currentPosition != null) {
+        _mapController.move(
+          LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          15,
+        );
+      }
+      return;
+    }
+
+    _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
+  }
+
+  // ==========================
+  // ✅ CALL Radiotaxi
+  // ==========================
+  Future<void> _confirmAndCall(String rawPhone) async {
+    final phone = rawPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (phone.trim().isEmpty) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(t("radiotaxi")),
+        content: Text(t("call_confirm")),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t("cancel"))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kPrimary, // tu verde/azul oscuro
+              foregroundColor: const Color.fromARGB(255, 255, 255, 255), // ✅ texto blanco
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(t("call")),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    final uri = Uri.parse("tel:$phone");
+    await launchUrl(uri);
+  }
+
+  // ==========================
+  // ✅ NORMATIVAS MEJORADO
+  // ==========================
+  Future<List<dynamic>> _fetchNormativas() async {
+    final res = await http.get(
+      Uri.parse("$_apiBase/normativas"),
+      headers: const {"Accept": "application/json"},
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception("HTTP ${res.statusCode}: ${res.body}");
+    }
+
+    final body = jsonDecode(res.body);
+    if (body is List) return body;
+    if (body is Map && body["data"] is List) return (body["data"] as List);
+    if (body is Map && body["success"] == true && body["data"] is List) return (body["data"] as List);
+    return [];
+  }
+
+  Future<void> _openNormativasDrawer() async {
+    try {
+      final data = await _fetchNormativas();
+      if (!mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) {
+          final isDark = AppSettings.darkMode.value;
+          final bg = isDark ? const Color(0xFF0F172A) : Colors.white;
+          final textColor = isDark ? Colors.white : Colors.black87;
+          final subText = isDark ? Colors.white70 : Colors.black54;
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.78,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(width: 46, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+                const SizedBox(height: 14),
+                Text(
+                  t("normativas"),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: kPrimary),
+                ),
+                const Divider(),
+                Expanded(
+                  child: data.isEmpty
+                      ? Center(child: Text(t("no_data"), style: TextStyle(color: subText)))
+                      : ListView.builder(
+                          itemCount: data.length,
+                          itemBuilder: (context, index) {
+                            final item = data[index];
+                            
+                            // ✅ MEJORADO: mostrar titulo, descripcion y PDF
+                            final titulo = (item["titulo"] ?? "Normativa").toString();
+                            final descripcion = (item["descripcion"] ?? "").toString();
+                            final id = int.tryParse((item["id"] ?? "").toString());
+
+                            return Card(
+                              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              child: ListTile(
+                                leading: const Icon(Icons.picture_as_pdf, color: kPrimary, size: 32),
+                                title: Text(
+                                  titulo,
+                                  style: TextStyle(color: textColor, fontWeight: FontWeight.w800),
+                                ),
+                                subtitle: descripcion.isNotEmpty
+                                    ? Text(
+                                        descripcion,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(color: subText),
+                                      )
+                                    : null,
+                                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                                onTap: () async {
+                                  if (id == null) return;
+
+                                  final downloadUrl = "$_apiBase/normativas/$id/download";
+
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) => AlertDialog(
+                                      title: Text(t("details")),
+                                      content: SingleChildScrollView(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              "${t("title")}: $titulo",
+                                              style: const TextStyle(fontWeight: FontWeight.w800),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            if (descripcion.isNotEmpty)
+                                              Text("${t("description")}:\n$descripcion"),
+                                          ],
+                                        ),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context),
+                                          child: Text(t("close")),
+                                        ),
+                                        ElevatedButton.icon(
+                                          style:ElevatedButton.styleFrom(
+                                            backgroundColor: kPrimary, // tu verde/azul oscuro
+                                            foregroundColor: const Color.fromARGB(255, 255, 255, 255), // ✅ texto blanco
+                                          ),
+                                          onPressed: () async {
+                                            Navigator.pop(context);
+                                            await launchUrl(
+                                              Uri.parse(downloadUrl),
+                                              mode: LaunchMode.externalApplication,
+                                            );
+                                          },
+                                          icon: const Icon(Icons.open_in_new),
+                                          label: Text(t("open_pdf")),
+                                        )
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                )
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      print("Error loading normativas: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t("no_data"))),
       );
     }
   }
@@ -504,6 +1133,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
+                  // ✅ Logos intactos
                   title: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -514,13 +1144,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 body: Stack(
                   children: [
+                    // ✅ Mapa SIEMPRE visible
                     FlutterMap(
                       mapController: _mapController,
                       options: MapOptions(
                         initialCenter: const LatLng(-17.3939, -66.2386),
                         initialZoom: 13,
-
-                        // ✅ Para que el círculo 50m cambie con zoom (web)
                         onPositionChanged: (pos, hasGesture) {
                           final z = pos.zoom;
                           if (z == null) return;
@@ -528,28 +1157,38 @@ class _HomeScreenState extends State<HomeScreen> {
                         },
                       ),
                       children: [
+                        // ✅ TileLayer siempre
                         TileLayer(
                           urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                           userAgentPackageName: 'com.colcatrufis.app',
                           keepBuffer: 2,
                         ),
 
-                        // ✅ Colcapirhua SIEMPRE:
-                        // 1) Polygon si existe
+                        // ✅ Colcapirhua SIEMPRE
                         PolygonLayer(polygons: colcapirhuaPolygons),
+                        if (colcapirhuaLines.isNotEmpty) PolylineLayer(polylines: colcapirhuaLines),
 
-                        // 2) y también líneas si existe LineString
-                        if (colcapirhuaLines.isNotEmpty)
-                          PolylineLayer(polylines: colcapirhuaLines),
+                        // ✅ círculo si hay GPS y modo cerca
+                        if (_routeFilterMode == RouteFilterMode.nearby && _currentPosition != null)
+                          CircleLayer(circles: _buildRadioCircle()),
 
-                        // ✅ círculo 50m
-                        if (_currentPosition != null) CircleLayer(circles: _buildRadioCircle()),
+                        // ✅ CONDICIONAL: mostrar rutas O paradas según isTrufiSelected
+                        if (isTrufiSelected) ...[
+                          // TRUFIS: rutas visibles
+                          PolylineLayer(polylines: _rutasVisibles),
 
-                        // ✅ rutas visibles
-                        PolylineLayer(polylines: _rutasVisibles),
+                          // ✅ labels de ruta (nombre en pill)
+                          if (_routeLabelMarkers.isNotEmpty) MarkerLayer(markers: _routeLabelMarkers),
 
-                        // ✅ inicio/fin
-                        if (_inicioFinMarkers.isNotEmpty) MarkerLayer(markers: _inicioFinMarkers),
+                          // ✅ inicio/fin
+                          if (_inicioFinMarkers.isNotEmpty) MarkerLayer(markers: _inicioFinMarkers),
+                        ] else ...[
+                          // RADIOTAXIS: paradas
+                          if (_paradasMarkers.isNotEmpty) MarkerLayer(markers: _paradasMarkers),
+
+                          // ✅ labels de paradas (nombre debajo)
+                          if (_paradasLabelMarkers.isNotEmpty) MarkerLayer(markers: _paradasLabelMarkers),
+                        ],
 
                         // ✅ ubicación actual
                         if (_currentPosition != null)
@@ -566,6 +1205,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
 
+                    // ✅ Selector de rutas (igual que tu idea)
+                    Positioned(
+                      left: 16,
+                      bottom: 22,
+                      child: _routesFilterDropdown(isDarkMode),
+                    ),
+
+                    // ✅ Card del trufi seleccionado (la mantengo)
+                    if (_selectedTrufiName != null && _selectedTrufiName!.trim().isNotEmpty)
+                      Positioned(
+                        left: 16,
+                        top: 90,
+                        child: _selectedTrufiCard(isDarkMode),
+                      ),
+
                     // Botones flotantes
                     Positioned(
                       right: 15,
@@ -577,7 +1231,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: Icons.directions_bus,
                             isActive: isTrufiSelected,
                             onPressed: () {
-                              setState(() => isTrufiSelected = true);
+                              setState(() {
+                                isTrufiSelected = true;
+                              });
+                              // ✅ al cambiar a trufi, aplicar filtro de rutas
+                              _aplicarFiltroRutas();
                               _showFullWidthBottomSheet(context, t("trufi"));
                             },
                           ),
@@ -586,37 +1244,24 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: Icons.local_taxi,
                             isActive: !isTrufiSelected,
                             onPressed: () {
-                              setState(() => isTrufiSelected = false);
+                              setState(() {
+                                isTrufiSelected = false;
+                              });
+                              // ✅ al cambiar a radiotaxi, aplicar filtro de paradas
+                              _aplicarFiltroParadas();
                               _showFullWidthBottomSheet(context, t("radiotaxi"));
                             },
                           ),
                           const SizedBox(height: 25),
                           FloatingActionButton(
                             mini: true,
-                            heroTag: "btnLocation",
+                            heroTag: "btnCenter",
                             backgroundColor: Colors.white,
-                            onPressed: () async {
-                              await _getCurrentLocation();
-                              _aplicarFiltroRutas();
-
-                              if (_currentPosition != null) {
-                                _mapController.move(
-                                  LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                                  15,
-                                );
-                              }
-                            },
+                            onPressed: _handleCenterFab,
                             child: const Icon(Icons.my_location, color: kPrimary),
                           ),
                         ],
                       ),
-                    ),
-
-                    // Chip estado
-                    Positioned(
-                      left: 16,
-                      bottom: 22,
-                      child: _routesModeChip(isDarkMode),
                     ),
                   ],
                 ),
@@ -628,14 +1273,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _routesModeChip(bool isDarkMode) {
-    final text = _currentPosition == null ? t("all_routes") : t("nearby_routes");
-    final subtitle = _currentPosition == null ? t("location_off") : t("location_on");
+  // ==========================
+  // UI: Dropdown de rutas
+  // ==========================
+  Widget _routesFilterDropdown(bool isDarkMode) {
+    final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.92);
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+
+    final radius = AppSettings.radiusMeters.value.round();
+    final currentLabel = _routeFilterMode == RouteFilterMode.nearby ? "${t("routes_nearby")} ($radius m)" : t("routes_all");
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.92),
+        color: bg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.black12),
         boxShadow: [
@@ -645,14 +1297,55 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_currentPosition == null ? Icons.map_outlined : Icons.my_location, color: kPrimary),
+          const Icon(Icons.route, color: kPrimary),
           const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(t("routes_filter"), style: TextStyle(fontWeight: FontWeight.w800, color: textColor)),
               const SizedBox(height: 2),
-              Text(subtitle, style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white70 : Colors.black54)),
+              Text(
+                _routeFilterMode == RouteFilterMode.nearby && _currentPosition == null ? t("gps_off") : currentLabel,
+                style: TextStyle(fontSize: 12, color: subTextColor),
+              ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          PopupMenuButton<RouteFilterMode>(
+            tooltip: "",
+            icon: Icon(Icons.expand_more, color: textColor),
+            onSelected: (mode) async {
+              setState(() => _routeFilterMode = mode);
+
+              if (_routeFilterMode == RouteFilterMode.nearby) {
+                if (_currentPosition == null) {
+                  await _getCurrentLocation();
+                }
+              }
+              _aplicarFiltroRutas();
+              _aplicarFiltroParadas(); // ✅ NUEVO
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: RouteFilterMode.nearby,
+                child: Row(
+                  children: [
+                    Icon(Icons.my_location, color: textColor),
+                    const SizedBox(width: 10),
+                    Text("${t("routes_nearby")} (${AppSettings.radiusMeters.value.round()} m)"),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: RouteFilterMode.all,
+                child: Row(
+                  children: [
+                    Icon(Icons.map_outlined, color: textColor),
+                    const SizedBox(width: 10),
+                    Text(t("routes_all")),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -660,6 +1353,78 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ==========================
+  // UI: Card del trufi seleccionado
+  // ==========================
+  Widget _selectedTrufiCard(bool isDarkMode) {
+    final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.92);
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 260),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black12),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 12, offset: const Offset(0, 6)),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [kPrimaryDark.withOpacity(0.95), kPrimary.withOpacity(0.9)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 10, offset: const Offset(0, 6)),
+              ],
+            ),
+            child: const Icon(Icons.directions_bus_filled, color: Colors.white),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _selectedTrufiName ?? "",
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: textColor, fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () {
+              setState(() {
+                _selectedTrufiId = null;
+                _selectedTrufiName = null;
+              });
+              _aplicarFiltroRutas();
+            },
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.close, size: 18, color: textColor.withOpacity(0.8)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================
+  // Botón 3D
+  // ==========================
   Widget _buildMapButton3D({
     required IconData icon,
     required bool isActive,
@@ -691,7 +1456,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // BottomSheet
+  // ==========================
+  // BottomSheet dinámico (Trufi vs Radiotaxi)
+  // ==========================
   void _showFullWidthBottomSheet(BuildContext context, String type) {
     final bool isLookingForTrufi = (type == t("trufi"));
     final List<Map<String, dynamic>> dataList = isLookingForTrufi ? _trufis : _radioTaxis;
@@ -749,20 +1516,25 @@ class _HomeScreenState extends State<HomeScreen> {
                             leading: CircleAvatar(
                               backgroundColor: kPrimary.withOpacity(0.12),
                               child: Icon(
-                                isLookingForTrufi ? Icons.directions_bus_filled : Icons.local_taxi,
+                                isLookingForTrufi ? Icons.bus_alert : Icons.local_taxi,
                                 color: kPrimary,
                               ),
                             ),
                             title: Text(titulo, style: TextStyle(color: textColor)),
                             subtitle: Text(subtitulo, style: TextStyle(color: subTextColor)),
-                            onTap: () {
+                            onTap: () async {
                               Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('${t("selected")} $titulo')),
-                              );
 
                               if (isLookingForTrufi && item["idtrufi"] != null) {
-                                _mostrarRutaDeUnTrufi(int.parse(item["idtrufi"].toString()));
+                                final id = int.parse(item["idtrufi"].toString());
+                                _mostrarRutaDeUnTrufi(id, nombreLinea: titulo);
+                                return;
+                              }
+
+                              // ✅ Radiotaxi: preguntar si quiere llamar
+                              if (!isLookingForTrufi) {
+                                final phone = (item["telefono_base"] ?? "").toString();
+                                await _confirmAndCall(phone);
                               }
                             },
                           );
@@ -776,7 +1548,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Drawer con settings (no cambié tu lógica, solo la mantengo como estaba)
+  // ==========================
+  // Drawer: orden + ajustes afuera + normativas + acerca de
+  // ==========================
   Drawer _buildSidebarDrawer() {
     final drawerWidth = MediaQuery.of(context).size.width * 0.75;
 
@@ -819,83 +1593,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // mismos botones que flotantes
-                  ListTile(
-                    leading: const Icon(Icons.directions_bus, color: kPrimary),
-                    title: Text(t("trufi"), style: TextStyle(color: textColor)),
-                    onTap: () {
-                      Navigator.pop(context);
-                      setState(() => isTrufiSelected = true);
-                      _showFullWidthBottomSheet(context, t("trufi"));
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.local_taxi, color: kPrimary),
-                    title: Text(t("radiotaxi"), style: TextStyle(color: textColor)),
-                    onTap: () {
-                      Navigator.pop(context);
-                      setState(() => isTrufiSelected = false);
-                      _showFullWidthBottomSheet(context, t("radiotaxi"));
-                    },
-                  ),
-
-                  const Divider(),
-
-                  ExpansionTile(
-                    leading: const Icon(Icons.settings, color: kPrimary),
-                    title: Text(t("settings"), style: TextStyle(color: textColor)),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.language, color: kPrimary),
-                            const SizedBox(width: 10),
-                            Expanded(child: Text(t("language"), style: TextStyle(color: textColor))),
-                            ValueListenableBuilder<String>(
-                              valueListenable: AppSettings.language,
-                              builder: (_, lang, __) {
-                                return DropdownButton<String>(
-                                  value: lang,
-                                  dropdownColor: bg,
-                                  style: TextStyle(color: textColor),
-                                  items: const [
-                                    DropdownMenuItem(value: "es", child: Text("Español")),
-                                    DropdownMenuItem(value: "en", child: Text("English")),
-                                    DropdownMenuItem(value: "qu", child: Text("Quechua")),
-                                  ],
-                                  onChanged: (v) {
-                                    if (v != null) AppSettings.language.value = v;
-                                  },
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      SwitchListTile(
-                        value: AppSettings.darkMode.value,
-                        activeColor: kPrimary,
-                        title: Text(t("darkmode"), style: TextStyle(color: textColor)),
-                        subtitle: Text(AppSettings.darkMode.value ? "ON" : "OFF", style: TextStyle(color: subTextColor)),
-                        onChanged: (v) => AppSettings.darkMode.value = v,
-                        secondary: const Icon(Icons.dark_mode, color: kPrimary),
-                      ),
-                      SwitchListTile(
-                        value: AppSettings.centerOnStart.value,
-                        activeColor: kPrimary,
-                        title: Text(t("center_on_start"), style: TextStyle(color: textColor)),
-                        subtitle: Text("Colcapirhua", style: TextStyle(color: subTextColor)),
-                        onChanged: (v) => AppSettings.centerOnStart.value = v,
-                        secondary: const Icon(Icons.center_focus_strong, color: kPrimary),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  ),
-
-                  const Divider(),
-
-                  // sindicatos
+                  // 1) SINDICATOS
                   ExpansionTile(
                     leading: const Icon(Icons.groups, color: kPrimary),
                     title: Text(t("sindicatos"), style: TextStyle(color: textColor)),
@@ -907,17 +1605,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         leading: const Icon(Icons.account_balance, color: kPrimary),
                         title: Text(sindicatoNombre, style: TextStyle(color: textColor)),
                         children: trufis.map<Widget>((tr) {
+                          final linea = (tr["nom_linea"] ?? "").toString();
+                          final id = int.tryParse((tr["idtrufi"] ?? "").toString());
+
                           return ListTile(
                             dense: true,
                             leading: const Icon(Icons.directions_bus, color: kPrimary),
-                            title: Text("${tr["nom_linea"]}", style: TextStyle(color: textColor)),
+                            title: Text(linea, style: TextStyle(color: textColor)),
                             onTap: () {
                               Navigator.pop(context);
                               setState(() => isTrufiSelected = true);
-                              _mostrarRutaDeUnTrufi(int.parse(tr["idtrufi"].toString()));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('${t("selected")} ${tr["nom_linea"]}')),
-                              );
+                              if (id != null) _mostrarRutaDeUnTrufi(id, nombreLinea: linea);
                             },
                           );
                         }).toList(),
@@ -925,28 +1623,186 @@ class _HomeScreenState extends State<HomeScreen> {
                     }).toList(),
                   ),
 
-                  // radiotaxis
+                  // 2) RADIOTAXIS
                   ExpansionTile(
                     leading: const Icon(Icons.local_taxi, color: kPrimary),
                     title: Text(t("radiotaxis"), style: TextStyle(color: textColor)),
                     children: _radioTaxis.map((rt) {
+                      final phone = (rt["telefono_base"] ?? "").toString();
+
                       return ListTile(
                         dense: true,
                         leading: const Icon(Icons.phone, color: kPrimary),
                         title: Text(rt["nombre_comercial"] ?? "Radiotaxi", style: TextStyle(color: textColor)),
-                        subtitle: Text(
-                          '${t("base")}: ${rt["telefono_base"] ?? ""}',
-                          style: TextStyle(color: subTextColor),
-                        ),
-                        onTap: () {
+                        subtitle: Text('${t("base")}: $phone', style: TextStyle(color: subTextColor)),
+                        onTap: () async {
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Radiotaxi: ${rt["nombre_comercial"]}")),
-                          );
+                          setState(() => isTrufiSelected = false);
+                          await _confirmAndCall(phone);
                         },
                       );
                     }).toList(),
                   ),
+
+                  const Divider(),
+
+                  // ✅ NORMATIVAS
+                  ListTile(
+                    leading: const Icon(Icons.menu_book, color: kPrimary),
+                    title: Text(t("normativas"), style: TextStyle(color: textColor)),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await _openNormativasDrawer();
+                    },
+                  ),
+
+                  const Divider(),
+
+                  // Idioma
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.language, color: kPrimary),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(t("language"), style: TextStyle(color: textColor))),
+                        ValueListenableBuilder<String>(
+                          valueListenable: AppSettings.language,
+                          builder: (_, lang, __) {
+                            return DropdownButton<String>(
+                              value: lang,
+                              dropdownColor: bg,
+                              style: TextStyle(color: textColor),
+                              items: const [
+                                DropdownMenuItem(value: "es", child: Text("Español")),
+                                DropdownMenuItem(value: "en", child: Text("English")),
+                                DropdownMenuItem(value: "qu", child: Text("Quechua")),
+                              ],
+                              onChanged: (v) {
+                                if (v != null) AppSettings.language.value = v;
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Darkmode
+                  SwitchListTile(
+                    value: AppSettings.darkMode.value,
+                    activeColor: kPrimary,
+                    title: Text(t("darkmode"), style: TextStyle(color: textColor)),
+                    onChanged: (v) => AppSettings.darkMode.value = v,
+                    secondary: const Icon(Icons.dark_mode, color: kPrimary),
+                  ),
+
+                  // ✅ Radio configurable
+                  ValueListenableBuilder<double>(
+                    valueListenable: AppSettings.radiusMeters,
+                    builder: (context, meters, _) {
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(t("radius_title"), style: TextStyle(color: textColor, fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 6),
+                            Text("${t("radius_sub")}: ${meters.round()} m", style: TextStyle(color: subTextColor)),
+                            Slider(
+                              value: meters.clamp(50, 2000),
+                              min: 50,
+                              max: 2000,
+                              divisions: 39, // saltos de 50
+                              activeColor: kPrimary,
+                              onChanged: (v) => AppSettings.radiusMeters.value = v,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  // ✅ Centrar: ahora es botón y abre opciones
+                  ListTile(
+                    leading: const Icon(Icons.center_focus_strong, color: kPrimary),
+                    title: Text(t("center_title"), style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
+                    subtitle: ValueListenableBuilder<String>(
+                      valueListenable: AppSettings.centerMode,
+                      builder: (_, mode, __) {
+                        return Text(
+                          mode == "ubicacion" ? t("center_location") : t("center_colcapirhua"),
+                          style: TextStyle(color: subTextColor),
+                        );
+                      },
+                    ),
+                    trailing: Icon(Icons.expand_more, color: textColor),
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) {
+                          final sheetBg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: sheetBg,
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(height: 10),
+                                Container(width: 46, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+                                const SizedBox(height: 10),
+                                ListTile(
+                                  leading: const Icon(Icons.location_city, color: kPrimary),
+                                  title: Text(t("center_colcapirhua")),
+                                  onTap: () {
+                                    AppSettings.centerMode.value = "colcapirhua";
+                                    Navigator.pop(context);
+                                  },
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.my_location, color: kPrimary),
+                                  title: Text(t("center_location")),
+                                  onTap: () {
+                                    AppSettings.centerMode.value = "ubicacion";
+                                    Navigator.pop(context);
+                                  },
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+
+                  // ✅ Acerca de
+                  ListTile(
+                    leading: const Icon(Icons.info_outline, color: kPrimary),
+                    title: Text(t("about"), style: TextStyle(color: textColor)),
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) {
+                          return AlertDialog(
+                            title: Text(t("about_title")),
+                            content: Text(t("about_body")),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text("OK"),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 10),
                 ],
               ),
             );

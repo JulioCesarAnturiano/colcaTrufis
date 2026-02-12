@@ -11,6 +11,8 @@ dependencies:
   flutter:
     sdk: flutter
   
+  url_launcher: ^6.3.0
+
   flutter_map_geojson: ^1.0.8 # Para manejar archivos GeoJSON
   # Mapa
   flutter_map: ^7.0.2
