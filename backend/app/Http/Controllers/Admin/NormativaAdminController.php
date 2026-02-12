@@ -6,8 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Normativa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use App\Models\SindicatoRadiotaxiParada;
-use App\Models\SindicatoRadioTaxi;
 
 class NormativaAdminController extends Controller
 {

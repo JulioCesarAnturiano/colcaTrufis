@@ -49,10 +49,16 @@ public function listarRutas(Request $request)
 
     // Mostrar formulario crear
     public function mostrarCrearRuta()
-    {
-        $trufis = DB::table('trufis')->select('idtrufi', 'nom_linea')->orderBy('nom_linea')->get();
-        return view('admin.rutas.create', compact('trufis'));
-    }
+{
+    $trufis = DB::table('trufis as t')
+        ->leftJoin('trufi_rutas as r', 'r.idtrufi', '=', 't.idtrufi')
+        ->whereNull('r.idtrufi') // ✅ solo los que NO tienen rutas
+        ->select('t.idtrufi', 't.nom_linea')
+        ->orderBy('t.nom_linea')
+        ->get();
+
+    return view('admin.rutas.create', compact('trufis'));
+}
 
     // Guardar ruta (Opción 2: continuar el orden desde el último punto)
     public function guardarRuta(Request $request)

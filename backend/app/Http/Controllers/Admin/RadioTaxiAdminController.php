@@ -8,17 +8,21 @@ use Illuminate\Support\Facades\DB;
 use App\Models\SindicatoRadioTaxi;
 use App\Models\SindicatoRadiotaxiParada;
 
+
 class RadioTaxiAdminController extends Controller
 {
     public function index(Request $request)
-    {
-        $usuario = $request->user();
-        if (!$usuario) return redirect()->route('login');
+{
+    $usuario = $request->user();
+    if (!$usuario) return redirect()->route('login');
 
-        $radiotaxis = DB::table('sindicato_radiotaxis')->orderBy('nombre_comercial')->paginate(20);
+    $radiotaxis = SindicatoRadioTaxi::with('parada')
+        ->orderBy('nombre_comercial')
+        ->paginate(20);
 
-        return view('admin.radiotaxis.index', compact('radiotaxis', 'usuario'));
-    }
+    return view('admin.radiotaxis.index', compact('radiotaxis', 'usuario'));
+}
+
 
     public function create(Request $request)
     {
@@ -28,32 +32,60 @@ class RadioTaxiAdminController extends Controller
         return view('admin.radiotaxis.create', compact('usuario'));
     }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-    'nombre_comercial' => ['required','string','max:255'],
-    'telefono_base' => ['required','string','max:50'],
-    'latitud' => ['required','numeric'],
-    'longitud' => ['required','numeric'],
-]);
 
-        DB::table('sindicato_radiotaxis')->insert([
-            'nombre_comercial' => $request->nombre_comercial,
-            'telefono_base' => $request->telefono_base,
-            'created_at' => now(),
-            'updated_at' => now(),
+public function store(Request $request)
+{
+    $data = $request->validate([
+        'nombre_comercial' => ['required','string','max:255'],
+        'telefono_base' => ['required','string','max:255'],
+        'latitud' => ['required','numeric'],
+        'longitud' => ['required','numeric'],
+    ]);
+
+    DB::beginTransaction();
+
+    try {
+        $radiotaxi = SindicatoRadioTaxi::create([
+            'nombre_comercial' => $data['nombre_comercial'],
+            'telefono_base' => $data['telefono_base'],
         ]);
 
-        return redirect()->route('admin.radiotaxis.index')->with('success', 'RadioTaxi creado correctamente.');
+        $parada = SindicatoRadiotaxiParada::updateOrCreate(
+            ['sindicato_radiotaxi_id' => $radiotaxi->id],
+            [
+                'latitud' => $data['latitud'],
+                'longitud' => $data['longitud'],
+                'estado' => 1,
+            ]
+        );
+
+        DB::commit();
+
+        return redirect()->route('admin.radiotaxis.index')
+            ->with('success', 'RadioTaxi y parada registrados. Parada ID: '.$parada->id);
+
+    } catch (\Throwable $e) {
+        DB::rollBack();
+
+        // muestra el error REAL
+        dd(
+            'ERROR GUARDANDO PARADA',
+            $e->getMessage(),
+            $e->getFile().':'.$e->getLine(),
+            $e->getTraceAsString()
+        );
     }
+}
 
 
-
-public function edit($id)
+public function edit(Request $request, $id)
 {
+    $usuario = $request->user();
+    if (!$usuario) return redirect()->route('login');
+
     $radiotaxi = SindicatoRadioTaxi::with('parada')->findOrFail($id);
 
-    return view('admin.radiotaxis.edit', compact('radiotaxi'));
+    return view('admin.radiotaxis.edit', compact('radiotaxi', 'usuario'));
 }
 
 
@@ -85,11 +117,13 @@ public function edit($id)
     return redirect()->route('admin.radiotaxis.index')
         ->with('success', 'RadioTaxi actualizado correctamente.');
 }
+public function destroy(Request $request, $id)
+{
+    SindicatoRadiotaxiParada::where('sindicato_radiotaxi_id', $id)->delete();
+    SindicatoRadioTaxi::where('id', $id)->delete();
 
-    public function destroy(Request $request, $id)
-    {
-        DB::table('sindicato_radiotaxis')->where('id', $id)->delete();
+    return redirect()->route('admin.radiotaxis.index')
+        ->with('success', 'RadioTaxi eliminado correctamente.');
+}
 
-        return redirect()->route('admin.radiotaxis.index')->with('success', 'RadioTaxi eliminado correctamente.');
-    }
 }

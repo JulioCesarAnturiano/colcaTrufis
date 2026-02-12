@@ -63,14 +63,7 @@ class SindicatoRadioTaxisController extends Controller
         return response()->json($sindicatoRadioTaxi);
     }
 
-    // DELETE /api/sindicato-radiotaxis/{id}
-    public function destroy($id)
-    {
-        $sindicatoRadioTaxi = SindicatoRadioTaxi::findOrFail($id);
-        $sindicatoRadioTaxi->delete();
 
-        return response()->json(['message' => 'SindicatoRadioTaxi eliminado']);
-    }
 
     // ==========================
     // NUEVAS RUTAS PARA PARADAS
