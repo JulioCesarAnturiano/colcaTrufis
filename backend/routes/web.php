@@ -11,6 +11,8 @@ use App\Http\Controllers\Admin\UsuarioAdminController;
 use App\Http\Controllers\Admin\SindicatoAdminController;
 use App\Http\Controllers\Admin\RadioTaxiAdminController;
 use App\Http\Controllers\Admin\NormativaAdminController;
+use App\Http\Controllers\Admin\ReporteAdminController;
+
 
 Route::get('/', fn() => redirect()->route('login'));
 
@@ -196,6 +198,10 @@ Route::delete('/normativas/{id}', [NormativaAdminController::class, 'destroy'])
     Route::get('/normativas/{id}/ver', [NormativaAdminController::class, 'verPdf'])
     ->middleware('permission:admin.normativas.ver')
     ->name('admin.normativas.verPdf');
+    //reportes
+    Route::get('/reportes/trufis-mas-seleccionados', [ReporteAdminController::class, 'trufisMasSeleccionados'])
+    ->middleware('permission:admin.reportes.ver')
+    ->name('admin.reportes.trufis_mas_seleccionados');
 
     
 });

@@ -7,6 +7,7 @@ use App\Http\Controllers\SindicatoController;
 use App\Http\Controllers\SindicatoRadioTaxisController;
 use App\Http\Controllers\NormativaController;
 use App\Http\Controllers\SindicatoRadioTaxiController;
+use App\Http\Controllers\TrufiSeleccionController;
 
 Route::get('/test', function () {
     return response()->json([
@@ -51,3 +52,5 @@ Route::get('/radiotaxis/{id}', [SindicatoRadioTaxisController::class, 'show']);
 //ParadasFormatogeoJson
 Route::get('/radiotaxis/paradas/geojson', [SindicatoRadioTaxisController::class, 'paradasGeojson']);
 Route::get('/radiotaxis/{id}/parada/geojson', [SindicatoRadioTaxisController::class, 'paradaGeojsonPorRadiotaxi']);
+// Registrar selección de un trufi (Flutter llamará esto cuando el usuario lo elija)
+Route::post('/trufis/{idtrufi}/seleccion', [TrufiSeleccionController::class, 'registrar']);
