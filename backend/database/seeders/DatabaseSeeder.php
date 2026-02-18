@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RolesSeeder::class,
             UserSeeder::class,
+            AppSettingsSeeder::class,
         ]);
         User::factory()->create([
             'name' => 'Test User',

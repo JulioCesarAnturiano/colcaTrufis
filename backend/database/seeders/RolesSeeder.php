@@ -51,6 +51,9 @@ class RolesSeeder extends Seeder
     'admin.normativas.eliminar',
     //reportes
     'admin.reportes.ver',
+    //reclamos
+    'admin.settings.ver',
+    'admin.settings.editar',
 ];
 
 

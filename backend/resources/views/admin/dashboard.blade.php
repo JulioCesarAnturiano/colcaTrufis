@@ -158,22 +158,24 @@
             </div>
         </div>
 
-       {{-- CONTENEDOR 3: USUARIOS --}}
+ {{-- CONTENEDOR 3: USUARIOS --}}
 <div class="col-12 col-md-4">
     <div class="card ct-stat-card h-100">
         <div class="card-body">
 
-            <h5 class="mb-3 text-center">Usuarios Y Reportes</h5>
+            <h5 class="mb-3 text-center">Usuarios, Reportes Y Configuración</h5>
 
             {{-- USUARIOS --}}
             @can('admin.usuarios.crear')
-                <a href="{{ route('admin.usuarios.crear') }}" class="btn ct-btn ct-btn-create w-100 mb-2">
+                <a href="{{ route('admin.usuarios.crear') }}" 
+                   class="btn ct-btn ct-btn-create w-100 mb-2">
                     Crear Usuario
                 </a>
             @endcan
 
             @can('admin.usuarios.ver')
-                <a href="{{ route('admin.usuarios.index') }}" class="btn ct-btn ct-btn-view w-100 mb-2">
+                <a href="{{ route('admin.usuarios.index') }}" 
+                   class="btn ct-btn ct-btn-view w-100 mb-2">
                     Ver Usuarios
                 </a>
             @endcan
@@ -183,14 +185,25 @@
             {{-- REPORTES --}}
             @can('admin.reportes.ver')
                 <a href="{{ route('admin.reportes.trufis_mas_seleccionados') }}" 
-                   class="btn ct-btn ct-btn-view w-100">
+                   class="btn ct-btn ct-btn-view w-100 mb-2">
                     Ver Reportes
+                </a>
+            @endcan
+
+            <hr>
+
+            {{-- CONFIGURACIÓN RECLAMOS --}}
+            @can('admin.settings.ver')
+                <a href="{{ route('admin.settings.reclamos.edit') }}" 
+                   class="btn ct-btn ct-btn-view w-100">
+                    Configurar Números De Reclamos
                 </a>
             @endcan
 
         </div>
     </div>
 </div>
+
 
 
 @endsection

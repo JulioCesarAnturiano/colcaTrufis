@@ -12,6 +12,8 @@ use App\Http\Controllers\Admin\SindicatoAdminController;
 use App\Http\Controllers\Admin\RadioTaxiAdminController;
 use App\Http\Controllers\Admin\NormativaAdminController;
 use App\Http\Controllers\Admin\ReporteAdminController;
+use App\Http\Controllers\Admin\AppSettingsAdminController;
+
 
 
 Route::get('/', fn() => redirect()->route('login'));
@@ -202,6 +204,15 @@ Route::delete('/normativas/{id}', [NormativaAdminController::class, 'destroy'])
     Route::get('/reportes/trufis-mas-seleccionados', [ReporteAdminController::class, 'trufisMasSeleccionados'])
     ->middleware('permission:admin.reportes.ver')
     ->name('admin.reportes.trufis_mas_seleccionados');
+    //reclamos
+    Route::get('/settings/reclamos', [AppSettingsAdminController::class, 'editReclamos'])
+    ->middleware('permission:admin.settings.ver')
+    ->name('admin.settings.reclamos.edit');
+
+    Route::put('/settings/reclamos', [AppSettingsAdminController::class, 'updateReclamos'])
+    ->middleware('permission:admin.settings.editar')
+    ->name('admin.settings.reclamos.update');
+
 
     
 });
