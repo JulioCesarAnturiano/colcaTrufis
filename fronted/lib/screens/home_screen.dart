@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 
@@ -32,6 +33,39 @@ class AppSettings {
 }
 
 enum RouteFilterMode { nearby, all }
+
+// ✅ NUEVO: Modelo de historial
+class HistorialItem {
+  final int id;
+  final String nombre;
+  final String tipo; // 'trufi' | 'radiotaxi'
+  final String? telefono; // solo para radiotaxis
+  final DateTime fechaUso;
+
+  HistorialItem({
+    required this.id,
+    required this.nombre,
+    required this.tipo,
+    this.telefono,
+    required this.fechaUso,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'nombre': nombre,
+        'tipo': tipo,
+        'telefono': telefono,
+        'fechaUso': fechaUso.toIso8601String(),
+      };
+
+  factory HistorialItem.fromJson(Map<String, dynamic> json) => HistorialItem(
+        id: json['id'],
+        nombre: json['nombre'],
+        tipo: json['tipo'],
+        telefono: json['telefono'],
+        fechaUso: DateTime.parse(json['fechaUso']),
+      );
+}
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -80,6 +114,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _selectedTrufiId;
   String? _selectedTrufiName;
 
+  // ✅ NUEVO: Lista de puntos de la ruta seleccionada (calles cada ~100m)
+  List<Map<String, dynamic>> _rutaPuntos = [];
+
   // ✅ cache de nombres por idtrufi
   final Map<int, String> _trufiNameById = {};
 
@@ -101,6 +138,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ✅ Listener para radio (para evitar setState after dispose)
   VoidCallback? _radiusListener;
+
+  // ✅ NUEVO: Estados de carga
+  bool _isLoadingRutas = false;
+  bool _isLoadingParadas = false;
+  bool _isLoadingRutaTrufi = false;
+  bool _isLoadingGPS = false;
+  bool _isLoadingNormativas = false;
+  bool _isLoadingDatos = false;
+  bool _isLoadingGeoJSON = false;
+
+  // ✅ NUEVO: Historial persistente
+  List<HistorialItem> _historialTrufis = [];
+  List<HistorialItem> _historialRadiotaxis = [];
+  static const String _kHistorialTrufisKey = 'historial_trufis_v1';
+  static const String _kHistorialRadiotaxisKey = 'historial_radiotaxis_v1';
+  static const int _kMaxHistorial = 20;
+
+  // ✅ NUEVO: Reclamos
+  List<Map<String, dynamic>> _reclamos = [];
+  bool _isLoadingReclamos = false;
+
+  // ✅ NUEVO: Fuera de Colcapirhua
+  bool _isOutsideColcapirhua = false;
+  bool _outsideBannerDismissed = false;
+  // Bounding box aproximado de Colcapirhua (calculado del GeoJSON)
+  double? _colcaBoundsMinLat;
+  double? _colcaBoundsMaxLat;
+  double? _colcaBoundsMinLng;
+  double? _colcaBoundsMaxLng;
 
   // ==========================
   // Traducciones
@@ -151,6 +217,36 @@ class _HomeScreenState extends State<HomeScreen> {
             "ColcaTrufis Colcapirhua-pi trufi, radiotaxi ñan-kunata rikuchin. Radio akllasqa kaqman hina qaylla ñan-kunata utaq llapan ñan-kunata rikuyta atinki; huk linea akllaspayki qallariy, tukuyta rikunki.",
       },
       "stops": {"es": "Paradas", "en": "Stops", "qu": "Sayay"},
+      "social_networks": {"es": "Redes Sociales", "en": "Social Networks", "qu": "Redes Sociales"},
+      "official_page": {"es": "Página Oficial", "en": "Official Page", "qu": "Página Oficial"},
+      "route_points": {"es": "Recorrido de la ruta", "en": "Route path", "qu": "Ñan puriynin"},
+      "stop_address": {"es": "Dirección de parada", "en": "Stop address", "qu": "Sayay direccion"},
+      "point": {"es": "Punto", "en": "Point", "qu": "Punto"},
+      // ✅ NUEVO: traducciones historial
+      "history": {"es": "Historial", "en": "History", "qu": "Qhipa kaq"},
+      "history_trufis": {"es": "Trufis recientes", "en": "Recent trufis", "qu": "Qhipa trufi-kuna"},
+      "history_radiotaxis": {"es": "Radiotaxis recientes", "en": "Recent radio taxis", "qu": "Qhipa radiotaxi-kuna"},
+      "history_empty": {"es": "Sin historial", "en": "No history", "qu": "Mana qhipa"},
+      "history_clear": {"es": "Limpiar historial", "en": "Clear history", "qu": "Huqariy"},
+      "history_clear_confirm": {"es": "¿Limpiar historial?", "en": "Clear history?", "qu": "Huqariyta munankichu?"},
+      "used_at": {"es": "Usado", "en": "Used", "qu": "Llamk'asqa"},
+      // ✅ NUEVO: traducciones de carga
+      "loading_route": {"es": "Cargando ruta...", "en": "Loading route...", "qu": "Ñan carganki..."},
+      "loading_data": {"es": "Cargando datos...", "en": "Loading data...", "qu": "Datos carganki..."},
+      "loading_gps": {"es": "Obteniendo ubicación...", "en": "Getting location...", "qu": "Chiqan yachayta..."},
+      "loading_stops": {"es": "Cargando paradas...", "en": "Loading stops...", "qu": "Sayay carganki..."},
+      "loading_norms": {"es": "Cargando normativas...", "en": "Loading regulations...", "qu": "Kamachiykuna carganki..."},
+      "loading_geojson": {"es": "Cargando mapa...", "en": "Loading map...", "qu": "Mapa carganki..."},
+      // ✅ NUEVO: reclamos
+      "reclamos": {"es": "Números de Reclamos", "en": "Complaint Numbers", "qu": "Reclamo números"},
+      "reclamos_call": {"es": "Llamar a Reclamos", "en": "Call Complaints", "qu": "Reclamo waqay"},
+      "reclamos_phone": {"es": "Teléfono de reclamos", "en": "Complaint phone", "qu": "Reclamo telefono"},
+      "reclamos_whatsapp": {"es": "WhatsApp de reclamos", "en": "Complaints WhatsApp", "qu": "Reclamo WhatsApp"},
+      "reclamos_inactive": {"es": "No disponible", "en": "Not available", "qu": "Mana"},
+      // ✅ NUEVO: fuera de colcapirhua
+      "outside_title": {"es": "Estás fuera de Colcapirhua", "en": "You're outside Colcapirhua", "qu": "Colcapirhua-manta llojsisqa kanki"},
+      "outside_body": {"es": "Esta app muestra trufis y radiotaxis de Colcapirhua. Puedes seguir usándola normalmente.", "en": "This app shows trufis and radio taxis from Colcapirhua. You can still use it normally.", "qu": "Kay app Colcapirhua-pi trufi, radiotaxi-kunata rikuchin. Allinllatam llamk'aqtinki."},
+      "outside_dismiss": {"es": "Entendido", "en": "Got it", "qu": "Yachani"},
     };
     return dict[key]?[lang] ?? dict[key]?["es"] ?? key;
   }
@@ -171,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _recalcCircleRadiusPx(_mapController.camera.zoom);
       }
       _aplicarFiltroRutas();
-      _aplicarFiltroParadas(); // ✅ NUEVO
+      _aplicarFiltroParadas();
     };
     AppSettings.radiusMeters.addListener(_radiusListener!);
 
@@ -187,6 +283,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _initAll() async {
+    // ✅ Cargar historial persistente al iniciar
+    await _cargarHistorial();
+
     await _loadGeoJsonZona();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -194,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _fetchSindicatos(),
         _fetchRadioTaxis(),
         _fetchTrufis(),
-        _fetchParadasRadiotaxis(), // ✅ NUEVO
+        _fetchParadasRadiotaxis(),
       ]);
 
       await _cargarTodasLasRutas();
@@ -202,13 +301,98 @@ class _HomeScreenState extends State<HomeScreen> {
       // ✅ obtenemos GPS al inicio (si se puede)
       await _getCurrentLocation();
 
-      // ✅ Por defecto al entrar: centrar Colcapirhua (no mueve el geojson, solo el mapa)
+      // ✅ Por defecto al entrar: centrar Colcapirhua
       _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
 
       // ✅ Importante: al entrar debe aplicar "cerca" si hay GPS
       _aplicarFiltroRutas();
-      _aplicarFiltroParadas(); // ✅ NUEVO
+      _aplicarFiltroParadas();
     });
+  }
+
+  // ==========================
+  // ✅ HISTORIAL PERSISTENTE
+  // ==========================
+  Future<void> _cargarHistorial() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final trufisJson = prefs.getStringList(_kHistorialTrufisKey) ?? [];
+      final radiotaxisJson = prefs.getStringList(_kHistorialRadiotaxisKey) ?? [];
+
+      if (!mounted) return;
+      setState(() {
+        _historialTrufis = trufisJson
+            .map((e) => HistorialItem.fromJson(jsonDecode(e)))
+            .toList();
+        _historialRadiotaxis = radiotaxisJson
+            .map((e) => HistorialItem.fromJson(jsonDecode(e)))
+            .toList();
+      });
+    } catch (e) {
+      print("Error cargando historial: $e");
+    }
+  }
+
+  Future<void> _guardarHistorial() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        _kHistorialTrufisKey,
+        _historialTrufis.map((e) => jsonEncode(e.toJson())).toList(),
+      );
+      await prefs.setStringList(
+        _kHistorialRadiotaxisKey,
+        _historialRadiotaxis.map((e) => jsonEncode(e.toJson())).toList(),
+      );
+    } catch (e) {
+      print("Error guardando historial: $e");
+    }
+  }
+
+  Future<void> _agregarAlHistorial(HistorialItem item) async {
+    if (!mounted) return;
+    setState(() {
+      if (item.tipo == 'trufi') {
+        // Eliminar duplicado si existe
+        _historialTrufis.removeWhere((h) => h.id == item.id);
+        // Agregar al inicio (más reciente primero)
+        _historialTrufis.insert(0, item);
+        // Limitar tamaño
+        if (_historialTrufis.length > _kMaxHistorial) {
+          _historialTrufis = _historialTrufis.sublist(0, _kMaxHistorial);
+        }
+      } else {
+        _historialRadiotaxis.removeWhere((h) => h.id == item.id);
+        _historialRadiotaxis.insert(0, item);
+        if (_historialRadiotaxis.length > _kMaxHistorial) {
+          _historialRadiotaxis = _historialRadiotaxis.sublist(0, _kMaxHistorial);
+        }
+      }
+    });
+    await _guardarHistorial();
+  }
+
+  Future<void> _limpiarHistorial(String tipo) async {
+    if (!mounted) return;
+    setState(() {
+      if (tipo == 'trufi') {
+        _historialTrufis.clear();
+      } else {
+        _historialRadiotaxis.clear();
+      }
+    });
+    await _guardarHistorial();
+  }
+
+  String _formatFecha(DateTime fecha) {
+    final ahora = DateTime.now();
+    final diff = ahora.difference(fecha);
+    if (diff.inMinutes < 1) return "Ahora mismo";
+    if (diff.inMinutes < 60) return "Hace ${diff.inMinutes} min";
+    if (diff.inHours < 24) return "Hace ${diff.inHours}h";
+    if (diff.inDays < 7) return "Hace ${diff.inDays} días";
+    return "${fecha.day}/${fecha.month}/${fecha.year}";
   }
 
   // ==========================
@@ -216,11 +400,18 @@ class _HomeScreenState extends State<HomeScreen> {
   // ==========================
   Future<void> _fetchSindicatos() async {
     try {
+      if (!mounted) return;
+      setState(() => _isLoadingDatos = true);
       final sindicatos = await _apiService.getSindicatos();
       if (!mounted) return;
-      setState(() => _sindicatos = List<Map<String, dynamic>>.from(sindicatos));
+      setState(() {
+        _sindicatos = List<Map<String, dynamic>>.from(sindicatos);
+        _isLoadingDatos = false;
+      });
     } catch (e) {
       print("Error fetching sindicatos: $e");
+      if (!mounted) return;
+      setState(() => _isLoadingDatos = false);
     }
   }
 
@@ -229,7 +420,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final radioTaxis = await _apiService.getRadioTaxis();
       if (!mounted) return;
 
-      // ✅ NUEVO: cache de nombres por id
+      // ✅ cache de nombres por id
       _radiotaxiNameById.clear();
       for (final it in radioTaxis) {
         final id = int.tryParse((it["id"] ?? "").toString());
@@ -240,6 +431,12 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       setState(() => _radioTaxis = List<Map<String, dynamic>>.from(radioTaxis));
+
+      // ✅ FIX: reconstruir markers de paradas con nombres correctos
+      // (porque _fetchParadasRadiotaxis puede haber corrido primero con cache vacío)
+      if (_paradasRadiotaxis.isNotEmpty) {
+        _aplicarFiltroParadas();
+      }
     } catch (e) {
       print("Error fetching radiotaxis: $e");
     }
@@ -270,9 +467,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ✅ NUEVO: fetch paradas de radiotaxis
+  // ✅ fetch paradas de radiotaxis
   Future<void> _fetchParadasRadiotaxis() async {
     try {
+      if (!mounted) return;
+      setState(() => _isLoadingParadas = true);
+
       final res = await http.get(
         Uri.parse("$_apiBase/radiotaxis/paradas"),
         headers: const {"Accept": "application/json"},
@@ -294,13 +494,17 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       setState(() {
         _paradasRadiotaxis = data.map((e) => e as Map<String, dynamic>).toList();
+        _isLoadingParadas = false;
       });
 
       _aplicarFiltroParadas();
     } catch (e) {
       print("Error fetching paradas: $e");
       if (!mounted) return;
-      setState(() => _paradasRadiotaxis = []);
+      setState(() {
+        _paradasRadiotaxis = [];
+        _isLoadingParadas = false;
+      });
     }
   }
 
@@ -309,6 +513,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // ==========================
   Future<void> _loadGeoJsonZona() async {
     try {
+      if (!mounted) return;
+      setState(() => _isLoadingGeoJSON = true);
+
       final String response = await rootBundle.loadString('assets/geojson/colcapirhua.geojson');
 
       _zonaParser.polygons.clear();
@@ -336,21 +543,104 @@ class _HomeScreenState extends State<HomeScreen> {
             color: kPrimary.withOpacity(0.95),
           );
         }).toList();
+
+        _isLoadingGeoJSON = false;
       });
+
+      // ✅ NUEVO: calcular bounding box del GeoJSON para detección fuera de Colca
+      _calcularBoundingBoxColca(response);
+
     } catch (e) {
       print("Error loading zona: $e");
       if (!mounted) return;
       setState(() {
         colcapirhuaPolygons = [];
         colcapirhuaLines = [];
+        _isLoadingGeoJSON = false;
       });
     }
+  }
+
+  // ✅ NUEVO: calcula bounding box de Colcapirhua desde GeoJSON
+  void _calcularBoundingBoxColca(String geoJsonStr) {
+    try {
+      final geo = jsonDecode(geoJsonStr);
+      final features = geo['features'] as List? ?? [];
+      double minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+
+      for (final f in features) {
+        final geom = f['geometry'];
+        if (geom == null) continue;
+        final coords = _extractAllCoords(geom);
+        for (final c in coords) {
+          if (c[1] < minLat) minLat = c[1].toDouble();
+          if (c[1] > maxLat) maxLat = c[1].toDouble();
+          if (c[0] < minLng) minLng = c[0].toDouble();
+          if (c[0] > maxLng) maxLng = c[0].toDouble();
+        }
+      }
+
+      // Agregar un buffer de ~0.01 grados (~1km) alrededor del polígono
+      _colcaBoundsMinLat = minLat - 0.01;
+      _colcaBoundsMaxLat = maxLat + 0.01;
+      _colcaBoundsMinLng = minLng - 0.01;
+      _colcaBoundsMaxLng = maxLng + 0.01;
+    } catch (e) {
+      print("Error calculando bounding box: $e");
+    }
+  }
+
+  List<List<num>> _extractAllCoords(Map geom) {
+    final type = geom['type'];
+    final result = <List<num>>[];
+    if (type == 'Point') {
+      final c = geom['coordinates'];
+      if (c is List && c.length >= 2) result.add([c[0] as num, c[1] as num]);
+    } else if (type == 'LineString' || type == 'MultiPoint') {
+      for (final c in (geom['coordinates'] as List? ?? [])) {
+        if (c is List && c.length >= 2) result.add([c[0] as num, c[1] as num]);
+      }
+    } else if (type == 'Polygon' || type == 'MultiLineString') {
+      for (final ring in (geom['coordinates'] as List? ?? [])) {
+        for (final c in (ring as List? ?? [])) {
+          if (c is List && c.length >= 2) result.add([c[0] as num, c[1] as num]);
+        }
+      }
+    } else if (type == 'MultiPolygon') {
+      for (final poly in (geom['coordinates'] as List? ?? [])) {
+        for (final ring in (poly as List? ?? [])) {
+          for (final c in (ring as List? ?? [])) {
+            if (c is List && c.length >= 2) result.add([c[0] as num, c[1] as num]);
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  // ✅ NUEVO: chequear si la posición está fuera de Colcapirhua
+  void _checkIfOutsideColcapirhua() {
+    if (_currentPosition == null) return;
+    if (_colcaBoundsMinLat == null) return;
+
+    final lat = _currentPosition!.latitude;
+    final lng = _currentPosition!.longitude;
+
+    final outside = lat < _colcaBoundsMinLat! ||
+        lat > _colcaBoundsMaxLat! ||
+        lng < _colcaBoundsMinLng! ||
+        lng > _colcaBoundsMaxLng!;
+
+    if (!mounted) return;
+    setState(() {
+      _isOutsideColcapirhua = outside;
+      if (!outside) _outsideBannerDismissed = false;
+    });
   }
 
   // ==========================
   // PARSEO MANUAL GEOJSON (RUTAS)
   // ==========================
-  /// Retorna: (polylines, idsPorPolyline)
   ({List<Polyline> polylines, List<int?> ids}) _polylinesFromGeoJsonWithIds(Map<String, dynamic> geo) {
     final features = (geo['features'] as List? ?? []);
     final polylines = <Polyline>[];
@@ -382,7 +672,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Polyline(
             points: points,
             strokeWidth: 3,
-            color: kAqua.withOpacity(0.95), // ✅ mismo color del label
+            color: kAqua.withOpacity(0.95),
             borderColor: kPrimaryDark.withOpacity(0.55),
             borderStrokeWidth: 1,
           ),
@@ -399,9 +689,11 @@ class _HomeScreenState extends State<HomeScreen> {
   // ==========================
   Future<void> _cargarTodasLasRutas() async {
     try {
+      if (!mounted) return;
+      setState(() => _isLoadingRutas = true);
+
       final geo = await _apiService.getGeoJsonTodasRutas();
-      
-      // ✅ CORRECCIÓN: verificar que geo tenga features
+
       if (geo == null || geo['features'] == null) {
         print("⚠️ GeoJSON vacío o sin features");
         _todasRutas = [];
@@ -411,13 +703,13 @@ class _HomeScreenState extends State<HomeScreen> {
           _rutasVisibles = [];
           _inicioFinMarkers = [];
           _routeLabelMarkers = [];
+          _isLoadingRutas = false;
         });
         return;
       }
 
       final parsed = _polylinesFromGeoJsonWithIds(geo);
 
-      // guardamos ids en "tag" paralelo (por índice) usando un map
       _todasRutas = parsed.polylines;
       _polylineIdIndex = parsed.ids;
 
@@ -428,6 +720,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _rutasVisibles = _todasRutas;
         _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
         _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+        _isLoadingRutas = false;
       });
     } catch (e) {
       print("❌ Error cargando rutas: $e");
@@ -438,6 +731,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _rutasVisibles = [];
         _inicioFinMarkers = [];
         _routeLabelMarkers = [];
+        _isLoadingRutas = false;
       });
     }
   }
@@ -446,8 +740,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<int?> _polylineIdIndex = [];
 
   int? _idOfPolyline(Polyline pl) {
-    // busca el índice del polyline exacto en _todasRutas o _rutasVisibles
-    // (usa identidad por referencia cuando vienen de la lista)
     final idx = _rutasVisibles.indexOf(pl);
     if (idx >= 0 && idx < _polylineIdIndex.length) return _polylineIdIndex[idx];
     return null;
@@ -458,25 +750,39 @@ class _HomeScreenState extends State<HomeScreen> {
   // ==========================
   Future<void> _getCurrentLocation() async {
     try {
+      if (!mounted) return;
+      setState(() => _isLoadingGPS = true);
+
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
         if (!mounted) return;
-        setState(() => _currentPosition = null);
+        setState(() {
+          _currentPosition = null;
+          _isLoadingGPS = false;
+        });
         return;
       }
 
       final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium);
       if (!mounted) return;
-      setState(() => _currentPosition = pos);
+      setState(() {
+        _currentPosition = pos;
+        _isLoadingGPS = false;
+      });
 
       _recalcCircleRadiusPx(_mapController.camera.zoom);
+      // ✅ NUEVO: chequear si está fuera de Colcapirhua
+      _checkIfOutsideColcapirhua();
     } catch (e) {
       print("Error getting location: $e");
       if (!mounted) return;
-      setState(() => _currentPosition = null);
+      setState(() {
+        _currentPosition = null;
+        _isLoadingGPS = false;
+      });
     }
   }
 
@@ -527,7 +833,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Si el usuario elige "todas"
     if (_routeFilterMode == RouteFilterMode.all) {
       setState(() {
         _rutasVisibles = _todasRutas;
@@ -537,7 +842,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Modo "cerca": si no hay ubicación, mostramos todas (según tu regla anterior)
     if (_currentPosition == null) {
       setState(() {
         _rutasVisibles = _todasRutas;
@@ -563,9 +867,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // ✅ NUEVO: FILTRO (cerca/todas) - PARADAS
+  // FILTRO (cerca/todas) - PARADAS
   // ==========================
-    void _aplicarFiltroParadas() {
+  void _aplicarFiltroParadas() {
     if (!mounted) return;
 
     if (_paradasRadiotaxis.isEmpty) {
@@ -576,8 +880,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // ✅ NUEVA LÓGICA:
-    // Radiotaxis SIEMPRE muestran TODAS las paradas
     final todasLasParadas = _paradasRadiotaxis;
 
     setState(() {
@@ -586,16 +888,16 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-
   // ==========================
-  // ✅ NUEVO: BUILD PARADAS MARKERS
+  // BUILD PARADAS MARKERS
   // ==========================
   List<Marker> _buildParadasMarkers(List<Map<String, dynamic>> paradas) {
     final markers = <Marker>[];
 
     for (final p in paradas) {
-      final lat = double.tryParse((p["latitud"] ?? "").toString());
-      final lng = double.tryParse((p["longitud"] ?? "").toString());
+      // ✅ FIX: soportar múltiples nombres de campo para lat/lng
+      final lat = double.tryParse((p["latitud"] ?? p["lat"] ?? p["latitude"] ?? "").toString());
+      final lng = double.tryParse((p["longitud"] ?? p["lng"] ?? p["longitude"] ?? p["lon"] ?? "").toString());
       if (lat == null || lng == null) continue;
 
       markers.add(
@@ -603,21 +905,26 @@ class _HomeScreenState extends State<HomeScreen> {
           point: LatLng(lat, lng),
           width: 38,
           height: 38,
-          child: Container(
-            decoration: BoxDecoration(
-              color: kPrimary,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withOpacity(0.95), width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
-                  blurRadius: 12,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Center(
-              child: Icon(Icons.local_taxi, color: Colors.white, size: 20),
+          child: GestureDetector(
+            onTap: () {
+              _mostrarDireccionParada(p);
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: kPrimary,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(0.95), width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.25),
+                    blurRadius: 12,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(Icons.local_taxi, color: Colors.white, size: 20),
+              ),
             ),
           ),
         ),
@@ -628,17 +935,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // ✅ NUEVO: BUILD PARADAS LABELS (debajo del marker)
+  // BUILD PARADAS LABELS (debajo del marker)
   // ==========================
   List<Marker> _buildParadasLabels(List<Map<String, dynamic>> paradas) {
     final markers = <Marker>[];
 
     for (final p in paradas) {
-      final lat = double.tryParse((p["latitud"] ?? "").toString());
-      final lng = double.tryParse((p["longitud"] ?? "").toString());
+      // ✅ FIX: soportar múltiples nombres de campo para lat/lng
+      final lat = double.tryParse((p["latitud"] ?? p["lat"] ?? p["latitude"] ?? "").toString());
+      final lng = double.tryParse((p["longitud"] ?? p["lng"] ?? p["longitude"] ?? p["lon"] ?? "").toString());
       if (lat == null || lng == null) continue;
 
-      final radiotaxiId = int.tryParse((p["sindicato_radiotaxi_id"] ?? "").toString());
+      // ✅ FIX: soportar múltiples nombres de campo para el id del radiotaxi
+      final radiotaxiId = int.tryParse(
+        (p["sindicato_radiotaxi_id"] ?? p["radiotaxi_id"] ?? p["idradiotaxi"] ?? p["sindicato_id"] ?? "").toString(),
+      );
       final name = (radiotaxiId != null) ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId") : "Parada";
 
       if (name.trim().isEmpty) continue;
@@ -653,7 +964,7 @@ class _HomeScreenState extends State<HomeScreen> {
           height: 34,
           alignment: Alignment.bottomCenter,
           child: Transform.translate(
-            offset: const Offset(0, 22), // ✅ lo baja debajo del punto
+            offset: const Offset(0, 22),
             child: _paradaNamePill(name),
           ),
         ),
@@ -694,6 +1005,82 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
+  // Mostrar dirección de parada
+  // ✅ REVERTIDO al enfoque original: await dirección primero, luego mostrar sheet
+  // ==========================
+  void _mostrarDireccionParada(Map<String, dynamic> parada) async {
+    final lat = double.tryParse((parada["latitud"] ?? parada["lat"] ?? parada["latitude"] ?? "").toString());
+    final lng = double.tryParse((parada["longitud"] ?? parada["lng"] ?? parada["longitude"] ?? parada["lon"] ?? "").toString());
+    final radiotaxiId = int.tryParse(
+      (parada["sindicato_radiotaxi_id"] ?? parada["radiotaxi_id"] ?? parada["idradiotaxi"] ?? parada["sindicato_id"] ?? "").toString(),
+    );
+    final name = (radiotaxiId != null) ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId") : "Parada";
+
+    if (lat == null || lng == null) return;
+
+    final isDarkMode = AppSettings.darkMode.value;
+    final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+
+    // ✅ Obtener dirección ANTES de mostrar el sheet (igual que el código original)
+    final direccion = await _getAddressFromLatLng(LatLng(lat, lng));
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: BoxDecoration(
+            color: sheetColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 15),
+              Text(
+                t("stop_address"),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: kPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ListTile(
+                leading: const Icon(Icons.local_taxi, color: kPrimary, size: 32),
+                title: Text(
+                  name,
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                subtitle: Text(
+                  direccion,
+                  style: TextStyle(color: textColor),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ==========================
   // CÍRCULO (visual) - solo en modo "cerca"
   // ==========================
   List<CircleMarker> _buildRadioCircle() {
@@ -710,7 +1097,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // INICIO/FIN (igual que tu código)
+  // INICIO/FIN
   // ==========================
   List<Marker> _buildInicioFinMarkers(List<Polyline> polylines, {int maxRutas = 30}) {
     final markers = <Marker>[];
@@ -755,6 +1142,182 @@ class _HomeScreenState extends State<HomeScreen> {
     return markers;
   }
 
+  // ==========================
+  // ✅ FIX 4: Markers tapables a lo largo de cada ruta visible
+  // Al tocar: muestra nombre de línea + sindicato al que pertenece
+  // ==========================
+  List<Marker> _buildTapableRouteMarkers() {
+    final markers = <Marker>[];
+
+    for (int i = 0; i < _rutasVisibles.length; i++) {
+      final pl = _rutasVisibles[i];
+      if (pl.points.isEmpty) continue;
+
+      // Usamos el punto medio de la ruta como punto de tap
+      final midIdx = (pl.points.length / 2).floor();
+      final midPoint = pl.points[midIdx];
+
+      // Obtenemos el id del trufi para esta polyline
+      final id = (i < _polylineIdIndex.length) ? _polylineIdIndex[i] : null;
+      final lineName = (id != null) ? (_trufiNameById[id] ?? "Línea $id") : null;
+      if (lineName == null) continue;
+
+      // Encontrar el sindicato al que pertenece esta línea
+      String? sindicatoName;
+      for (final s in _sindicatos) {
+        final trufis = (s["trufis"] as List? ?? []);
+        final found = trufis.any((tr) {
+          final tId = int.tryParse((tr["idtrufi"] ?? "").toString());
+          return tId == id;
+        });
+        if (found) {
+          sindicatoName = (s["nombre"] ?? "").toString();
+          break;
+        }
+      }
+
+      markers.add(
+        Marker(
+          point: midPoint,
+          width: 44,
+          height: 44,
+          child: GestureDetector(
+            onTap: () => _mostrarInfoRuta(lineName, sindicatoName, id!),
+            child: Container(
+              // Área de tap transparente (invisible) encima de la ruta
+              color: Colors.transparent,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return markers;
+  }
+
+  // ✅ FIX 4: Popup que aparece al tocar una ruta en el mapa
+  void _mostrarInfoRuta(String lineName, String? sindicatoName, int idtrufi) {
+    final isDarkMode = AppSettings.darkMode.value;
+    final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 46,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [kPrimaryDark, kPrimary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.directions_bus_filled, color: Colors.white, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          lineName,
+                          style: const TextStyle(
+                            color: kPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        if (sindicatoName != null && sindicatoName.trim().isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.groups, color: kAqua, size: 16),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  sindicatoName,
+                                  style: TextStyle(
+                                    color: subTextColor,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: kPrimary,
+                        side: const BorderSide(color: kPrimary),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, size: 18),
+                      label: Text(t("close")),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _mostrarRutaDeUnTrufi(idtrufi, nombreLinea: lineName);
+                      },
+                      icon: const Icon(Icons.route, size: 18),
+                      label: Text(t("route_points")),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _flagMarker({
     required String tooltip,
     required Color color,
@@ -777,7 +1340,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // ✅ Labels de rutas (nombre estilo pill, pequeño, verde agua)
+  // Labels de rutas
   // ==========================
   List<Marker> _buildRouteLabels(List<Polyline> polylines) {
     final markers = <Marker>[];
@@ -791,18 +1354,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final start = pl.points.first;
 
-      // ✅ ancho adaptativo según texto (con límites)
-      final estimatedWidth = 30 + 14 + (name.length * 6.4); // ✅ menos "por letra"
-      final w = estimatedWidth.clamp(90.0, 200.0); // ✅ límites más pequeños
+      final estimatedWidth = 30 + 14 + (name.length * 6.4);
+      final w = estimatedWidth.clamp(90.0, 200.0);
 
       markers.add(
         Marker(
-          point: start, // ✅ ahora en el inicio
+          point: start,
           width: w,
           height: 34,
           alignment: Alignment.topCenter,
           child: Transform.translate(
-            offset: const Offset(0, -18), // ✅ lo sube sobre el punto de inicio
+            offset: const Offset(0, -18),
             child: _routeNamePill(name),
           ),
         ),
@@ -814,16 +1376,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _routeNamePill(String name) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), // ✅ menos padding
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: kAqua.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(10), // ✅ menos redondo
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.directions_bus_filled, size: 14, color: Colors.white), // ✅ icono más chico
+          const Icon(Icons.directions_bus_filled, size: 14, color: Colors.white),
           const SizedBox(width: 6),
           Flexible(
             child: Text(
@@ -833,7 +1395,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
-                fontSize: 11.5, // ✅ letra más chica
+                fontSize: 11.5,
               ),
             ),
           ),
@@ -843,15 +1405,119 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // MOSTRAR RUTA 1 TRUFI (mantienes tu lógica)
+  // Extraer puntos de la ruta cada ~100m
+  // ==========================
+  Future<List<Map<String, dynamic>>> _extraerPuntosRuta(List<LatLng> points) async {
+    final resultado = <Map<String, dynamic>>[];
+
+    if (points.isEmpty) return resultado;
+
+    resultado.add({
+      'punto': 1,
+      'latLng': points.first,
+      'direccion': await _getAddressFromLatLng(points.first),
+    });
+
+    double distanciaAcumulada = 0;
+    int numeroPunto = 2;
+
+    for (int i = 1; i < points.length; i++) {
+      final prev = points[i - 1];
+      final curr = points[i];
+
+      final distSegmento = Geolocator.distanceBetween(
+        prev.latitude,
+        prev.longitude,
+        curr.latitude,
+        curr.longitude,
+      );
+
+      distanciaAcumulada += distSegmento;
+
+      if (distanciaAcumulada >= 100) {
+        resultado.add({
+          'punto': numeroPunto,
+          'latLng': curr,
+          'direccion': await _getAddressFromLatLng(curr),
+        });
+
+        numeroPunto++;
+        distanciaAcumulada = 0;
+      }
+    }
+
+    if (resultado.last['latLng'] != points.last) {
+      resultado.add({
+        'punto': numeroPunto,
+        'latLng': points.last,
+        'direccion': await _getAddressFromLatLng(points.last),
+      });
+    }
+
+    return resultado;
+  }
+
+  // ==========================
+  // Geocodificación inversa (Nominatim)
+  // ==========================
+  Future<String> _getAddressFromLatLng(LatLng location) async {
+    try {
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?'
+        'format=json&lat=${location.latitude}&lon=${location.longitude}&zoom=18&addressdetails=1',
+      );
+
+      final response = await http.get(
+        url,
+        headers: {'User-Agent': 'ColcaTrufis App'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data['address'] != null) {
+          final address = data['address'];
+          final road = address['road'] ??
+              address['street'] ??
+              address['path'] ??
+              address['footway'] ??
+              '';
+
+          if (road.isNotEmpty) {
+            return road;
+          }
+        }
+
+        if (data['display_name'] != null) {
+          final displayName = data['display_name'].toString();
+          final parts = displayName.split(',');
+          if (parts.isNotEmpty) {
+            return parts[0].trim();
+          }
+        }
+      }
+    } catch (e) {
+      print('Error en geocodificación inversa: $e');
+    }
+
+    return '${location.latitude.toStringAsFixed(5)}, ${location.longitude.toStringAsFixed(5)}';
+  }
+
+  // ==========================
+  // MOSTRAR RUTA 1 TRUFI
+  // ✅ MEJORADO: Loader, historial, nombre siempre visible
   // ==========================
   Future<void> _mostrarRutaDeUnTrufi(int idtrufi, {String? nombreLinea}) async {
+    // ✅ Mostrar overlay de carga inmediatamente
+    if (!mounted) return;
+    setState(() => _isLoadingRutaTrufi = true);
+
     try {
       final geo = await _apiService.getGeoJsonPorTrufi(idtrufi);
-      
-      // ✅ CORRECCIÓN: verificar que geo tenga features
+
       if (geo == null || geo['features'] == null || (geo['features'] as List).isEmpty) {
         if (!mounted) return;
+        setState(() => _isLoadingRutaTrufi = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t("no_route"))));
         return;
       }
@@ -861,29 +1527,52 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (ruta.isEmpty) {
         if (!mounted) return;
+        setState(() => _isLoadingRutaTrufi = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t("no_route"))));
         return;
       }
 
+      // ✅ Extraer puntos de la ruta cada ~100m
+      final puntosRuta = await _extraerPuntosRuta(ruta.first.points);
+
       if (!mounted) return;
+
+      final nombre = nombreLinea ?? _trufiNameById[idtrufi] ?? "Línea $idtrufi";
+
       setState(() {
         _selectedTrufiId = idtrufi;
-        _selectedTrufiName = nombreLinea ?? _trufiNameById[idtrufi] ?? "Línea $idtrufi";
+        _selectedTrufiName = nombre;
 
         _rutasVisibles = ruta;
-        _polylineIdIndex = parsed.ids; // ✅ actualizar índice
+        _polylineIdIndex = parsed.ids;
         _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 1);
-
-        // ✅ label del trufi seleccionado: se verá en la ruta también (más chico)
         _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+
+        _rutaPuntos = puntosRuta;
+        _isLoadingRutaTrufi = false;
       });
+
+      // ✅ Guardar en historial
+      await _agregarAlHistorial(HistorialItem(
+        id: idtrufi,
+        nombre: nombre,
+        tipo: 'trufi',
+        fechaUso: DateTime.now(),
+      ));
+
+      // ✅ NUEVO: registrar selección en el backend (reporte +1)
+      _registrarSeleccionTrufi(idtrufi);
 
       if (ruta.first.points.isNotEmpty) {
         _mapController.move(ruta.first.points.first, 14.8);
       }
+
+      // ✅ Mostrar ventana deslizante con puntos de ruta
+      _mostrarVentanaRecorrido();
     } catch (e) {
       print("Error mostrando ruta de trufi $idtrufi: $e");
       if (!mounted) return;
+      setState(() => _isLoadingRutaTrufi = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("No se pudo cargar la ruta de este trufi")),
       );
@@ -891,7 +1580,135 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // CENTRADO (FAB depende del modo)
+  // ✅ NUEVO: Registrar selección de trufi en backend (reporte +1)
+  // ==========================
+  Future<void> _registrarSeleccionTrufi(int idtrufi) async {
+    try {
+      await http.post(
+        Uri.parse("$_apiBase/trufis/$idtrufi/seleccion"),
+        headers: const {"Accept": "application/json", "Content-Type": "application/json"},
+      );
+    } catch (e) {
+      // Silencioso: el reporte es no-crítico, no afectar al usuario si falla
+      print("Error registrando selección de trufi $idtrufi: $e");
+    }
+  }
+
+  // ==========================
+  // Ventana deslizante con recorrido de la ruta
+  // ✅ FIX: al cerrar el sheet, el nombre del trufi NO desaparece
+  // ==========================
+  void _mostrarVentanaRecorrido() {
+    final isDarkMode = AppSettings.darkMode.value;
+    final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      // ✅ FIX CLAVE: al cerrar el sheet NO limpiamos _selectedTrufiName
+      // El nombre se mantiene en el card superior hasta que el usuario presione X
+      builder: (_) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.4,
+          decoration: BoxDecoration(
+            color: sheetColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 15),
+              Text(
+                t("route_points"),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: kPrimary,
+                ),
+              ),
+              if (_selectedTrufiName != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  child: Text(
+                    _selectedTrufiName!,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+              const Divider(),
+              Expanded(
+                child: _rutaPuntos.isEmpty
+                    ? Center(
+                        child: Text(
+                          t("no_data"),
+                          style: TextStyle(color: subTextColor),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _rutaPuntos.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final punto = _rutaPuntos[index];
+                          final numero = punto['punto'] ?? (index + 1);
+                          final direccion = punto['direccion'] ?? t("no_data");
+                          final latLng = punto['latLng'] as LatLng?;
+
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: kPrimary.withOpacity(0.15),
+                              child: Text(
+                                '$numero',
+                                style: const TextStyle(
+                                  color: kPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              '$direccion',
+                              style: TextStyle(
+                                color: textColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            trailing: const Icon(
+                              Icons.location_on,
+                              color: kAqua,
+                            ),
+                            onTap: () {
+                              if (latLng != null) {
+                                Navigator.pop(context);
+                                _mapController.move(latLng, 17);
+                              }
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ==========================
+  // CENTRADO
   // ==========================
   Future<void> _handleCenterFab() async {
     final mode = AppSettings.centerMode.value;
@@ -899,7 +1716,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mode == "ubicacion") {
       await _getCurrentLocation();
       _aplicarFiltroRutas();
-      _aplicarFiltroParadas(); // ✅ NUEVO
+      _aplicarFiltroParadas();
       if (_currentPosition != null) {
         _mapController.move(
           LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
@@ -913,9 +1730,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // ✅ CALL Radiotaxi
+  // CALL Radiotaxi
+  // ✅ El historial se guarda al SELECCIONAR desde el botón flotante, no aquí
   // ==========================
-  Future<void> _confirmAndCall(String rawPhone) async {
+  Future<void> _confirmAndCall(String rawPhone, {String? nombre, int? id}) async {
     final phone = rawPhone.replaceAll(RegExp(r'[^0-9+]'), '');
     if (phone.trim().isEmpty) return;
 
@@ -928,8 +1746,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t("cancel"))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: kPrimary, // tu verde/azul oscuro
-              foregroundColor: const Color.fromARGB(255, 255, 255, 255), // ✅ texto blanco
+              backgroundColor: kPrimary,
+              foregroundColor: const Color.fromARGB(255, 255, 255, 255),
             ),
             onPressed: () => Navigator.pop(context, true),
             child: Text(t("call")),
@@ -945,7 +1763,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // ✅ NORMATIVAS MEJORADO
+  // NORMATIVAS
   // ==========================
   Future<List<dynamic>> _fetchNormativas() async {
     final res = await http.get(
@@ -964,10 +1782,203 @@ class _HomeScreenState extends State<HomeScreen> {
     return [];
   }
 
+  // ==========================
+  // ✅ NUEVO: Reclamos
+  // ==========================
+  Future<void> _fetchReclamos() async {
+    try {
+      if (!mounted) return;
+      setState(() => _isLoadingReclamos = true);
+
+      final res = await http.get(
+        Uri.parse("$_apiBase/public/settings/reclamos"),
+        headers: const {"Accept": "application/json"},
+      );
+
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw Exception("HTTP \${res.statusCode}");
+      }
+
+      final body = jsonDecode(res.body);
+      List<dynamic> data = [];
+
+      if (body is Map && body["data"] is List) {
+        data = body["data"] as List;
+      } else if (body is List) {
+        data = body;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _reclamos = data.map((e) => e as Map<String, dynamic>).toList();
+        _isLoadingReclamos = false;
+      });
+    } catch (e) {
+      print("Error fetching reclamos: \$e");
+      if (!mounted) return;
+      setState(() => _isLoadingReclamos = false);
+    }
+  }
+
+  Future<void> _openReclamosDrawer() async {
+    if (_reclamos.isEmpty) {
+      setState(() => _isLoadingReclamos = true);
+      await _fetchReclamos();
+    }
+
+    if (!mounted) return;
+
+    final isDark = AppSettings.darkMode.value;
+    final bg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subText = isDark ? Colors.white70 : Colors.black54;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 46,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.report_problem_outlined, color: kPrimary, size: 26),
+                  const SizedBox(width: 10),
+                  Text(
+                    t("reclamos"),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: kPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Divider(),
+              if (_isLoadingReclamos)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator(color: kPrimary)),
+                )
+              else if (_reclamos.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(child: Text(t("no_data"), style: TextStyle(color: subText))),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _reclamos.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final item = _reclamos[index];
+                    final key = (item["key"] ?? "").toString();
+                    final value = item["value"]?.toString() ?? "";
+                    final activo = item["activo"] == true;
+
+                    final bool isWhatsApp = key.contains("whatsapp");
+                    final String label = isWhatsApp ? t("reclamos_whatsapp") : "${t("reclamos_phone")} \${index + 1}";
+
+                    return ListTile(
+                      leading: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: activo && value.isNotEmpty
+                              ? kPrimary.withOpacity(0.12)
+                              : Colors.grey.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          isWhatsApp ? Icons.chat : Icons.phone,
+                          color: activo && value.isNotEmpty ? kPrimary : Colors.grey,
+                          size: 22,
+                        ),
+                      ),
+                      title: Text(
+                        label,
+                        style: TextStyle(
+                          color: textColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: Text(
+                        activo && value.isNotEmpty ? value : t("reclamos_inactive"),
+                        style: TextStyle(
+                          color: activo && value.isNotEmpty ? subText : Colors.grey,
+                        ),
+                      ),
+                      trailing: activo && value.isNotEmpty
+                          ? Icon(Icons.call, color: kPrimary)
+                          : null,
+                      onTap: activo && value.isNotEmpty
+                          ? () async {
+                              final phone = value.replaceAll(RegExp(r'[^0-9+]'), '');
+                              final ok = await showDialog<bool>(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  title: Text(t("reclamos_call")),
+                                  content: Text(value),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: Text(t("cancel")),
+                                    ),
+                                    ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: kPrimary,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      onPressed: () => Navigator.pop(context, true),
+                                      icon: const Icon(Icons.call),
+                                      label: Text(t("call")),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (ok == true) {
+                                await launchUrl(Uri.parse("tel:\$phone"));
+                              }
+                            }
+                          : null,
+                    );
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _openNormativasDrawer() async {
+    if (!mounted) return;
+    setState(() => _isLoadingNormativas = true);
+
     try {
       final data = await _fetchNormativas();
       if (!mounted) return;
+      setState(() => _isLoadingNormativas = false);
 
       showModalBottomSheet(
         context: context,
@@ -1002,8 +2013,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           itemCount: data.length,
                           itemBuilder: (context, index) {
                             final item = data[index];
-                            
-                            // ✅ MEJORADO: mostrar titulo, descripcion y PDF
+
                             final titulo = (item["titulo"] ?? "Normativa").toString();
                             final descripcion = (item["descripcion"] ?? "").toString();
                             final id = int.tryParse((item["id"] ?? "").toString());
@@ -1054,9 +2064,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                           child: Text(t("close")),
                                         ),
                                         ElevatedButton.icon(
-                                          style:ElevatedButton.styleFrom(
-                                            backgroundColor: kPrimary, // tu verde/azul oscuro
-                                            foregroundColor: const Color.fromARGB(255, 255, 255, 255), // ✅ texto blanco
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: kPrimary,
+                                            foregroundColor: const Color.fromARGB(255, 255, 255, 255),
                                           ),
                                           onPressed: () async {
                                             Navigator.pop(context);
@@ -1085,10 +2095,229 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       print("Error loading normativas: $e");
       if (!mounted) return;
+      setState(() => _isLoadingNormativas = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(t("no_data"))),
       );
     }
+  }
+
+  // ==========================
+  // ✅ NUEVO: Drawer de Historial
+  // ==========================
+  void _openHistorialDrawer() {
+    final isDarkMode = AppSettings.darkMode.value;
+    final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return StatefulBuilder(builder: (ctx, setModalState) {
+          return DefaultTabController(
+            length: 2,
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.72,
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 46,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    t("history"),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: kPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TabBar(
+                    labelColor: kPrimary,
+                    unselectedLabelColor: Colors.grey,
+                    indicatorColor: kPrimary,
+                    tabs: [
+                      Tab(
+                        icon: const Icon(Icons.directions_bus),
+                        text: t("trufi"),
+                      ),
+                      Tab(
+                        icon: const Icon(Icons.local_taxi),
+                        text: t("radiotaxi"),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        // ✅ Tab Trufis
+                        _buildHistorialTab(
+                          ctx: ctx,
+                          setModalState: setModalState,
+                          items: _historialTrufis,
+                          tipo: 'trufi',
+                          textColor: textColor,
+                          subTextColor: subTextColor,
+                          onItemTap: (item) async {
+                            Navigator.pop(ctx);
+                            setState(() => isTrufiSelected = true);
+                            await _mostrarRutaDeUnTrufi(item.id, nombreLinea: item.nombre);
+                          },
+                        ),
+                        // ✅ Tab Radiotaxis
+                        _buildHistorialTab(
+                          ctx: ctx,
+                          setModalState: setModalState,
+                          items: _historialRadiotaxis,
+                          tipo: 'radiotaxi',
+                          textColor: textColor,
+                          subTextColor: subTextColor,
+                          onItemTap: (item) async {
+                            Navigator.pop(ctx);
+                            setState(() => isTrufiSelected = false);
+                            if (item.telefono != null && item.telefono!.isNotEmpty) {
+                              await _confirmAndCall(item.telefono!, nombre: item.nombre, id: item.id);
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  Widget _buildHistorialTab({
+    required BuildContext ctx,
+    required StateSetter setModalState,
+    required List<HistorialItem> items,
+    required String tipo,
+    required Color textColor,
+    required Color subTextColor,
+    required Future<void> Function(HistorialItem) onItemTap,
+  }) {
+    if (items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              tipo == 'trufi' ? Icons.directions_bus_outlined : Icons.local_taxi_outlined,
+              size: 56,
+              color: Colors.grey.withOpacity(0.4),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              t("history_empty"),
+              style: TextStyle(color: subTextColor, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // ✅ Botón limpiar historial
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: ctx,
+                    builder: (_) => AlertDialog(
+                      title: Text(t("history_clear_confirm")),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: Text(t("cancel")),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: Text(t("history_clear"), style: const TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok == true) {
+                    await _limpiarHistorial(tipo);
+                    setModalState(() {});
+                  }
+                },
+                icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                label: Text(t("history_clear"), style: const TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return ListTile(
+                leading: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: kPrimary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    tipo == 'trufi' ? Icons.directions_bus : Icons.local_taxi,
+                    color: kPrimary,
+                    size: 22,
+                  ),
+                ),
+                title: Text(
+                  item.nombre,
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: Text(
+                  "${t("used_at")}: ${_formatFecha(item.fechaUso)}",
+                  style: TextStyle(color: subTextColor, fontSize: 12),
+                ),
+                trailing: Icon(
+                  tipo == 'trufi' ? Icons.arrow_forward_ios : Icons.phone,
+                  color: kPrimary,
+                  size: 16,
+                ),
+                onTap: () => onItemTap(item),
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   // ==========================
@@ -1133,7 +2362,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                  // ✅ Logos intactos
                   title: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1144,7 +2372,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 body: Stack(
                   children: [
-                    // ✅ Mapa SIEMPRE visible
                     FlutterMap(
                       mapController: _mapController,
                       options: MapOptions(
@@ -1157,40 +2384,34 @@ class _HomeScreenState extends State<HomeScreen> {
                         },
                       ),
                       children: [
-                        // ✅ TileLayer siempre
                         TileLayer(
                           urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                           userAgentPackageName: 'com.colcatrufis.app',
                           keepBuffer: 2,
                         ),
 
-                        // ✅ Colcapirhua SIEMPRE
                         PolygonLayer(polygons: colcapirhuaPolygons),
                         if (colcapirhuaLines.isNotEmpty) PolylineLayer(polylines: colcapirhuaLines),
 
-                        // ✅ círculo si hay GPS y modo cerca
                         if (_routeFilterMode == RouteFilterMode.nearby && _currentPosition != null)
                           CircleLayer(circles: _buildRadioCircle()),
 
-                        // ✅ CONDICIONAL: mostrar rutas O paradas según isTrufiSelected
                         if (isTrufiSelected) ...[
-                          // TRUFIS: rutas visibles
-                          PolylineLayer(polylines: _rutasVisibles),
-
-                          // ✅ labels de ruta (nombre en pill)
+                          // ✅ FIX 4: PolylineLayer con tap para mostrar nombre + sindicato
+                          PolylineLayer(
+                            polylines: _rutasVisibles,
+                          ),
                           if (_routeLabelMarkers.isNotEmpty) MarkerLayer(markers: _routeLabelMarkers),
-
-                          // ✅ inicio/fin
                           if (_inicioFinMarkers.isNotEmpty) MarkerLayer(markers: _inicioFinMarkers),
+                          // ✅ FIX 4: Markers invisibles tapables encima de cada ruta para detectar taps
+                          MarkerLayer(
+                            markers: _buildTapableRouteMarkers(),
+                          ),
                         ] else ...[
-                          // RADIOTAXIS: paradas
                           if (_paradasMarkers.isNotEmpty) MarkerLayer(markers: _paradasMarkers),
-
-                          // ✅ labels de paradas (nombre debajo)
                           if (_paradasLabelMarkers.isNotEmpty) MarkerLayer(markers: _paradasLabelMarkers),
                         ],
 
-                        // ✅ ubicación actual
                         if (_currentPosition != null)
                           MarkerLayer(
                             markers: [
@@ -1205,22 +2426,188 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
 
-                    // ✅ Selector de rutas (igual que tu idea)
+                    // ✅ NUEVO: Overlay de carga global (rutas del trufi)
+                    if (_isLoadingRutaTrufi)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withOpacity(0.45),
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const CircularProgressIndicator(color: kPrimary, strokeWidth: 3.5),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    t("loading_route"),
+                                    style: const TextStyle(
+                                      color: kPrimary,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // ✅ NUEVO: Overlay GPS
+                    if (_isLoadingGPS)
+                      Positioned(
+                        top: 90,
+                        right: 16,
+                        child: _loadingChip(t("loading_gps"), Icons.gps_fixed),
+                      ),
+
+                    // ✅ NUEVO: Overlay cargando mapa/GeoJSON
+                    if (_isLoadingGeoJSON)
+                      Positioned(
+                        top: 90,
+                        left: 16,
+                        child: _loadingChip(t("loading_geojson"), Icons.map_outlined),
+                      ),
+
+                    // ✅ NUEVO: Overlay cargando rutas
+                    if (_isLoadingRutas && !_isLoadingRutaTrufi)
+                      Positioned(
+                        top: _isLoadingGeoJSON ? 140 : 90,
+                        left: 16,
+                        child: _loadingChip(t("loading_route"), Icons.route),
+                      ),
+
+                    // ✅ NUEVO: Overlay cargando normativas
+                    if (_isLoadingNormativas)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withOpacity(0.35),
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const CircularProgressIndicator(color: kPrimary, strokeWidth: 3.5),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    t("loading_norms"),
+                                    style: const TextStyle(
+                                      color: kPrimary,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
                     Positioned(
                       left: 16,
                       bottom: 22,
                       child: _routesFilterDropdown(isDarkMode),
                     ),
 
-                    // ✅ Card del trufi seleccionado (la mantengo)
+                    // ✅ FIX 3: El card del trufi SIEMPRE visible cuando hay un trufi seleccionado
+                    // Se muestra independientemente del tab activo (trufi/radiotaxi)
+                    // Se posiciona debajo de los chips de carga cuando estén visibles
                     if (_selectedTrufiName != null && _selectedTrufiName!.trim().isNotEmpty)
                       Positioned(
                         left: 16,
-                        top: 90,
+                        top: (_isLoadingGeoJSON || (_isLoadingRutas && !_isLoadingRutaTrufi)) ? 148 : 90,
                         child: _selectedTrufiCard(isDarkMode),
                       ),
 
-                    // Botones flotantes
+                    // ✅ NUEVO: Banner "fuera de Colcapirhua"
+                    if (_isOutsideColcapirhua && !_outsideBannerDismissed && _currentPosition != null)
+                      Positioned(
+                        bottom: 130,
+                        left: 16,
+                        right: 80,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade700,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.22),
+                                blurRadius: 14,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.location_off, color: Colors.white, size: 22),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      t("outside_title"),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      t("outside_body"),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    GestureDetector(
+                                      onTap: () => setState(() => _outsideBannerDismissed = true),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.25),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          t("outside_dismiss"),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     Positioned(
                       right: 15,
                       bottom: 40,
@@ -1234,8 +2621,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               setState(() {
                                 isTrufiSelected = true;
                               });
-                              // ✅ al cambiar a trufi, aplicar filtro de rutas
-                              _aplicarFiltroRutas();
+                              // ✅ FIX: Si hay un trufi seleccionado activo, NO resetear las rutas
+                              // El nombre y la ruta del trufi deben mantenerse visibles
+                              if (_selectedTrufiId == null) {
+                                _aplicarFiltroRutas();
+                              }
                               _showFullWidthBottomSheet(context, t("trufi"));
                             },
                           ),
@@ -1247,7 +2637,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               setState(() {
                                 isTrufiSelected = false;
                               });
-                              // ✅ al cambiar a radiotaxi, aplicar filtro de paradas
                               _aplicarFiltroParadas();
                               _showFullWidthBottomSheet(context, t("radiotaxi"));
                             },
@@ -1258,7 +2647,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             heroTag: "btnCenter",
                             backgroundColor: Colors.white,
                             onPressed: _handleCenterFab,
-                            child: const Icon(Icons.my_location, color: kPrimary),
+                            child: _isLoadingGPS
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                                  )
+                                : const Icon(Icons.my_location, color: kPrimary),
                           ),
                         ],
                       ),
@@ -1270,6 +2665,41 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         );
       },
+    );
+  }
+
+  // ✅ NUEVO: Chip de carga pequeño
+  Widget _loadingChip(String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+          ),
+          const SizedBox(width: 8),
+          Icon(icon, color: kPrimary, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: kPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1297,7 +2727,14 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.route, color: kPrimary),
+          // ✅ Spinner pequeño si está cargando rutas
+          _isLoadingRutas
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                )
+              : const Icon(Icons.route, color: kPrimary),
           const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1323,7 +2760,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               }
               _aplicarFiltroRutas();
-              _aplicarFiltroParadas(); // ✅ NUEVO
+              _aplicarFiltroParadas();
             },
             itemBuilder: (context) => [
               PopupMenuItem(
@@ -1355,13 +2792,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ==========================
   // UI: Card del trufi seleccionado
+  // ✅ FIX: al cerrar X, centra en Colcapirhua y restaura todas las rutas
+  // ✅ FIX: el card PERSISTE en pantalla aunque el bottomsheet se cierre
+  // ✅ NUEVO: botón para reabrir el recorrido
   // ==========================
   Widget _selectedTrufiCard(bool isDarkMode) {
     final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.92);
     final textColor = isDarkMode ? Colors.white : Colors.black87;
 
     return Container(
-      constraints: const BoxConstraints(maxWidth: 260),
+      constraints: const BoxConstraints(maxWidth: 280),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: bg,
@@ -1399,13 +2839,30 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(color: textColor, fontWeight: FontWeight.w800),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
+          // ✅ NUEVO: botón para reabrir ventana de recorrido
+          if (_rutaPuntos.isNotEmpty)
+            InkWell(
+              onTap: _mostrarVentanaRecorrido,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: kAqua.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.list_alt, size: 18, color: kAqua),
+              ),
+            ),
+          const SizedBox(width: 4),
           InkWell(
             onTap: () {
               setState(() {
                 _selectedTrufiId = null;
                 _selectedTrufiName = null;
+                _rutaPuntos = [];
               });
+
+              _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
               _aplicarFiltroRutas();
             },
             child: Container(
@@ -1458,6 +2915,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ==========================
   // BottomSheet dinámico (Trufi vs Radiotaxi)
+  // ✅ MEJORADO: loader en lista, historial en radiotaxi call
   // ==========================
   void _showFullWidthBottomSheet(BuildContext context, String type) {
     final bool isLookingForTrufi = (type == t("trufi"));
@@ -1496,50 +2954,72 @@ class _HomeScreenState extends State<HomeScreen> {
               const Divider(),
               SizedBox(
                 height: 300,
-                child: dataList.isEmpty
-                    ? Center(child: Text(t("no_data"), style: TextStyle(color: subTextColor)))
-                    : ListView.separated(
-                        itemCount: dataList.length,
-                        separatorBuilder: (_, __) => const Divider(),
-                        itemBuilder: (context, index) {
-                          final item = dataList[index];
+                child: _isLoadingDatos && dataList.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const CircularProgressIndicator(color: kPrimary),
+                            const SizedBox(height: 12),
+                            Text(t("loading_data"), style: TextStyle(color: subTextColor)),
+                          ],
+                        ),
+                      )
+                    : dataList.isEmpty
+                        ? Center(child: Text(t("no_data"), style: TextStyle(color: subTextColor)))
+                        : ListView.separated(
+                            itemCount: dataList.length,
+                            separatorBuilder: (_, __) => const Divider(),
+                            itemBuilder: (context, index) {
+                              final item = dataList[index];
 
-                          final String titulo = isLookingForTrufi
-                              ? (item["nom_linea"] ?? "Sin nombre")
-                              : (item["nombre_comercial"] ?? "Sin nombre");
+                              final String titulo = isLookingForTrufi
+                                  ? (item["nom_linea"] ?? "Sin nombre")
+                                  : (item["nombre_comercial"] ?? "Sin nombre");
 
-                          final String subtitulo = isLookingForTrufi
-                              ? "${t("id")}: ${item["idtrufi"]}"
-                              : "${t("base")}: ${item["telefono_base"] ?? 'S/N'}";
+                              final String subtitulo = isLookingForTrufi
+                                  ? "${t("id")}: ${item["idtrufi"]}"
+                                  : "${t("base")}: ${item["telefono_base"] ?? 'S/N'}";
 
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: kPrimary.withOpacity(0.12),
-                              child: Icon(
-                                isLookingForTrufi ? Icons.bus_alert : Icons.local_taxi,
-                                color: kPrimary,
-                              ),
-                            ),
-                            title: Text(titulo, style: TextStyle(color: textColor)),
-                            subtitle: Text(subtitulo, style: TextStyle(color: subTextColor)),
-                            onTap: () async {
-                              Navigator.pop(context);
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: kPrimary.withOpacity(0.12),
+                                  child: Icon(
+                                    isLookingForTrufi ? Icons.bus_alert : Icons.local_taxi,
+                                    color: kPrimary,
+                                  ),
+                                ),
+                                title: Text(titulo, style: TextStyle(color: textColor)),
+                                subtitle: Text(subtitulo, style: TextStyle(color: subTextColor)),
+                                onTap: () async {
+                                  Navigator.pop(context);
 
-                              if (isLookingForTrufi && item["idtrufi"] != null) {
-                                final id = int.parse(item["idtrufi"].toString());
-                                _mostrarRutaDeUnTrufi(id, nombreLinea: titulo);
-                                return;
-                              }
+                                  if (isLookingForTrufi && item["idtrufi"] != null) {
+                                    final id = int.parse(item["idtrufi"].toString());
+                                    _mostrarRutaDeUnTrufi(id, nombreLinea: titulo);
+                                    return;
+                                  }
 
-                              // ✅ Radiotaxi: preguntar si quiere llamar
-                              if (!isLookingForTrufi) {
-                                final phone = (item["telefono_base"] ?? "").toString();
-                                await _confirmAndCall(phone);
-                              }
+                                  if (!isLookingForTrufi) {
+                                    final phone = (item["telefono_base"] ?? "").toString();
+                                    final id = int.tryParse((item["id"] ?? "").toString());
+                                    // ✅ FIX: guardar en historial al seleccionar desde el botón flotante
+                                    // Se guarda al momento de la selección, independientemente de si llama o no
+                                    if (id != null) {
+                                      await _agregarAlHistorial(HistorialItem(
+                                        id: id,
+                                        nombre: titulo,
+                                        tipo: 'radiotaxi',
+                                        telefono: phone,
+                                        fechaUso: DateTime.now(),
+                                      ));
+                                    }
+                                    await _confirmAndCall(phone, nombre: titulo, id: id);
+                                  }
+                                },
+                              );
                             },
-                          );
-                        },
-                      ),
+                          ),
               ),
             ],
           ),
@@ -1549,7 +3029,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // Drawer: orden + ajustes afuera + normativas + acerca de
+  // Drawer
   // ==========================
   Drawer _buildSidebarDrawer() {
     final drawerWidth = MediaQuery.of(context).size.width * 0.75;
@@ -1597,62 +3077,238 @@ class _HomeScreenState extends State<HomeScreen> {
                   ExpansionTile(
                     leading: const Icon(Icons.groups, color: kPrimary),
                     title: Text(t("sindicatos"), style: TextStyle(color: textColor)),
-                    children: _sindicatos.map((s) {
-                      final String sindicatoNombre = s["nombre"] ?? "Sin Nombre";
-                      final List trufis = (s["trufis"] as List? ?? []);
+                    children: _sindicatos.isEmpty
+                        ? [
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(t("loading_data"), style: TextStyle(color: subTextColor)),
+                                ],
+                              ),
+                            ),
+                          ]
+                        : _sindicatos.map((s) {
+                            final String sindicatoNombre = s["nombre"] ?? "Sin Nombre";
+                            final List trufis = (s["trufis"] as List? ?? []);
 
-                      return ExpansionTile(
-                        leading: const Icon(Icons.account_balance, color: kPrimary),
-                        title: Text(sindicatoNombre, style: TextStyle(color: textColor)),
-                        children: trufis.map<Widget>((tr) {
-                          final linea = (tr["nom_linea"] ?? "").toString();
-                          final id = int.tryParse((tr["idtrufi"] ?? "").toString());
+                            return ExpansionTile(
+                              leading: const Icon(Icons.account_balance, color: kPrimary),
+                              title: Text(sindicatoNombre, style: TextStyle(color: textColor)),
+                              children: trufis.map<Widget>((tr) {
+                                final linea = (tr["nom_linea"] ?? "").toString();
+                                final id = int.tryParse((tr["idtrufi"] ?? "").toString());
 
-                          return ListTile(
-                            dense: true,
-                            leading: const Icon(Icons.directions_bus, color: kPrimary),
-                            title: Text(linea, style: TextStyle(color: textColor)),
-                            onTap: () {
-                              Navigator.pop(context);
-                              setState(() => isTrufiSelected = true);
-                              if (id != null) _mostrarRutaDeUnTrufi(id, nombreLinea: linea);
-                            },
-                          );
-                        }).toList(),
-                      );
-                    }).toList(),
+                                return ListTile(
+                                  dense: true,
+                                  leading: const Icon(Icons.directions_bus, color: kPrimary),
+                                  title: Text(linea, style: TextStyle(color: textColor)),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    setState(() => isTrufiSelected = true);
+                                    if (id != null) _mostrarRutaDeUnTrufi(id, nombreLinea: linea);
+                                  },
+                                );
+                              }).toList(),
+                            );
+                          }).toList(),
                   ),
 
                   // 2) RADIOTAXIS
                   ExpansionTile(
                     leading: const Icon(Icons.local_taxi, color: kPrimary),
                     title: Text(t("radiotaxis"), style: TextStyle(color: textColor)),
-                    children: _radioTaxis.map((rt) {
-                      final phone = (rt["telefono_base"] ?? "").toString();
+                    children: _radioTaxis.isEmpty
+                        ? [
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(t("loading_data"), style: TextStyle(color: subTextColor)),
+                                ],
+                              ),
+                            ),
+                          ]
+                        : _radioTaxis.map((rt) {
+                            final phone = (rt["telefono_base"] ?? "").toString();
+                            final nombre = rt["nombre_comercial"] ?? "Radiotaxi";
+                            final id = int.tryParse((rt["id"] ?? "").toString());
 
-                      return ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.phone, color: kPrimary),
-                        title: Text(rt["nombre_comercial"] ?? "Radiotaxi", style: TextStyle(color: textColor)),
-                        subtitle: Text('${t("base")}: $phone', style: TextStyle(color: subTextColor)),
-                        onTap: () async {
-                          Navigator.pop(context);
-                          setState(() => isTrufiSelected = false);
-                          await _confirmAndCall(phone);
-                        },
-                      );
-                    }).toList(),
+                            return ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.phone, color: kPrimary),
+                              title: Text(nombre, style: TextStyle(color: textColor)),
+                              subtitle: Text('${t("base")}: $phone', style: TextStyle(color: subTextColor)),
+                              onTap: () async {
+                                Navigator.pop(context);
+                                setState(() => isTrufiSelected = false);
+                                // ✅ FIX: guardar en historial al seleccionar desde el sidebar
+                                if (id != null) {
+                                  await _agregarAlHistorial(HistorialItem(
+                                    id: id,
+                                    nombre: nombre,
+                                    tipo: 'radiotaxi',
+                                    telefono: phone,
+                                    fechaUso: DateTime.now(),
+                                  ));
+                                }
+                                await _confirmAndCall(phone, nombre: nombre, id: id);
+                              },
+                            );
+                          }).toList(),
                   ),
 
                   const Divider(),
 
+                  // ✅ NUEVO: HISTORIAL
+                  ListTile(
+                    leading: const Icon(Icons.history, color: kPrimary),
+                    title: Text(t("history"), style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
+                    subtitle: Text(
+                      "${_historialTrufis.length + _historialRadiotaxis.length} registros",
+                      style: TextStyle(color: subTextColor, fontSize: 12),
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: kPrimary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        "${_historialTrufis.length + _historialRadiotaxis.length}",
+                        style: const TextStyle(
+                          color: kPrimary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _openHistorialDrawer();
+                    },
+                  ),
+
+                  const Divider(),
+
+                  // ✅ NUEVO: RECLAMOS
+                  ListTile(
+                    leading: _isLoadingReclamos
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                          )
+                        : const Icon(Icons.report_problem_outlined, color: kPrimary),
+                    title: Text(t("reclamos"), style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await _openReclamosDrawer();
+                    },
+                  ),
+
                   // ✅ NORMATIVAS
                   ListTile(
-                    leading: const Icon(Icons.menu_book, color: kPrimary),
+                    leading: _isLoadingNormativas
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                          )
+                        : const Icon(Icons.menu_book, color: kPrimary),
                     title: Text(t("normativas"), style: TextStyle(color: textColor)),
                     onTap: () async {
                       Navigator.pop(context);
                       await _openNormativasDrawer();
+                    },
+                  ),
+
+                  const Divider(),
+
+                  // ✅ REDES SOCIALES
+                  ExpansionTile(
+                    leading: const Icon(Icons.share, color: kPrimary),
+                    title: Text(t("social_networks"), style: TextStyle(color: textColor)),
+                    children: [
+                      ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.music_note, color: kPrimary),
+                        title: const Text("TikTok"),
+                        onTap: () async {
+                          await launchUrl(
+                            Uri.parse("https://www.tiktok.com/@gamdecolcapirhua?is_from_webapp=1&sender_device=pc"),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        },
+                      ),
+                      ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.play_circle, color: kPrimary),
+                        title: const Text("YouTube"),
+                        onTap: () async {
+                          await launchUrl(
+                            Uri.parse("https://www.youtube.com/@gamdecolcapirhua"),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        },
+                      ),
+                      ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.facebook, color: kPrimary),
+                        title: const Text("Facebook"),
+                        onTap: () async {
+                          await launchUrl(
+                            Uri.parse("https://www.facebook.com/municipiodecolcapirhua"),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        },
+                      ),
+                      ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.camera_alt, color: kPrimary),
+                        title: const Text("Instagram"),
+                        onTap: () async {
+                          await launchUrl(
+                            Uri.parse("https://www.instagram.com/alcaldiadecolcapirhua"),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        },
+                      ),
+                      ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.close, color: kPrimary),
+                        title: const Text("X"),
+                        onTap: () async {
+                          await launchUrl(
+                            Uri.parse("https://x.com/GAMColcapirhua"),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
+                  // ✅ PÁGINA OFICIAL
+                  ListTile(
+                    leading: const Icon(Icons.public, color: kPrimary),
+                    title: Text(t("official_page"), style: TextStyle(color: textColor)),
+                    onTap: () async {
+                      await launchUrl(
+                        Uri.parse("https://www.colcapirhua.gob.bo/"),
+                        mode: LaunchMode.externalApplication,
+                      );
                     },
                   ),
 
@@ -1713,7 +3369,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               value: meters.clamp(50, 2000),
                               min: 50,
                               max: 2000,
-                              divisions: 39, // saltos de 50
+                              divisions: 39,
                               activeColor: kPrimary,
                               onChanged: (v) => AppSettings.radiusMeters.value = v,
                             ),
@@ -1723,7 +3379,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
 
-                  // ✅ Centrar: ahora es botón y abre opciones
+                  // ✅ Centrar
                   ListTile(
                     leading: const Icon(Icons.center_focus_strong, color: kPrimary),
                     title: Text(t("center_title"), style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
