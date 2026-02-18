@@ -68,6 +68,14 @@ class RolesSeeder extends Seeder
         $encargado->syncPermissions([
             'admin.trufis.crear',
             'admin.rutas.crear',
+            // NORMATIVAS 
+            'admin.normativas.crear',
+            'admin.normativas.ver',
+            'admin.normativas.editar',
+            'admin.normativas.eliminar',
+            //reclamos
+            'admin.settings.ver',
+            'admin.settings.editar',
         ]);
     }
 }
