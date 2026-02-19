@@ -66,8 +66,12 @@ class RolesSeeder extends Seeder
 
         // Encargado: solo crear
         $encargado->syncPermissions([
+            //trufis
             'admin.trufis.crear',
+            'admin.trufis.ver',
+            //rutas
             'admin.rutas.crear',
+            'admin.rutas.ver',
             // NORMATIVAS 
             'admin.normativas.crear',
             'admin.normativas.ver',
