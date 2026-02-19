@@ -106,6 +106,10 @@ class _HomeScreenState extends State<HomeScreen> {
   // ✅ Nuevo: labels de rutas (nombre de línea en la ruta)
   List<Marker> _routeLabelMarkers = [];
 
+  // ✅ FIX: labels de la ruta SELECCIONADA - persisten siempre en el mapa
+  // incluso cuando el card (X) se cierra. Solo se limpian si el usuario cierra el card.
+  List<Marker> _selectedRoutePermanentLabels = [];
+
   // ✅ NUEVO: markers de paradas de radiotaxis
   List<Marker> _paradasMarkers = [];
   List<Marker> _paradasLabelMarkers = [];
@@ -737,11 +741,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ✅ Guardamos idtrufi de cada polyline por índice
+  // IMPORTANTE: este índice corresponde siempre a _todasRutas, no a _rutasVisibles
   List<int?> _polylineIdIndex = [];
 
+  // ✅ FIX CRÍTICO: obtener el id de un polyline buscando en _todasRutas
+  // El índice se calcula sobre _todasRutas para que no se pierda al filtrar
   int? _idOfPolyline(Polyline pl) {
-    final idx = _rutasVisibles.indexOf(pl);
-    if (idx >= 0 && idx < _polylineIdIndex.length) return _polylineIdIndex[idx];
+    // Primero intenta encontrarlo en _todasRutas (índice global)
+    final idxGlobal = _todasRutas.indexOf(pl);
+    if (idxGlobal >= 0 && idxGlobal < _polylineIdIndex.length) {
+      return _polylineIdIndex[idxGlobal];
+    }
+    // Fallback: busca en _rutasVisibles (caso ruta individual de trufi)
+    final idxVisible = _rutasVisibles.indexOf(pl);
+    if (idxVisible >= 0) {
+      // En ruta individual, los ids vienen del parsed local, no de _polylineIdIndex global
+      // Intentar obtenerlo del idtrufi del card seleccionado
+      if (_selectedTrufiId != null) return _selectedTrufiId;
+    }
     return null;
   }
 
@@ -1006,7 +1023,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ==========================
   // Mostrar dirección de parada
-  // ✅ REVERTIDO al enfoque original: await dirección primero, luego mostrar sheet
   // ==========================
   void _mostrarDireccionParada(Map<String, dynamic> parada) async {
     final lat = double.tryParse((parada["latitud"] ?? parada["lat"] ?? parada["latitude"] ?? "").toString());
@@ -1022,7 +1038,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
 
-    // ✅ Obtener dirección ANTES de mostrar el sheet (igual que el código original)
     final direccion = await _getAddressFromLatLng(LatLng(lat, lng));
 
     if (!mounted) return;
@@ -1143,8 +1158,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // ✅ FIX 4: Markers tapables a lo largo de cada ruta visible
-  // Al tocar: muestra nombre de línea + sindicato al que pertenece
+  // Markers tapables a lo largo de cada ruta visible
+  // ✅ FIX: múltiples puntos de tap en cada ruta (cada ~8 puntos) para facilitar el toque
   // ==========================
   List<Marker> _buildTapableRouteMarkers() {
     final markers = <Marker>[];
@@ -1153,16 +1168,12 @@ class _HomeScreenState extends State<HomeScreen> {
       final pl = _rutasVisibles[i];
       if (pl.points.isEmpty) continue;
 
-      // Usamos el punto medio de la ruta como punto de tap
-      final midIdx = (pl.points.length / 2).floor();
-      final midPoint = pl.points[midIdx];
-
-      // Obtenemos el id del trufi para esta polyline
-      final id = (i < _polylineIdIndex.length) ? _polylineIdIndex[i] : null;
+      // Obtener id y nombre de la ruta
+      final id = _idOfPolyline(pl);
       final lineName = (id != null) ? (_trufiNameById[id] ?? "Línea $id") : null;
       if (lineName == null) continue;
 
-      // Encontrar el sindicato al que pertenece esta línea
+      // Encontrar el sindicato
       String? sindicatoName;
       for (final s in _sindicatos) {
         final trufis = (s["trufis"] as List? ?? []);
@@ -1176,26 +1187,39 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      markers.add(
-        Marker(
-          point: midPoint,
-          width: 44,
-          height: 44,
-          child: GestureDetector(
-            onTap: () => _mostrarInfoRuta(lineName, sindicatoName, id!),
-            child: Container(
-              // Área de tap transparente (invisible) encima de la ruta
-              color: Colors.transparent,
+      // ✅ FIX: agregar markers tapables cada ~8 puntos de la ruta
+      // Así es mucho más fácil acertar al tocar cualquier tramo de la línea
+      final step = (pl.points.length > 16) ? (pl.points.length ~/ 8) : 1;
+      final tapPoints = <LatLng>{};
+
+      // Punto inicial, medio y final siempre incluidos
+      tapPoints.add(pl.points.first);
+      tapPoints.add(pl.points[(pl.points.length / 2).floor()]);
+      tapPoints.add(pl.points.last);
+
+      // Puntos intermedios uniformes
+      for (int j = step; j < pl.points.length - 1; j += step) {
+        tapPoints.add(pl.points[j]);
+      }
+
+      for (final point in tapPoints) {
+        markers.add(
+          Marker(
+            point: point,
+            width: 60,
+            height: 60,
+            child: GestureDetector(
+              onTap: () => _mostrarInfoRuta(lineName, sindicatoName, id!),
+              child: Container(color: Colors.transparent),
             ),
           ),
-        ),
-      );
+        );
+      }
     }
 
     return markers;
   }
 
-  // ✅ FIX 4: Popup que aparece al tocar una ruta en el mapa
   void _mostrarInfoRuta(String lineName, String? sindicatoName, int idtrufi) {
     final isDarkMode = AppSettings.darkMode.value;
     final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
@@ -1341,6 +1365,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ==========================
   // Labels de rutas
+  // ✅ FIX: ahora busca el id en _todasRutas para no perder el nombre
   // ==========================
   List<Marker> _buildRouteLabels(List<Polyline> polylines) {
     final markers = <Marker>[];
@@ -1348,6 +1373,7 @@ class _HomeScreenState extends State<HomeScreen> {
     for (final pl in polylines) {
       if (pl.points.length < 2) continue;
 
+      // ✅ FIX CLAVE: usa _idOfPolyline que busca en _todasRutas primero
       final id = _idOfPolyline(pl);
       final name = (id != null) ? (_trufiNameById[id] ?? "Línea $id") : null;
       if (name == null || name.trim().isEmpty) continue;
@@ -1505,10 +1531,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ==========================
   // MOSTRAR RUTA 1 TRUFI
-  // ✅ MEJORADO: Loader, historial, nombre siempre visible
+  // ✅ FIX: guarda los labels en _selectedRoutePermanentLabels que
+  //         NUNCA se borran con _aplicarFiltroRutas ni con el botón X del card
   // ==========================
   Future<void> _mostrarRutaDeUnTrufi(int idtrufi, {String? nombreLinea}) async {
-    // ✅ Mostrar overlay de carga inmediatamente
     if (!mounted) return;
     setState(() => _isLoadingRutaTrufi = true);
 
@@ -1532,12 +1558,14 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      // ✅ Extraer puntos de la ruta cada ~100m
       final puntosRuta = await _extraerPuntosRuta(ruta.first.points);
 
       if (!mounted) return;
 
       final nombre = nombreLinea ?? _trufiNameById[idtrufi] ?? "Línea $idtrufi";
+
+      // Construir labels directamente con nombre conocido
+      final labelMarkers = _buildRouteLabelsDirect(ruta, idtrufi, nombre);
 
       setState(() {
         _selectedTrufiId = idtrufi;
@@ -1545,14 +1573,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
         _rutasVisibles = ruta;
         _polylineIdIndex = parsed.ids;
+
         _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 1);
-        _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+        _routeLabelMarkers = labelMarkers;
+
+        // ✅ FIX CLAVE: guardar en variable permanente que no se borra
+        _selectedRoutePermanentLabels = labelMarkers;
 
         _rutaPuntos = puntosRuta;
         _isLoadingRutaTrufi = false;
       });
 
-      // ✅ Guardar en historial
       await _agregarAlHistorial(HistorialItem(
         id: idtrufi,
         nombre: nombre,
@@ -1560,14 +1591,12 @@ class _HomeScreenState extends State<HomeScreen> {
         fechaUso: DateTime.now(),
       ));
 
-      // ✅ NUEVO: registrar selección en el backend (reporte +1)
       _registrarSeleccionTrufi(idtrufi);
 
       if (ruta.first.points.isNotEmpty) {
         _mapController.move(ruta.first.points.first, 14.8);
       }
 
-      // ✅ Mostrar ventana deslizante con puntos de ruta
       _mostrarVentanaRecorrido();
     } catch (e) {
       print("Error mostrando ruta de trufi $idtrufi: $e");
@@ -1579,8 +1608,38 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ✅ FIX NUEVO: construir labels directamente con nombre e id conocidos
+  // sin depender de _idOfPolyline ni del índice global
+  List<Marker> _buildRouteLabelsDirect(List<Polyline> polylines, int idtrufi, String nombre) {
+    final markers = <Marker>[];
+
+    for (final pl in polylines) {
+      if (pl.points.length < 2) continue;
+      if (nombre.trim().isEmpty) continue;
+
+      final start = pl.points.first;
+      final estimatedWidth = 30 + 14 + (nombre.length * 6.4);
+      final w = estimatedWidth.clamp(90.0, 200.0);
+
+      markers.add(
+        Marker(
+          point: start,
+          width: w,
+          height: 34,
+          alignment: Alignment.topCenter,
+          child: Transform.translate(
+            offset: const Offset(0, -18),
+            child: _routeNamePill(nombre),
+          ),
+        ),
+      );
+    }
+
+    return markers;
+  }
+
   // ==========================
-  // ✅ NUEVO: Registrar selección de trufi en backend (reporte +1)
+  // Registrar selección de trufi en backend
   // ==========================
   Future<void> _registrarSeleccionTrufi(int idtrufi) async {
     try {
@@ -1589,14 +1648,14 @@ class _HomeScreenState extends State<HomeScreen> {
         headers: const {"Accept": "application/json", "Content-Type": "application/json"},
       );
     } catch (e) {
-      // Silencioso: el reporte es no-crítico, no afectar al usuario si falla
       print("Error registrando selección de trufi $idtrufi: $e");
     }
   }
 
   // ==========================
   // Ventana deslizante con recorrido de la ruta
-  // ✅ FIX: al cerrar el sheet, el nombre del trufi NO desaparece
+  // ✅ FIX: al cerrar el sheet el nombre persiste porque _selectedTrufiName
+  //         y _routeLabelMarkers se mantienen en el estado
   // ==========================
   void _mostrarVentanaRecorrido() {
     final isDarkMode = AppSettings.darkMode.value;
@@ -1608,8 +1667,6 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      // ✅ FIX CLAVE: al cerrar el sheet NO limpiamos _selectedTrufiName
-      // El nombre se mantiene en el card superior hasta que el usuario presione X
       builder: (_) {
         return Container(
           height: MediaQuery.of(context).size.height * 0.4,
@@ -1730,8 +1787,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // CALL Radiotaxi
-  // ✅ El historial se guarda al SELECCIONAR desde el botón flotante, no aquí
+  // CALL Radiotaxi / Reclamos
+  // ✅ FIX: usar Uri.parse correcto para llamadas telefónicas
   // ==========================
   Future<void> _confirmAndCall(String rawPhone, {String? nombre, int? id}) async {
     final phone = rawPhone.replaceAll(RegExp(r'[^0-9+]'), '');
@@ -1747,7 +1804,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: kPrimary,
-              foregroundColor: const Color.fromARGB(255, 255, 255, 255),
+              foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(context, true),
             child: Text(t("call")),
@@ -1758,8 +1815,59 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (ok != true) return;
 
-    final uri = Uri.parse("tel:$phone");
-    await launchUrl(uri);
+    // ✅ FIX: usar canLaunchUrl + launchUrl correctamente
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("No se pudo realizar la llamada a $phone")),
+        );
+      }
+    }
+  }
+
+  // ✅ FIX: función auxiliar para llamadas desde reclamos (con título personalizable)
+  Future<void> _confirmAndCallReclamo(String rawPhone, String titulo) async {
+    final phone = rawPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (phone.trim().isEmpty) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(t("reclamos_call")),
+        content: Text(rawPhone),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(t("cancel")),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kPrimary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.call),
+            label: Text(t("call")),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("No se pudo realizar la llamada a $phone")),
+        );
+      }
+    }
   }
 
   // ==========================
@@ -1783,7 +1891,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // ✅ NUEVO: Reclamos
+  // RECLAMOS
+  // ✅ FIX: corregido \$index+1 y \$phone que aparecían como texto literal
   // ==========================
   Future<void> _fetchReclamos() async {
     try {
@@ -1796,7 +1905,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       if (res.statusCode < 200 || res.statusCode >= 300) {
-        throw Exception("HTTP \${res.statusCode}");
+        throw Exception("HTTP ${res.statusCode}");
       }
 
       final body = jsonDecode(res.body);
@@ -1814,7 +1923,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoadingReclamos = false;
       });
     } catch (e) {
-      print("Error fetching reclamos: \$e");
+      print("Error fetching reclamos: $e");
       if (!mounted) return;
       setState(() => _isLoadingReclamos = false);
     }
@@ -1896,7 +2005,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     final activo = item["activo"] == true;
 
                     final bool isWhatsApp = key.contains("whatsapp");
-                    final String label = isWhatsApp ? t("reclamos_whatsapp") : "${t("reclamos_phone")} \${index + 1}";
+                    // ✅ FIX: corregido el label — ya no usa \$index+1 sino interpolación correcta
+                    final String label = isWhatsApp
+                        ? t("reclamos_whatsapp")
+                        : "${t("reclamos_phone")} ${index + 1}";
 
                     return ListTile(
                       leading: Container(
@@ -1932,32 +2044,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           : null,
                       onTap: activo && value.isNotEmpty
                           ? () async {
-                              final phone = value.replaceAll(RegExp(r'[^0-9+]'), '');
-                              final ok = await showDialog<bool>(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  title: Text(t("reclamos_call")),
-                                  content: Text(value),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
-                                      child: Text(t("cancel")),
-                                    ),
-                                    ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: kPrimary,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      onPressed: () => Navigator.pop(context, true),
-                                      icon: const Icon(Icons.call),
-                                      label: Text(t("call")),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (ok == true) {
-                                await launchUrl(Uri.parse("tel:\$phone"));
-                              }
+                              // ✅ FIX: usar _confirmAndCallReclamo con phone correcto (sin \$phone)
+                              await _confirmAndCallReclamo(value, label);
                             }
                           : null,
                     );
@@ -2066,7 +2154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ElevatedButton.icon(
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: kPrimary,
-                                            foregroundColor: const Color.fromARGB(255, 255, 255, 255),
+                                            foregroundColor: Colors.white,
                                           ),
                                           onPressed: () async {
                                             Navigator.pop(context);
@@ -2103,7 +2191,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================
-  // ✅ NUEVO: Drawer de Historial
+  // Drawer de Historial
   // ==========================
   void _openHistorialDrawer() {
     final isDarkMode = AppSettings.darkMode.value;
@@ -2165,7 +2253,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: TabBarView(
                       children: [
-                        // ✅ Tab Trufis
                         _buildHistorialTab(
                           ctx: ctx,
                           setModalState: setModalState,
@@ -2179,7 +2266,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             await _mostrarRutaDeUnTrufi(item.id, nombreLinea: item.nombre);
                           },
                         ),
-                        // ✅ Tab Radiotaxis
                         _buildHistorialTab(
                           ctx: ctx,
                           setModalState: setModalState,
@@ -2238,7 +2324,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Column(
       children: [
-        // ✅ Botón limpiar historial
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: Row(
@@ -2397,13 +2482,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           CircleLayer(circles: _buildRadioCircle()),
 
                         if (isTrufiSelected) ...[
-                          // ✅ FIX 4: PolylineLayer con tap para mostrar nombre + sindicato
                           PolylineLayer(
                             polylines: _rutasVisibles,
                           ),
                           if (_routeLabelMarkers.isNotEmpty) MarkerLayer(markers: _routeLabelMarkers),
                           if (_inicioFinMarkers.isNotEmpty) MarkerLayer(markers: _inicioFinMarkers),
-                          // ✅ FIX 4: Markers invisibles tapables encima de cada ruta para detectar taps
+                          // ✅ FIX: labels permanentes de la ruta seleccionada - siempre visibles
+                          // Se renderizan encima de todo, no se borran con _aplicarFiltroRutas
+                          if (_selectedRoutePermanentLabels.isNotEmpty)
+                            MarkerLayer(markers: _selectedRoutePermanentLabels),
                           MarkerLayer(
                             markers: _buildTapableRouteMarkers(),
                           ),
@@ -2426,7 +2513,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
 
-                    // ✅ NUEVO: Overlay de carga global (rutas del trufi)
+                    // Overlay de carga global (rutas del trufi)
                     if (_isLoadingRutaTrufi)
                       Positioned.fill(
                         child: Container(
@@ -2465,7 +2552,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
-                    // ✅ NUEVO: Overlay GPS
+                    // Overlay GPS
                     if (_isLoadingGPS)
                       Positioned(
                         top: 90,
@@ -2473,7 +2560,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _loadingChip(t("loading_gps"), Icons.gps_fixed),
                       ),
 
-                    // ✅ NUEVO: Overlay cargando mapa/GeoJSON
+                    // Overlay cargando mapa/GeoJSON
                     if (_isLoadingGeoJSON)
                       Positioned(
                         top: 90,
@@ -2481,7 +2568,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _loadingChip(t("loading_geojson"), Icons.map_outlined),
                       ),
 
-                    // ✅ NUEVO: Overlay cargando rutas
+                    // Overlay cargando rutas
                     if (_isLoadingRutas && !_isLoadingRutaTrufi)
                       Positioned(
                         top: _isLoadingGeoJSON ? 140 : 90,
@@ -2489,7 +2576,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _loadingChip(t("loading_route"), Icons.route),
                       ),
 
-                    // ✅ NUEVO: Overlay cargando normativas
+                    // Overlay cargando normativas
                     if (_isLoadingNormativas)
                       Positioned.fill(
                         child: Container(
@@ -2527,9 +2614,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: _routesFilterDropdown(isDarkMode),
                     ),
 
-                    // ✅ FIX 3: El card del trufi SIEMPRE visible cuando hay un trufi seleccionado
-                    // Se muestra independientemente del tab activo (trufi/radiotaxi)
-                    // Se posiciona debajo de los chips de carga cuando estén visibles
                     if (_selectedTrufiName != null && _selectedTrufiName!.trim().isNotEmpty)
                       Positioned(
                         left: 16,
@@ -2537,7 +2621,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _selectedTrufiCard(isDarkMode),
                       ),
 
-                    // ✅ NUEVO: Banner "fuera de Colcapirhua"
+                    // Banner "fuera de Colcapirhua"
                     if (_isOutsideColcapirhua && !_outsideBannerDismissed && _currentPosition != null)
                       Positioned(
                         bottom: 130,
@@ -2621,8 +2705,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               setState(() {
                                 isTrufiSelected = true;
                               });
-                              // ✅ FIX: Si hay un trufi seleccionado activo, NO resetear las rutas
-                              // El nombre y la ruta del trufi deben mantenerse visibles
                               if (_selectedTrufiId == null) {
                                 _aplicarFiltroRutas();
                               }
@@ -2668,7 +2750,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ✅ NUEVO: Chip de carga pequeño
+  // Chip de carga pequeño
   Widget _loadingChip(String label, IconData icon) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -2727,7 +2809,6 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ✅ Spinner pequeño si está cargando rutas
           _isLoadingRutas
               ? const SizedBox(
                   width: 20,
@@ -2792,9 +2873,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ==========================
   // UI: Card del trufi seleccionado
-  // ✅ FIX: al cerrar X, centra en Colcapirhua y restaura todas las rutas
-  // ✅ FIX: el card PERSISTE en pantalla aunque el bottomsheet se cierre
-  // ✅ NUEVO: botón para reabrir el recorrido
   // ==========================
   Widget _selectedTrufiCard(bool isDarkMode) {
     final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.92);
@@ -2840,7 +2918,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(width: 4),
-          // ✅ NUEVO: botón para reabrir ventana de recorrido
           if (_rutaPuntos.isNotEmpty)
             InkWell(
               onTap: _mostrarVentanaRecorrido,
@@ -2860,6 +2937,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 _selectedTrufiId = null;
                 _selectedTrufiName = null;
                 _rutaPuntos = [];
+                // ✅ Al X limpiar también las labels permanentes y restaurar todas las rutas
+                _selectedRoutePermanentLabels = [];
               });
 
               _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
@@ -2915,121 +2994,147 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ==========================
   // BottomSheet dinámico (Trufi vs Radiotaxi)
-  // ✅ MEJORADO: loader en lista, historial en radiotaxi call
+  // ✅ FIX: usa StatefulBuilder para leer _trufis/_radioTaxis en tiempo real
   // ==========================
   void _showFullWidthBottomSheet(BuildContext context, String type) {
     final bool isLookingForTrufi = (type == t("trufi"));
-    final List<Map<String, dynamic>> dataList = isLookingForTrufi ? _trufis : _radioTaxis;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        final isDarkMode = AppSettings.darkMode.value;
-        final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
-        final textColor = isDarkMode ? Colors.white : Colors.black87;
-        final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (sheetCtx, setSheetState) {
+            final isDarkMode = AppSettings.darkMode.value;
+            final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+            final textColor = isDarkMode ? Colors.white : Colors.black87;
+            final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
 
-        return Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: sheetColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 50,
-                height: 5,
-                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+            // ✅ Leer la lista DENTRO del builder para que tenga los datos actuales
+            final List<Map<String, dynamic>> dataList =
+                isLookingForTrufi ? _trufis : _radioTaxis;
+
+            return Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: sheetColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
               ),
-              const SizedBox(height: 20),
-              Text(
-                "$type ${t("of_colcapirhua")}",
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: kPrimary),
-              ),
-              const Divider(),
-              SizedBox(
-                height: 300,
-                child: _isLoadingDatos && dataList.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const CircularProgressIndicator(color: kPrimary),
-                            const SizedBox(height: 12),
-                            Text(t("loading_data"), style: TextStyle(color: subTextColor)),
-                          ],
-                        ),
-                      )
-                    : dataList.isEmpty
-                        ? Center(child: Text(t("no_data"), style: TextStyle(color: subTextColor)))
-                        : ListView.separated(
-                            itemCount: dataList.length,
-                            separatorBuilder: (_, __) => const Divider(),
-                            itemBuilder: (context, index) {
-                              final item = dataList[index];
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 50,
+                    height: 5,
+                    decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    "$type ${t("of_colcapirhua")}",
+                    style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: kPrimary),
+                  ),
+                  const Divider(),
+                  SizedBox(
+                    height: 300,
+                    child: _isLoadingDatos && dataList.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const CircularProgressIndicator(color: kPrimary),
+                                const SizedBox(height: 12),
+                                Text(t("loading_data"),
+                                    style: TextStyle(color: subTextColor)),
+                              ],
+                            ),
+                          )
+                        : dataList.isEmpty
+                            ? Center(
+                                child: Text(t("no_data"),
+                                    style: TextStyle(color: subTextColor)))
+                            : ListView.separated(
+                                itemCount: dataList.length,
+                                separatorBuilder: (_, __) => const Divider(),
+                                itemBuilder: (context, index) {
+                                  final item = dataList[index];
 
-                              final String titulo = isLookingForTrufi
-                                  ? (item["nom_linea"] ?? "Sin nombre")
-                                  : (item["nombre_comercial"] ?? "Sin nombre");
+                                  final String titulo = isLookingForTrufi
+                                      ? (item["nom_linea"] ?? "Sin nombre")
+                                      : (item["nombre_comercial"] ?? "Sin nombre");
 
-                              final String subtitulo = isLookingForTrufi
-                                  ? "${t("id")}: ${item["idtrufi"]}"
-                                  : "${t("base")}: ${item["telefono_base"] ?? 'S/N'}";
+                                  final String subtitulo = isLookingForTrufi
+                                      ? "${t("id")}: ${item["idtrufi"]}"
+                                      : "${t("base")}: ${item["telefono_base"] ?? 'S/N'}";
 
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: kPrimary.withOpacity(0.12),
-                                  child: Icon(
-                                    isLookingForTrufi ? Icons.bus_alert : Icons.local_taxi,
-                                    color: kPrimary,
-                                  ),
-                                ),
-                                title: Text(titulo, style: TextStyle(color: textColor)),
-                                subtitle: Text(subtitulo, style: TextStyle(color: subTextColor)),
-                                onTap: () async {
-                                  Navigator.pop(context);
+                                  return ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundColor: kPrimary.withOpacity(0.12),
+                                      child: Icon(
+                                        isLookingForTrufi
+                                            ? Icons.bus_alert
+                                            : Icons.local_taxi,
+                                        color: kPrimary,
+                                      ),
+                                    ),
+                                    title: Text(titulo,
+                                        style: TextStyle(color: textColor)),
+                                    subtitle: Text(subtitulo,
+                                        style: TextStyle(color: subTextColor)),
+                                    onTap: () async {
+                                      Navigator.pop(sheetCtx);
 
-                                  if (isLookingForTrufi && item["idtrufi"] != null) {
-                                    final id = int.parse(item["idtrufi"].toString());
-                                    _mostrarRutaDeUnTrufi(id, nombreLinea: titulo);
-                                    return;
-                                  }
+                                      if (isLookingForTrufi &&
+                                          item["idtrufi"] != null) {
+                                        final id = int.parse(
+                                            item["idtrufi"].toString());
+                                        _mostrarRutaDeUnTrufi(id,
+                                            nombreLinea: titulo);
+                                        return;
+                                      }
 
-                                  if (!isLookingForTrufi) {
-                                    final phone = (item["telefono_base"] ?? "").toString();
-                                    final id = int.tryParse((item["id"] ?? "").toString());
-                                    // ✅ FIX: guardar en historial al seleccionar desde el botón flotante
-                                    // Se guarda al momento de la selección, independientemente de si llama o no
-                                    if (id != null) {
-                                      await _agregarAlHistorial(HistorialItem(
-                                        id: id,
-                                        nombre: titulo,
-                                        tipo: 'radiotaxi',
-                                        telefono: phone,
-                                        fechaUso: DateTime.now(),
-                                      ));
-                                    }
-                                    await _confirmAndCall(phone, nombre: titulo, id: id);
-                                  }
+                                      if (!isLookingForTrufi) {
+                                        final phone =
+                                            (item["telefono_base"] ?? "")
+                                                .toString();
+                                        final id = int.tryParse(
+                                            (item["id"] ?? "").toString());
+                                        if (id != null) {
+                                          await _agregarAlHistorial(
+                                              HistorialItem(
+                                            id: id,
+                                            nombre: titulo,
+                                            tipo: 'radiotaxi',
+                                            telefono: phone,
+                                            fechaUso: DateTime.now(),
+                                          ));
+                                        }
+                                        await _confirmAndCall(phone,
+                                            nombre: titulo, id: id);
+                                      }
+                                    },
+                                  );
                                 },
-                              );
-                            },
-                          ),
+                              ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
   // ==========================
-  // Drawer
+  // ✅ SIDEBAR REORGANIZADO
+  // Orden profesional con separadores visuales claros
   // ==========================
   Drawer _buildSidebarDrawer() {
     final drawerWidth = MediaQuery.of(context).size.width * 0.75;
@@ -3043,14 +3148,67 @@ class _HomeScreenState extends State<HomeScreen> {
             final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
             final textColor = isDarkMode ? Colors.white : Colors.black87;
             final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+            final sectionHeaderColor = isDarkMode ? Colors.white38 : Colors.black38;
+            final dividerColor = isDarkMode ? Colors.white12 : Colors.black12;
+
+            // Helper: encabezado de sección
+            Widget sectionHeader(String label) => Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                  child: Text(
+                    label.toUpperCase(),
+                    style: TextStyle(
+                      color: sectionHeaderColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                );
+
+            // Helper: tile estándar uniforme
+            Widget drawerTile({
+              required IconData icon,
+              required String title,
+              String? subtitle,
+              Widget? trailing,
+              bool loading = false,
+              VoidCallback? onTap,
+            }) =>
+                ListTile(
+                  leading: loading
+                      ? SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                        )
+                      : Icon(icon, color: kPrimary, size: 22),
+                  title: Text(
+                    title,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: subtitle != null
+                      ? Text(
+                          subtitle,
+                          style: TextStyle(color: subTextColor, fontSize: 12),
+                        )
+                      : null,
+                  trailing: trailing,
+                  onTap: onTap,
+                  minLeadingWidth: 28,
+                );
 
             return Container(
               color: bg,
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
+                  // ─── HEADER ───
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [kPrimaryDark.withOpacity(0.98), kPrimary.withOpacity(0.92)],
@@ -3065,22 +3223,32 @@ class _HomeScreenState extends State<HomeScreen> {
                         const Expanded(
                           child: Text(
                             "ColcaTrufis",
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
 
-                  // 1) SINDICATOS
+                  // ─── SECCIÓN: TRANSPORTE ───
+                  sectionHeader("Transporte"),
+
+                  // SINDICATOS
                   ExpansionTile(
-                    leading: const Icon(Icons.groups, color: kPrimary),
-                    title: Text(t("sindicatos"), style: TextStyle(color: textColor)),
+                    leading: const Icon(Icons.groups, color: kPrimary, size: 22),
+                    title: Text(
+                      t("sindicatos"),
+                      style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    childrenPadding: const EdgeInsets.only(left: 16),
                     children: _sindicatos.isEmpty
                         ? [
                             Padding(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(12),
                               child: Row(
                                 children: [
                                   const SizedBox(
@@ -3089,7 +3257,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
                                   ),
                                   const SizedBox(width: 10),
-                                  Text(t("loading_data"), style: TextStyle(color: subTextColor)),
+                                  Text(t("loading_data"), style: TextStyle(color: subTextColor, fontSize: 13)),
                                 ],
                               ),
                             ),
@@ -3099,16 +3267,18 @@ class _HomeScreenState extends State<HomeScreen> {
                             final List trufis = (s["trufis"] as List? ?? []);
 
                             return ExpansionTile(
-                              leading: const Icon(Icons.account_balance, color: kPrimary),
-                              title: Text(sindicatoNombre, style: TextStyle(color: textColor)),
+                              leading: const Icon(Icons.account_balance, color: kPrimary, size: 20),
+                              title: Text(sindicatoNombre, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w600)),
+                              childrenPadding: const EdgeInsets.only(left: 16),
                               children: trufis.map<Widget>((tr) {
                                 final linea = (tr["nom_linea"] ?? "").toString();
                                 final id = int.tryParse((tr["idtrufi"] ?? "").toString());
 
                                 return ListTile(
                                   dense: true,
-                                  leading: const Icon(Icons.directions_bus, color: kPrimary),
-                                  title: Text(linea, style: TextStyle(color: textColor)),
+                                  minLeadingWidth: 24,
+                                  leading: const Icon(Icons.directions_bus, color: kPrimary, size: 18),
+                                  title: Text(linea, style: TextStyle(color: textColor, fontSize: 13)),
                                   onTap: () {
                                     Navigator.pop(context);
                                     setState(() => isTrufiSelected = true);
@@ -3120,14 +3290,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           }).toList(),
                   ),
 
-                  // 2) RADIOTAXIS
+                  // RADIOTAXIS
                   ExpansionTile(
-                    leading: const Icon(Icons.local_taxi, color: kPrimary),
-                    title: Text(t("radiotaxis"), style: TextStyle(color: textColor)),
+                    leading: const Icon(Icons.local_taxi, color: kPrimary, size: 22),
+                    title: Text(
+                      t("radiotaxis"),
+                      style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    childrenPadding: const EdgeInsets.only(left: 16),
                     children: _radioTaxis.isEmpty
                         ? [
                             Padding(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(12),
                               child: Row(
                                 children: [
                                   const SizedBox(
@@ -3136,7 +3310,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
                                   ),
                                   const SizedBox(width: 10),
-                                  Text(t("loading_data"), style: TextStyle(color: subTextColor)),
+                                  Text(t("loading_data"), style: TextStyle(color: subTextColor, fontSize: 13)),
                                 ],
                               ),
                             ),
@@ -3148,13 +3322,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
                             return ListTile(
                               dense: true,
-                              leading: const Icon(Icons.phone, color: kPrimary),
-                              title: Text(nombre, style: TextStyle(color: textColor)),
-                              subtitle: Text('${t("base")}: $phone', style: TextStyle(color: subTextColor)),
+                              minLeadingWidth: 24,
+                              leading: const Icon(Icons.phone, color: kPrimary, size: 18),
+                              title: Text(nombre, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w600)),
+                              subtitle: Text('${t("base")}: $phone', style: TextStyle(color: subTextColor, fontSize: 12)),
                               onTap: () async {
                                 Navigator.pop(context);
                                 setState(() => isTrufiSelected = false);
-                                // ✅ FIX: guardar en historial al seleccionar desde el sidebar
                                 if (id != null) {
                                   await _agregarAlHistorial(HistorialItem(
                                     id: id,
@@ -3170,18 +3344,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           }).toList(),
                   ),
 
-                  const Divider(),
+                  Divider(height: 1, color: dividerColor),
 
-                  // ✅ NUEVO: HISTORIAL
-                  ListTile(
-                    leading: const Icon(Icons.history, color: kPrimary),
-                    title: Text(t("history"), style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
-                    subtitle: Text(
-                      "${_historialTrufis.length + _historialRadiotaxis.length} registros",
-                      style: TextStyle(color: subTextColor, fontSize: 12),
-                    ),
+                  // ─── SECCIÓN: INFORMACIÓN Y SERVICIOS ───
+                  sectionHeader("Información y Servicios"),
+
+                  drawerTile(
+                    icon: Icons.history,
+                    title: t("history"),
+                    subtitle: "${_historialTrufis.length + _historialRadiotaxis.length} registros",
                     trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: kPrimary.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(10),
@@ -3191,7 +3364,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: const TextStyle(
                           color: kPrimary,
                           fontWeight: FontWeight.w800,
-                          fontSize: 13,
+                          fontSize: 12,
                         ),
                       ),
                     ),
@@ -3201,109 +3374,51 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
 
-                  const Divider(),
-
-                  // ✅ NUEVO: RECLAMOS
-                  ListTile(
-                    leading: _isLoadingReclamos
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
-                          )
-                        : const Icon(Icons.report_problem_outlined, color: kPrimary),
-                    title: Text(t("reclamos"), style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
+                  drawerTile(
+                    icon: Icons.report_problem_outlined,
+                    title: t("reclamos"),
+                    loading: _isLoadingReclamos,
                     onTap: () async {
                       Navigator.pop(context);
                       await _openReclamosDrawer();
                     },
                   ),
 
-                  // ✅ NORMATIVAS
-                  ListTile(
-                    leading: _isLoadingNormativas
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
-                          )
-                        : const Icon(Icons.menu_book, color: kPrimary),
-                    title: Text(t("normativas"), style: TextStyle(color: textColor)),
+                  drawerTile(
+                    icon: Icons.menu_book,
+                    title: t("normativas"),
+                    loading: _isLoadingNormativas,
                     onTap: () async {
                       Navigator.pop(context);
                       await _openNormativasDrawer();
                     },
                   ),
 
-                  const Divider(),
+                  Divider(height: 1, color: dividerColor),
 
-                  // ✅ REDES SOCIALES
+                  // ─── SECCIÓN: MUNICIPIO ───
+                  sectionHeader("Municipio de Colcapirhua"),
+
+                  // REDES SOCIALES
                   ExpansionTile(
-                    leading: const Icon(Icons.share, color: kPrimary),
-                    title: Text(t("social_networks"), style: TextStyle(color: textColor)),
+                    leading: const Icon(Icons.share, color: kPrimary, size: 22),
+                    title: Text(
+                      t("social_networks"),
+                      style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    childrenPadding: const EdgeInsets.only(left: 16),
                     children: [
-                      ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.music_note, color: kPrimary),
-                        title: const Text("TikTok"),
-                        onTap: () async {
-                          await launchUrl(
-                            Uri.parse("https://www.tiktok.com/@gamdecolcapirhua?is_from_webapp=1&sender_device=pc"),
-                            mode: LaunchMode.externalApplication,
-                          );
-                        },
-                      ),
-                      ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.play_circle, color: kPrimary),
-                        title: const Text("YouTube"),
-                        onTap: () async {
-                          await launchUrl(
-                            Uri.parse("https://www.youtube.com/@gamdecolcapirhua"),
-                            mode: LaunchMode.externalApplication,
-                          );
-                        },
-                      ),
-                      ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.facebook, color: kPrimary),
-                        title: const Text("Facebook"),
-                        onTap: () async {
-                          await launchUrl(
-                            Uri.parse("https://www.facebook.com/municipiodecolcapirhua"),
-                            mode: LaunchMode.externalApplication,
-                          );
-                        },
-                      ),
-                      ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.camera_alt, color: kPrimary),
-                        title: const Text("Instagram"),
-                        onTap: () async {
-                          await launchUrl(
-                            Uri.parse("https://www.instagram.com/alcaldiadecolcapirhua"),
-                            mode: LaunchMode.externalApplication,
-                          );
-                        },
-                      ),
-                      ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.close, color: kPrimary),
-                        title: const Text("X"),
-                        onTap: () async {
-                          await launchUrl(
-                            Uri.parse("https://x.com/GAMColcapirhua"),
-                            mode: LaunchMode.externalApplication,
-                          );
-                        },
-                      ),
+                      _socialTile(Icons.music_note, "TikTok", "https://www.tiktok.com/@gamdecolcapirhua?is_from_webapp=1&sender_device=pc", textColor),
+                      _socialTile(Icons.play_circle, "YouTube", "https://www.youtube.com/@gamdecolcapirhua", textColor),
+                      _socialTile(Icons.facebook, "Facebook", "https://www.facebook.com/municipiodecolcapirhua", textColor),
+                      _socialTile(Icons.camera_alt, "Instagram", "https://www.instagram.com/alcaldiadecolcapirhua", textColor),
+                      _socialTile(Icons.close, "X (Twitter)", "https://x.com/GAMColcapirhua", textColor),
                     ],
                   ),
 
-                  // ✅ PÁGINA OFICIAL
-                  ListTile(
-                    leading: const Icon(Icons.public, color: kPrimary),
-                    title: Text(t("official_page"), style: TextStyle(color: textColor)),
+                  drawerTile(
+                    icon: Icons.public,
+                    title: t("official_page"),
                     onTap: () async {
                       await launchUrl(
                         Uri.parse("https://www.colcapirhua.gob.bo/"),
@@ -3312,23 +3427,32 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
 
-                  const Divider(),
+                  Divider(height: 1, color: dividerColor),
+
+                  // ─── SECCIÓN: CONFIGURACIÓN ───
+                  sectionHeader("Configuración"),
 
                   // Idioma
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     child: Row(
                       children: [
-                        const Icon(Icons.language, color: kPrimary),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(t("language"), style: TextStyle(color: textColor))),
+                        const Icon(Icons.language, color: kPrimary, size: 22),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            t("language"),
+                            style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                          ),
+                        ),
                         ValueListenableBuilder<String>(
                           valueListenable: AppSettings.language,
                           builder: (_, lang, __) {
                             return DropdownButton<String>(
                               value: lang,
                               dropdownColor: bg,
-                              style: TextStyle(color: textColor),
+                              style: TextStyle(color: textColor, fontSize: 13),
+                              underline: const SizedBox.shrink(),
                               items: const [
                                 DropdownMenuItem(value: "es", child: Text("Español")),
                                 DropdownMenuItem(value: "en", child: Text("English")),
@@ -3344,27 +3468,44 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                  // Darkmode
+                  // Modo oscuro
                   SwitchListTile(
                     value: AppSettings.darkMode.value,
                     activeColor: kPrimary,
-                    title: Text(t("darkmode"), style: TextStyle(color: textColor)),
+                    title: Text(
+                      t("darkmode"),
+                      style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
                     onChanged: (v) => AppSettings.darkMode.value = v,
-                    secondary: const Icon(Icons.dark_mode, color: kPrimary),
+                    secondary: const Icon(Icons.dark_mode, color: kPrimary, size: 22),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   ),
 
-                  // ✅ Radio configurable
+                  // Radio configurable
                   ValueListenableBuilder<double>(
                     valueListenable: AppSettings.radiusMeters,
                     builder: (context, meters, _) {
                       return Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                        padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(t("radius_title"), style: TextStyle(color: textColor, fontWeight: FontWeight.w800)),
-                            const SizedBox(height: 6),
-                            Text("${t("radius_sub")}: ${meters.round()} m", style: TextStyle(color: subTextColor)),
+                            Row(
+                              children: [
+                                const Icon(Icons.radio_button_checked, color: kPrimary, size: 22),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    t("radius_title"),
+                                    style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                                Text(
+                                  "${meters.round()} m",
+                                  style: TextStyle(color: kPrimary, fontSize: 13, fontWeight: FontWeight.w700),
+                                ),
+                              ],
+                            ),
                             Slider(
                               value: meters.clamp(50, 2000),
                               min: 50,
@@ -3379,92 +3520,104 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
 
-                  // ✅ Centrar
-                  ListTile(
-                    leading: const Icon(Icons.center_focus_strong, color: kPrimary),
-                    title: Text(t("center_title"), style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
-                    subtitle: ValueListenableBuilder<String>(
-                      valueListenable: AppSettings.centerMode,
-                      builder: (_, mode, __) {
-                        return Text(
-                          mode == "ubicacion" ? t("center_location") : t("center_colcapirhua"),
-                          style: TextStyle(color: subTextColor),
-                        );
-                      },
-                    ),
-                    trailing: Icon(Icons.expand_more, color: textColor),
-                    onTap: () {
-                      showModalBottomSheet(
-                        context: context,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) {
-                          final sheetBg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: sheetBg,
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const SizedBox(height: 10),
-                                Container(width: 46, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
-                                const SizedBox(height: 10),
-                                ListTile(
-                                  leading: const Icon(Icons.location_city, color: kPrimary),
-                                  title: Text(t("center_colcapirhua")),
-                                  onTap: () {
-                                    AppSettings.centerMode.value = "colcapirhua";
-                                    Navigator.pop(context);
-                                  },
+                  // Centrar
+                  ValueListenableBuilder<String>(
+                    valueListenable: AppSettings.centerMode,
+                    builder: (_, mode, __) {
+                      return drawerTile(
+                        icon: Icons.center_focus_strong,
+                        title: t("center_title"),
+                        subtitle: mode == "ubicacion" ? t("center_location") : t("center_colcapirhua"),
+                        trailing: Icon(Icons.expand_more, color: subTextColor, size: 18),
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) {
+                              final sheetBg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: sheetBg,
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
                                 ),
-                                ListTile(
-                                  leading: const Icon(Icons.my_location, color: kPrimary),
-                                  title: Text(t("center_location")),
-                                  onTap: () {
-                                    AppSettings.centerMode.value = "ubicacion";
-                                    Navigator.pop(context);
-                                  },
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(height: 10),
+                                    Container(width: 46, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+                                    const SizedBox(height: 10),
+                                    ListTile(
+                                      leading: const Icon(Icons.location_city, color: kPrimary),
+                                      title: Text(t("center_colcapirhua")),
+                                      onTap: () {
+                                        AppSettings.centerMode.value = "colcapirhua";
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: const Icon(Icons.my_location, color: kPrimary),
+                                      title: Text(t("center_location")),
+                                      onTap: () {
+                                        AppSettings.centerMode.value = "ubicacion";
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    const SizedBox(height: 10),
+                                  ],
                                 ),
-                                const SizedBox(height: 10),
-                              ],
-                            ),
+                              );
+                            },
                           );
                         },
                       );
                     },
                   ),
 
-                  // ✅ Acerca de
-                  ListTile(
-                    leading: const Icon(Icons.info_outline, color: kPrimary),
-                    title: Text(t("about"), style: TextStyle(color: textColor)),
+                  Divider(height: 1, color: dividerColor),
+
+                  // ─── SECCIÓN: ACERCA DE ───
+                  sectionHeader("Acerca de"),
+
+                  drawerTile(
+                    icon: Icons.info_outline,
+                    title: t("about"),
                     onTap: () {
                       showDialog(
                         context: context,
-                        builder: (_) {
-                          return AlertDialog(
-                            title: Text(t("about_title")),
-                            content: Text(t("about_body")),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text("OK"),
-                              ),
-                            ],
-                          );
-                        },
+                        builder: (_) => AlertDialog(
+                          title: Text(t("about_title")),
+                          content: Text(t("about_body")),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text("OK"),
+                            ),
+                          ],
+                        ),
                       );
                     },
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
                 ],
               ),
             );
           },
         ),
       ),
+    );
+  }
+
+  // Helper para tiles de redes sociales
+  Widget _socialTile(IconData icon, String name, String url, Color textColor) {
+    return ListTile(
+      dense: true,
+      minLeadingWidth: 24,
+      leading: Icon(icon, color: kPrimary, size: 18),
+      title: Text(name, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w500)),
+      onTap: () async {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      },
     );
   }
 }
