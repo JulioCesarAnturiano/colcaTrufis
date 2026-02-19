@@ -98,6 +98,60 @@
             </div>
         </div>
     </div>
+    <div class="col-6 col-md-4">
+    <div class="ct-stat-card">
+        <div class="card-body p-3 d-flex align-items-center gap-3">
+            <div class="ct-stat-icon" style="background:rgba(17,99,121,0.10); color:var(--brand-primary)">
+                <i class="bi bi-people-fill fs-5"></i>
+            </div>
+            <div>
+                <div class="ct-stat-label">Total Usuarios</div>
+                <div class="ct-stat-value">{{ $stats['total_usuarios'] }}</div>
+            </div>
+        </div>
+        <div class="ct-stat-footer">
+            <i class="bi bi-person-check text-primary"></i>
+            <span>Registrados en el panel</span>
+        </div>
+    </div>
+</div>
+
+<div class="col-6 col-md-4">
+    <div class="ct-stat-card">
+        <div class="card-body p-3 d-flex align-items-center gap-3">
+            <div class="ct-stat-icon" style="background:rgba(28,108,129,0.12); color:var(--brand-aqua)">
+                <i class="bi bi-taxi-front-fill fs-5"></i>
+            </div>
+            <div>
+                <div class="ct-stat-label">Total RadioTaxis</div>
+                <div class="ct-stat-value">{{ $stats['total_radiotaxis'] }}</div>
+            </div>
+        </div>
+        <div class="ct-stat-footer">
+            <i class="bi bi-activity text-success"></i>
+            <span>En servicio</span>
+        </div>
+    </div>
+</div>
+
+<div class="col-12 col-md-4">
+    <div class="ct-stat-card">
+        <div class="card-body p-3 d-flex align-items-center gap-3">
+            <div class="ct-stat-icon" style="background:rgba(6,70,86,0.08); color:var(--brand-dark)">
+                <i class="bi bi-file-earmark-text-fill fs-5"></i>
+            </div>
+            <div>
+                <div class="ct-stat-label">Total Normativas</div>
+                <div class="ct-stat-value">{{ $stats['total_normativas'] }}</div>
+            </div>
+        </div>
+        <div class="ct-stat-footer">
+            <i class="bi bi-journal-text text-primary"></i>
+            <span>Documentos publicados</span>
+        </div>
+    </div>
+</div>
+
 
 </div>
 
