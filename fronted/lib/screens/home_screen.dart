@@ -13,7 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
-//defini colores
+
 const Color kPrimary = Color(0xFF09596E);
 const Color kPrimaryDark = Color(0xFF064656);
 
@@ -73,9 +73,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final GeoJsonParser _zonaParser = GeoJsonParser();
 
-  final ApiService _apiService = ApiService(baseUrl:"htps://moviruta.colcapirhua.gob.bo/api");
+  final ApiService _apiService = ApiService(baseUrl: "https://moviruta.colcapirhua.gob.bo/api");
 
-  static const String _apiBase = "htps://moviruta.colcapirhua.gob.bo/api";
+  static const String _apiBase = "https://moviruta.colcapirhua.gob.bo/api";
 
   Position? _currentPosition;
 
@@ -144,6 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _isOutsideColcapirhua = false;
   bool _outsideBannerDismissed = false;
+  bool _gpsOffBannerDismissed = false;
   double? _colcaBoundsMinLat;
   double? _colcaBoundsMaxLat;
   double? _colcaBoundsMinLng;
@@ -495,9 +496,9 @@ class _HomeScreenState extends State<HomeScreen> {
         colcapirhuaPolygons = _zonaParser.polygons.map((p) {
           return Polygon(
             points: p.points,
-            color: kPrimary.withOpacity(0.15),
-            borderColor: kPrimary.withOpacity(0.85),
-            borderStrokeWidth: 3.0,
+            color: kPrimaryDark.withOpacity(0.13),
+            borderColor: kPrimaryDark.withOpacity(0.90),
+            borderStrokeWidth: 3.5,
             isFilled: true,
           );
         }).toList();
@@ -506,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return Polyline(
             points: l.points,
             strokeWidth: 3.5,
-            color: kPrimary.withOpacity(0.95),
+            color: kPrimaryDark.withOpacity(0.92),
           );
         }).toList();
 
@@ -632,10 +633,10 @@ class _HomeScreenState extends State<HomeScreen> {
         polylines.add(
           Polyline(
             points: points,
-            strokeWidth: 3,
-            color: kAqua.withOpacity(0.95),
-            borderColor: kPrimaryDark.withOpacity(0.55),
-            borderStrokeWidth: 1,
+            strokeWidth: 3.1,
+            color: kAqua,
+            borderColor: const Color(0xFF032530),
+            borderStrokeWidth: 1.5,
           ),
         );
         ids.add(idtrufi);
@@ -736,6 +737,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _currentPosition = pos;
         _isLoadingGPS = false;
+        _gpsOffBannerDismissed = false;
       });
       _recalcCircleRadiusPx(_mapController.camera.zoom);
       _checkIfOutsideColcapirhua();
@@ -2519,6 +2521,102 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _selectedTrufiCard(isDarkMode),
                       ),
 
+                    if (_currentPosition == null && !_gpsOffBannerDismissed)
+                      Positioned(
+                        bottom: 130,
+                        left: 16,
+                        right: 80,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF064656),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.28),
+                                blurRadius: 14,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.gps_off, color: Colors.white, size: 22),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "GPS apagado",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    const Text(
+                                      "Activa tu ubicación para ver rutas cercanas.",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        GestureDetector(
+                                          onTap: () async {
+                                            setState(() => _gpsOffBannerDismissed = true);
+                                            await _getCurrentLocation();
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.28),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Text(
+                                              "Activar ubicación",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: () => setState(() => _gpsOffBannerDismissed = true),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.12),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Text(
+                                              "Cancelar",
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     if (_isOutsideColcapirhua && !_outsideBannerDismissed && _currentPosition != null)
                       Positioned(
                         bottom: 130,
@@ -2527,7 +2625,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
-                            color: Colors.orange.shade700,
+                            color: kPrimaryDark,
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
@@ -2718,7 +2816,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(t("routes_filter"), style: TextStyle(fontWeight: FontWeight.w800, color: textColor)),
                 const SizedBox(height: 2),
                 Text(
-                  _routeFilterMode == RouteFilterMode.nearby && _currentPosition == null ? t("gps_off") : currentLabel,
+                  currentLabel,
                   style: TextStyle(fontSize: 12, color: subTextColor),
                 ),
               ],
