@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as Math;
 
@@ -13,33 +14,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 
-// Colores pedidos
-const Color kPrimary = Color(0xFF09596E); // #09596e
+const Color kPrimary = Color(0xFF09596E);
 const Color kPrimaryDark = Color(0xFF064656);
 
-// ✅ Verde agua para el label (coherente con tu app)
 const Color kAqua = Color(0xFF19B7B0);
 
 class AppSettings {
   static final ValueNotifier<String> language = ValueNotifier<String>("es");
   static final ValueNotifier<bool> darkMode = ValueNotifier<bool>(false);
 
-  /// ✅ modo de centrado (por defecto Colcapirhua)
-  /// valores: 'colcapirhua' | 'ubicacion'
   static final ValueNotifier<String> centerMode = ValueNotifier<String>("colcapirhua");
 
-  /// ✅ Nuevo: radio dinámico (por defecto 250)
   static final ValueNotifier<double> radiusMeters = ValueNotifier<double>(250.0);
 }
 
 enum RouteFilterMode { nearby, all }
 
-// ✅ NUEVO: Modelo de historial
 class HistorialItem {
   final int id;
   final String nombre;
-  final String tipo; // 'trufi' | 'radiotaxi'
-  final String? telefono; // solo para radiotaxis
+  final String tipo;
+  final String? telefono;
   final DateTime fechaUso;
 
   HistorialItem({
@@ -76,14 +71,11 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isTrufiSelected = true;
   final MapController _mapController = MapController();
 
-  // ✅ GeoJSON Colcapirhua
   final GeoJsonParser _zonaParser = GeoJsonParser();
 
-  // Api
-  final ApiService _apiService = ApiService(baseUrl: "http://localhost:8000/api");
+  final ApiService _apiService = ApiService(baseUrl: "https://moviruta.colcapirhua.gob.bo/api");
 
-  // ✅ Para normativas (mismo host que ApiService)
-  static const String _apiBase = "http://localhost:8000/api";
+  static const String _apiBase = "https://moviruta.colcapirhua.gob.bo/api";
 
   Position? _currentPosition;
 
@@ -91,59 +83,45 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _radioTaxis = [];
   List<Map<String, dynamic>> _trufis = [];
 
-  // ✅ NUEVO: paradas de radiotaxis
   List<Map<String, dynamic>> _paradasRadiotaxis = [];
 
-  // ✅ Zona Colcapirhua siempre visible
   List<Polygon> colcapirhuaPolygons = [];
   List<Polyline> colcapirhuaLines = [];
 
-  // ✅ Rutas
   List<Polyline> _todasRutas = [];
   List<Polyline> _rutasVisibles = [];
   List<Marker> _inicioFinMarkers = [];
 
-  // ✅ Nuevo: labels de rutas (nombre de línea en la ruta)
   List<Marker> _routeLabelMarkers = [];
 
-  // ✅ FIX: labels de la ruta SELECCIONADA - persisten siempre en el mapa
-  // incluso cuando el card (X) se cierra. Solo se limpian si el usuario cierra el card.
   List<Marker> _selectedRoutePermanentLabels = [];
 
-  // ✅ NUEVO: markers de paradas de radiotaxis
   List<Marker> _paradasMarkers = [];
   List<Marker> _paradasLabelMarkers = [];
 
-  // ✅ Para mostrar card del trufi seleccionado
   int? _selectedTrufiId;
   String? _selectedTrufiName;
 
-  // ✅ NUEVO: Lista de puntos de la ruta seleccionada (calles cada ~100m)
   List<Map<String, dynamic>> _rutaPuntos = [];
 
-  // ✅ cache de nombres por idtrufi
   final Map<int, String> _trufiNameById = {};
 
-  // ✅ NUEVO: cache de nombres por idradiotaxi
   final Map<int, String> _radiotaxiNameById = {};
 
-  // ✅ Circle metros -> pixels (web)
   double _circleRadiusPx = 30.0;
   double? _lastZoomForCircle;
 
   bool _alreadyInit = false;
 
-  // ✅ Por defecto: "cerca"
   RouteFilterMode _routeFilterMode = RouteFilterMode.nearby;
 
-  // ✅ Centro colcapirhua fijo
   static const LatLng _colcapirhuaCenter = LatLng(-17.3860, -66.2340);
   static const double _colcapirhuaZoom = 13;
 
-  // ✅ Listener para radio (para evitar setState after dispose)
   VoidCallback? _radiusListener;
 
-  // ✅ NUEVO: Estados de carga
+  StreamSubscription<Position>? _positionStream;
+
   bool _isLoadingRutas = false;
   bool _isLoadingParadas = false;
   bool _isLoadingRutaTrufi = false;
@@ -151,30 +129,27 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingNormativas = false;
   bool _isLoadingDatos = false;
   bool _isLoadingGeoJSON = false;
+  bool _isLoadingTrufis = false;
+  bool _isLoadingRadiotaxis = false;
+  bool _isLoadingSindicatos = false;
 
-  // ✅ NUEVO: Historial persistente
   List<HistorialItem> _historialTrufis = [];
   List<HistorialItem> _historialRadiotaxis = [];
   static const String _kHistorialTrufisKey = 'historial_trufis_v1';
   static const String _kHistorialRadiotaxisKey = 'historial_radiotaxis_v1';
   static const int _kMaxHistorial = 20;
 
-  // ✅ NUEVO: Reclamos
   List<Map<String, dynamic>> _reclamos = [];
   bool _isLoadingReclamos = false;
 
-  // ✅ NUEVO: Fuera de Colcapirhua
   bool _isOutsideColcapirhua = false;
   bool _outsideBannerDismissed = false;
-  // Bounding box aproximado de Colcapirhua (calculado del GeoJSON)
+  bool _gpsOffBannerDismissed = false;
   double? _colcaBoundsMinLat;
   double? _colcaBoundsMaxLat;
   double? _colcaBoundsMinLng;
   double? _colcaBoundsMaxLng;
 
-  // ==========================
-  // Traducciones
-  // ==========================
   String t(String key) {
     final lang = AppSettings.language.value;
     final dict = <String, Map<String, String>>{
@@ -226,7 +201,6 @@ class _HomeScreenState extends State<HomeScreen> {
       "route_points": {"es": "Recorrido de la ruta", "en": "Route path", "qu": "Ñan puriynin"},
       "stop_address": {"es": "Dirección de parada", "en": "Stop address", "qu": "Sayay direccion"},
       "point": {"es": "Punto", "en": "Point", "qu": "Punto"},
-      // ✅ NUEVO: traducciones historial
       "history": {"es": "Historial", "en": "History", "qu": "Qhipa kaq"},
       "history_trufis": {"es": "Trufis recientes", "en": "Recent trufis", "qu": "Qhipa trufi-kuna"},
       "history_radiotaxis": {"es": "Radiotaxis recientes", "en": "Recent radio taxis", "qu": "Qhipa radiotaxi-kuna"},
@@ -234,20 +208,17 @@ class _HomeScreenState extends State<HomeScreen> {
       "history_clear": {"es": "Limpiar historial", "en": "Clear history", "qu": "Huqariy"},
       "history_clear_confirm": {"es": "¿Limpiar historial?", "en": "Clear history?", "qu": "Huqariyta munankichu?"},
       "used_at": {"es": "Usado", "en": "Used", "qu": "Llamk'asqa"},
-      // ✅ NUEVO: traducciones de carga
       "loading_route": {"es": "Cargando ruta...", "en": "Loading route...", "qu": "Ñan carganki..."},
       "loading_data": {"es": "Cargando datos...", "en": "Loading data...", "qu": "Datos carganki..."},
       "loading_gps": {"es": "Obteniendo ubicación...", "en": "Getting location...", "qu": "Chiqan yachayta..."},
       "loading_stops": {"es": "Cargando paradas...", "en": "Loading stops...", "qu": "Sayay carganki..."},
       "loading_norms": {"es": "Cargando normativas...", "en": "Loading regulations...", "qu": "Kamachiykuna carganki..."},
       "loading_geojson": {"es": "Cargando mapa...", "en": "Loading map...", "qu": "Mapa carganki..."},
-      // ✅ NUEVO: reclamos
       "reclamos": {"es": "Números de Reclamos", "en": "Complaint Numbers", "qu": "Reclamo números"},
       "reclamos_call": {"es": "Llamar a Reclamos", "en": "Call Complaints", "qu": "Reclamo waqay"},
       "reclamos_phone": {"es": "Teléfono de reclamos", "en": "Complaint phone", "qu": "Reclamo telefono"},
       "reclamos_whatsapp": {"es": "WhatsApp de reclamos", "en": "Complaints WhatsApp", "qu": "Reclamo WhatsApp"},
       "reclamos_inactive": {"es": "No disponible", "en": "Not available", "qu": "Mana"},
-      // ✅ NUEVO: fuera de colcapirhua
       "outside_title": {"es": "Estás fuera de Colcapirhua", "en": "You're outside Colcapirhua", "qu": "Colcapirhua-manta llojsisqa kanki"},
       "outside_body": {"es": "Esta app muestra trufis y radiotaxis de Colcapirhua. Puedes seguir usándola normalmente.", "en": "This app shows trufis and radio taxis from Colcapirhua. You can still use it normally.", "qu": "Kay app Colcapirhua-pi trufi, radiotaxi-kunata rikuchin. Allinllatam llamk'aqtinki."},
       "outside_dismiss": {"es": "Entendido", "en": "Got it", "qu": "Yachani"},
@@ -255,16 +226,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return dict[key]?[lang] ?? dict[key]?["es"] ?? key;
   }
 
-  // ==========================
-  // INIT / DISPOSE
-  // ==========================
   @override
   void initState() {
     super.initState();
     if (_alreadyInit) return;
     _alreadyInit = true;
 
-    // ✅ Listener del radio (para recalcular círculo y filtro)
     _radiusListener = () {
       if (!mounted) return;
       if (_currentPosition != null) {
@@ -283,11 +250,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_radiusListener != null) {
       AppSettings.radiusMeters.removeListener(_radiusListener!);
     }
+    _positionStream?.cancel();
     super.dispose();
   }
 
   Future<void> _initAll() async {
-    // ✅ Cargar historial persistente al iniciar
     await _cargarHistorial();
 
     await _loadGeoJsonZona();
@@ -302,21 +269,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
       await _cargarTodasLasRutas();
 
-      // ✅ obtenemos GPS al inicio (si se puede)
       await _getCurrentLocation();
 
-      // ✅ Por defecto al entrar: centrar Colcapirhua
       _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
 
-      // ✅ Importante: al entrar debe aplicar "cerca" si hay GPS
       _aplicarFiltroRutas();
       _aplicarFiltroParadas();
     });
   }
 
-  // ==========================
-  // ✅ HISTORIAL PERSISTENTE
-  // ==========================
   Future<void> _cargarHistorial() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -358,11 +319,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     setState(() {
       if (item.tipo == 'trufi') {
-        // Eliminar duplicado si existe
         _historialTrufis.removeWhere((h) => h.id == item.id);
-        // Agregar al inicio (más reciente primero)
         _historialTrufis.insert(0, item);
-        // Limitar tamaño
         if (_historialTrufis.length > _kMaxHistorial) {
           _historialTrufis = _historialTrufis.sublist(0, _kMaxHistorial);
         }
@@ -399,32 +357,31 @@ class _HomeScreenState extends State<HomeScreen> {
     return "${fecha.day}/${fecha.month}/${fecha.year}";
   }
 
-  // ==========================
-  // FETCH BASE
-  // ==========================
   Future<void> _fetchSindicatos() async {
     try {
       if (!mounted) return;
-      setState(() => _isLoadingDatos = true);
+      setState(() { _isLoadingDatos = true; _isLoadingSindicatos = true; });
       final sindicatos = await _apiService.getSindicatos();
       if (!mounted) return;
       setState(() {
         _sindicatos = List<Map<String, dynamic>>.from(sindicatos);
         _isLoadingDatos = false;
+        _isLoadingSindicatos = false;
       });
     } catch (e) {
       print("Error fetching sindicatos: $e");
       if (!mounted) return;
-      setState(() => _isLoadingDatos = false);
+      setState(() { _isLoadingDatos = false; _isLoadingSindicatos = false; });
     }
   }
 
   Future<void> _fetchRadioTaxis() async {
     try {
+      if (!mounted) return;
+      setState(() => _isLoadingRadiotaxis = true);
       final radioTaxis = await _apiService.getRadioTaxis();
       if (!mounted) return;
 
-      // ✅ cache de nombres por id
       _radiotaxiNameById.clear();
       for (final it in radioTaxis) {
         final id = int.tryParse((it["id"] ?? "").toString());
@@ -434,24 +391,28 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      setState(() => _radioTaxis = List<Map<String, dynamic>>.from(radioTaxis));
+      setState(() {
+        _radioTaxis = List<Map<String, dynamic>>.from(radioTaxis);
+        _isLoadingRadiotaxis = false;
+      });
 
-      // ✅ FIX: reconstruir markers de paradas con nombres correctos
-      // (porque _fetchParadasRadiotaxis puede haber corrido primero con cache vacío)
       if (_paradasRadiotaxis.isNotEmpty) {
         _aplicarFiltroParadas();
       }
     } catch (e) {
       print("Error fetching radiotaxis: $e");
+      if (!mounted) return;
+      setState(() => _isLoadingRadiotaxis = false);
     }
   }
 
   Future<void> _fetchTrufis() async {
     try {
+      if (!mounted) return;
+      setState(() => _isLoadingTrufis = true);
       final trufis = await _apiService.getTrufis();
       if (!mounted) return;
 
-      // ✅ arma cache idtrufi -> nom_linea
       _trufiNameById.clear();
       for (final it in trufis) {
         final id = int.tryParse((it["idtrufi"] ?? "").toString());
@@ -461,17 +422,22 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      setState(() => _trufis = List<Map<String, dynamic>>.from(trufis));
+      setState(() {
+        _trufis = List<Map<String, dynamic>>.from(trufis);
+        _isLoadingTrufis = false;
+      });
 
-      // ✅ si ya hay rutas visibles, reconstruye labels con nombres reales
-      _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+      if (_rutasVisibles.isNotEmpty) {
+        _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+      }
       if (mounted) setState(() {});
     } catch (e) {
       print("Error fetching trufis: $e");
+      if (!mounted) return;
+      setState(() => _isLoadingTrufis = false);
     }
   }
 
-  // ✅ fetch paradas de radiotaxis
   Future<void> _fetchParadasRadiotaxis() async {
     try {
       if (!mounted) return;
@@ -512,9 +478,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ==========================
-  // ZONA COLCAPIRHUA (SIEMPRE)
-  // ==========================
   Future<void> _loadGeoJsonZona() async {
     try {
       if (!mounted) return;
@@ -533,9 +496,9 @@ class _HomeScreenState extends State<HomeScreen> {
         colcapirhuaPolygons = _zonaParser.polygons.map((p) {
           return Polygon(
             points: p.points,
-            color: kPrimary.withOpacity(0.15),
-            borderColor: kPrimary.withOpacity(0.85),
-            borderStrokeWidth: 3.0,
+            color: kPrimaryDark.withOpacity(0.13),
+            borderColor: kPrimaryDark.withOpacity(0.90),
+            borderStrokeWidth: 3.5,
             isFilled: true,
           );
         }).toList();
@@ -544,14 +507,13 @@ class _HomeScreenState extends State<HomeScreen> {
           return Polyline(
             points: l.points,
             strokeWidth: 3.5,
-            color: kPrimary.withOpacity(0.95),
+            color: kPrimaryDark.withOpacity(0.92),
           );
         }).toList();
 
         _isLoadingGeoJSON = false;
       });
 
-      // ✅ NUEVO: calcular bounding box del GeoJSON para detección fuera de Colca
       _calcularBoundingBoxColca(response);
 
     } catch (e) {
@@ -565,7 +527,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ✅ NUEVO: calcula bounding box de Colcapirhua desde GeoJSON
   void _calcularBoundingBoxColca(String geoJsonStr) {
     try {
       final geo = jsonDecode(geoJsonStr);
@@ -584,7 +545,6 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      // Agregar un buffer de ~0.01 grados (~1km) alrededor del polígono
       _colcaBoundsMinLat = minLat - 0.01;
       _colcaBoundsMaxLat = maxLat + 0.01;
       _colcaBoundsMinLng = minLng - 0.01;
@@ -622,7 +582,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return result;
   }
 
-  // ✅ NUEVO: chequear si la posición está fuera de Colcapirhua
   void _checkIfOutsideColcapirhua() {
     if (_currentPosition == null) return;
     if (_colcaBoundsMinLat == null) return;
@@ -637,14 +596,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted) return;
     setState(() {
+      final wasOutside = _isOutsideColcapirhua;
       _isOutsideColcapirhua = outside;
       if (!outside) _outsideBannerDismissed = false;
+      if (outside && !wasOutside) _outsideBannerDismissed = false;
     });
   }
 
-  // ==========================
-  // PARSEO MANUAL GEOJSON (RUTAS)
-  // ==========================
   ({List<Polyline> polylines, List<int?> ids}) _polylinesFromGeoJsonWithIds(Map<String, dynamic> geo) {
     final features = (geo['features'] as List? ?? []);
     final polylines = <Polyline>[];
@@ -675,10 +633,10 @@ class _HomeScreenState extends State<HomeScreen> {
         polylines.add(
           Polyline(
             points: points,
-            strokeWidth: 3,
-            color: kAqua.withOpacity(0.95),
-            borderColor: kPrimaryDark.withOpacity(0.55),
-            borderStrokeWidth: 1,
+            strokeWidth: 3.1,
+            color: kAqua,
+            borderColor: const Color(0xFF032530),
+            borderStrokeWidth: 1.5,
           ),
         );
         ids.add(idtrufi);
@@ -688,9 +646,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return (polylines: polylines, ids: ids);
   }
 
-  // ==========================
-  // CARGAR TODAS LAS RUTAS
-  // ==========================
   Future<void> _cargarTodasLasRutas() async {
     try {
       if (!mounted) return;
@@ -717,7 +672,13 @@ class _HomeScreenState extends State<HomeScreen> {
       _todasRutas = parsed.polylines;
       _polylineIdIndex = parsed.ids;
 
-      print("✅ Cargadas ${_todasRutas.length} rutas");
+      _polylineIdMap.clear();
+      for (int i = 0; i < parsed.polylines.length; i++) {
+        final id = parsed.ids[i];
+        if (id != null) _polylineIdMap[parsed.polylines[i]] = id;
+      }
+
+      print("✅ Cargadas ${_todasRutas.length} rutas (${_polylineIdMap.length} con id)");
 
       if (!mounted) return;
       setState(() {
@@ -740,31 +701,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ✅ Guardamos idtrufi de cada polyline por índice
-  // IMPORTANTE: este índice corresponde siempre a _todasRutas, no a _rutasVisibles
+  final Map<Polyline, int> _polylineIdMap = {};
+
   List<int?> _polylineIdIndex = [];
 
-  // ✅ FIX CRÍTICO: obtener el id de un polyline buscando en _todasRutas
-  // El índice se calcula sobre _todasRutas para que no se pierda al filtrar
   int? _idOfPolyline(Polyline pl) {
-    // Primero intenta encontrarlo en _todasRutas (índice global)
-    final idxGlobal = _todasRutas.indexOf(pl);
-    if (idxGlobal >= 0 && idxGlobal < _polylineIdIndex.length) {
-      return _polylineIdIndex[idxGlobal];
-    }
-    // Fallback: busca en _rutasVisibles (caso ruta individual de trufi)
-    final idxVisible = _rutasVisibles.indexOf(pl);
-    if (idxVisible >= 0) {
-      // En ruta individual, los ids vienen del parsed local, no de _polylineIdIndex global
-      // Intentar obtenerlo del idtrufi del card seleccionado
-      if (_selectedTrufiId != null) return _selectedTrufiId;
-    }
+    final id = _polylineIdMap[pl];
+    if (id != null) return id;
+    if (_selectedTrufiId != null) return _selectedTrufiId;
     return null;
   }
 
-  // ==========================
-  // UBICACIÓN
-  // ==========================
   Future<void> _getCurrentLocation() async {
     try {
       if (!mounted) return;
@@ -783,16 +730,41 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium);
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
       if (!mounted) return;
       setState(() {
         _currentPosition = pos;
         _isLoadingGPS = false;
+        _gpsOffBannerDismissed = false;
+      });
+      _recalcCircleRadiusPx(_mapController.camera.zoom);
+      _checkIfOutsideColcapirhua();
+      _aplicarFiltroRutas();
+      _aplicarFiltroParadas();
+
+      await _positionStream?.cancel();
+      _positionStream = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 10,
+        ),
+      ).listen((Position newPos) {
+        if (!mounted) return;
+        setState(() {
+          _currentPosition = newPos;
+        });
+        _recalcCircleRadiusPx(_mapController.camera.zoom);
+        _checkIfOutsideColcapirhua();
+        if (_routeFilterMode == RouteFilterMode.nearby) {
+          _aplicarFiltroRutas();
+          _aplicarFiltroParadas();
+        }
+      }, onError: (e) {
+        print("Error en stream de ubicación: $e");
       });
 
-      _recalcCircleRadiusPx(_mapController.camera.zoom);
-      // ✅ NUEVO: chequear si está fuera de Colcapirhua
-      _checkIfOutsideColcapirhua();
     } catch (e) {
       print("Error getting location: $e");
       if (!mounted) return;
@@ -803,9 +775,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ==========================
-  // Metros -> pixeles (web)
-  // ==========================
   double _metersToPixels(double meters, double latitude, double zoom) {
     final latRad = latitude * Math.pi / 180.0;
     final metersPerPixel = 156543.03392 * Math.cos(latRad) / Math.pow(2, zoom);
@@ -835,10 +804,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return minD;
   }
 
-  // ==========================
-  // FILTRO (cerca/todas) - RUTAS
-  // ==========================
-  void _aplicarFiltroRutas() {
+  Future<void> _aplicarFiltroRutas() async {
     if (!mounted) return;
 
     if (_todasRutas.isEmpty) {
@@ -850,11 +816,16 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
+    setState(() => _isLoadingRutas = true);
+    await Future.delayed(const Duration(milliseconds: 30));
+    if (!mounted) return;
+
     if (_routeFilterMode == RouteFilterMode.all) {
       setState(() {
         _rutasVisibles = _todasRutas;
         _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
         _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+        _isLoadingRutas = false;
       });
       return;
     }
@@ -864,6 +835,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _rutasVisibles = _todasRutas;
         _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
         _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+        _isLoadingRutas = false;
       });
       return;
     }
@@ -876,16 +848,15 @@ class _HomeScreenState extends State<HomeScreen> {
       return d <= radius;
     }).toList();
 
+    if (!mounted) return;
     setState(() {
       _rutasVisibles = cerca;
       _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
       _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+      _isLoadingRutas = false;
     });
   }
 
-  // ==========================
-  // FILTRO (cerca/todas) - PARADAS
-  // ==========================
   void _aplicarFiltroParadas() {
     if (!mounted) return;
 
@@ -905,14 +876,10 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ==========================
-  // BUILD PARADAS MARKERS
-  // ==========================
   List<Marker> _buildParadasMarkers(List<Map<String, dynamic>> paradas) {
     final markers = <Marker>[];
 
     for (final p in paradas) {
-      // ✅ FIX: soportar múltiples nombres de campo para lat/lng
       final lat = double.tryParse((p["latitud"] ?? p["lat"] ?? p["latitude"] ?? "").toString());
       final lng = double.tryParse((p["longitud"] ?? p["lng"] ?? p["longitude"] ?? p["lon"] ?? "").toString());
       if (lat == null || lng == null) continue;
@@ -951,19 +918,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return markers;
   }
 
-  // ==========================
-  // BUILD PARADAS LABELS (debajo del marker)
-  // ==========================
   List<Marker> _buildParadasLabels(List<Map<String, dynamic>> paradas) {
     final markers = <Marker>[];
 
     for (final p in paradas) {
-      // ✅ FIX: soportar múltiples nombres de campo para lat/lng
       final lat = double.tryParse((p["latitud"] ?? p["lat"] ?? p["latitude"] ?? "").toString());
       final lng = double.tryParse((p["longitud"] ?? p["lng"] ?? p["longitude"] ?? p["lon"] ?? "").toString());
       if (lat == null || lng == null) continue;
 
-      // ✅ FIX: soportar múltiples nombres de campo para el id del radiotaxi
       final radiotaxiId = int.tryParse(
         (p["sindicato_radiotaxi_id"] ?? p["radiotaxi_id"] ?? p["idradiotaxi"] ?? p["sindicato_id"] ?? "").toString(),
       );
@@ -1021,9 +983,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================
-  // Mostrar dirección de parada
-  // ==========================
   void _mostrarDireccionParada(Map<String, dynamic> parada) async {
     final lat = double.tryParse((parada["latitud"] ?? parada["lat"] ?? parada["latitude"] ?? "").toString());
     final lng = double.tryParse((parada["longitud"] ?? parada["lng"] ?? parada["longitude"] ?? parada["lon"] ?? "").toString());
@@ -1095,9 +1054,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================
-  // CÍRCULO (visual) - solo en modo "cerca"
-  // ==========================
   List<CircleMarker> _buildRadioCircle() {
     if (_currentPosition == null) return [];
     return [
@@ -1111,9 +1067,6 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
   }
 
-  // ==========================
-  // INICIO/FIN
-  // ==========================
   List<Marker> _buildInicioFinMarkers(List<Polyline> polylines, {int maxRutas = 30}) {
     final markers = <Marker>[];
     int count = 0;
@@ -1157,10 +1110,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return markers;
   }
 
-  // ==========================
-  // Markers tapables a lo largo de cada ruta visible
-  // ✅ FIX: múltiples puntos de tap en cada ruta (cada ~8 puntos) para facilitar el toque
-  // ==========================
   List<Marker> _buildTapableRouteMarkers() {
     final markers = <Marker>[];
 
@@ -1168,12 +1117,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final pl = _rutasVisibles[i];
       if (pl.points.isEmpty) continue;
 
-      // Obtener id y nombre de la ruta
       final id = _idOfPolyline(pl);
       final lineName = (id != null) ? (_trufiNameById[id] ?? "Línea $id") : null;
       if (lineName == null) continue;
 
-      // Encontrar el sindicato
       String? sindicatoName;
       for (final s in _sindicatos) {
         final trufis = (s["trufis"] as List? ?? []);
@@ -1187,17 +1134,13 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      // ✅ FIX: agregar markers tapables cada ~8 puntos de la ruta
-      // Así es mucho más fácil acertar al tocar cualquier tramo de la línea
       final step = (pl.points.length > 16) ? (pl.points.length ~/ 8) : 1;
       final tapPoints = <LatLng>{};
 
-      // Punto inicial, medio y final siempre incluidos
       tapPoints.add(pl.points.first);
       tapPoints.add(pl.points[(pl.points.length / 2).floor()]);
       tapPoints.add(pl.points.last);
 
-      // Puntos intermedios uniformes
       for (int j = step; j < pl.points.length - 1; j += step) {
         tapPoints.add(pl.points[j]);
       }
@@ -1363,17 +1306,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================
-  // Labels de rutas
-  // ✅ FIX: ahora busca el id en _todasRutas para no perder el nombre
-  // ==========================
   List<Marker> _buildRouteLabels(List<Polyline> polylines) {
     final markers = <Marker>[];
 
     for (final pl in polylines) {
       if (pl.points.length < 2) continue;
 
-      // ✅ FIX CLAVE: usa _idOfPolyline que busca en _todasRutas primero
       final id = _idOfPolyline(pl);
       final name = (id != null) ? (_trufiNameById[id] ?? "Línea $id") : null;
       if (name == null || name.trim().isEmpty) continue;
@@ -1430,9 +1368,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================
-  // Extraer puntos de la ruta cada ~100m
-  // ==========================
   Future<List<Map<String, dynamic>>> _extraerPuntosRuta(List<LatLng> points) async {
     final resultado = <Map<String, dynamic>>[];
 
@@ -1483,9 +1418,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return resultado;
   }
 
-  // ==========================
-  // Geocodificación inversa (Nominatim)
-  // ==========================
   Future<String> _getAddressFromLatLng(LatLng location) async {
     try {
       final url = Uri.parse(
@@ -1529,11 +1461,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return '${location.latitude.toStringAsFixed(5)}, ${location.longitude.toStringAsFixed(5)}';
   }
 
-  // ==========================
-  // MOSTRAR RUTA 1 TRUFI
-  // ✅ FIX: guarda los labels en _selectedRoutePermanentLabels que
-  //         NUNCA se borran con _aplicarFiltroRutas ni con el botón X del card
-  // ==========================
   Future<void> _mostrarRutaDeUnTrufi(int idtrufi, {String? nombreLinea}) async {
     if (!mounted) return;
     setState(() => _isLoadingRutaTrufi = true);
@@ -1564,7 +1491,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final nombre = nombreLinea ?? _trufiNameById[idtrufi] ?? "Línea $idtrufi";
 
-      // Construir labels directamente con nombre conocido
       final labelMarkers = _buildRouteLabelsDirect(ruta, idtrufi, nombre);
 
       setState(() {
@@ -1572,12 +1498,10 @@ class _HomeScreenState extends State<HomeScreen> {
         _selectedTrufiName = nombre;
 
         _rutasVisibles = ruta;
-        _polylineIdIndex = parsed.ids;
 
         _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 1);
         _routeLabelMarkers = labelMarkers;
 
-        // ✅ FIX CLAVE: guardar en variable permanente que no se borra
         _selectedRoutePermanentLabels = labelMarkers;
 
         _rutaPuntos = puntosRuta;
@@ -1608,8 +1532,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ✅ FIX NUEVO: construir labels directamente con nombre e id conocidos
-  // sin depender de _idOfPolyline ni del índice global
   List<Marker> _buildRouteLabelsDirect(List<Polyline> polylines, int idtrufi, String nombre) {
     final markers = <Marker>[];
 
@@ -1638,9 +1560,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return markers;
   }
 
-  // ==========================
-  // Registrar selección de trufi en backend
-  // ==========================
   Future<void> _registrarSeleccionTrufi(int idtrufi) async {
     try {
       await http.post(
@@ -1652,11 +1571,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ==========================
-  // Ventana deslizante con recorrido de la ruta
-  // ✅ FIX: al cerrar el sheet el nombre persiste porque _selectedTrufiName
-  //         y _routeLabelMarkers se mantienen en el estado
-  // ==========================
   void _mostrarVentanaRecorrido() {
     final isDarkMode = AppSettings.darkMode.value;
     final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
@@ -1764,9 +1678,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================
-  // CENTRADO
-  // ==========================
   Future<void> _handleCenterFab() async {
     final mode = AppSettings.centerMode.value;
 
@@ -1786,10 +1697,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
   }
 
-  // ==========================
-  // CALL Radiotaxi / Reclamos
-  // ✅ FIX: usar Uri.parse correcto para llamadas telefónicas
-  // ==========================
   Future<void> _confirmAndCall(String rawPhone, {String? nombre, int? id}) async {
     final phone = rawPhone.replaceAll(RegExp(r'[^0-9+]'), '');
     if (phone.trim().isEmpty) return;
@@ -1815,7 +1722,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (ok != true) return;
 
-    // ✅ FIX: usar canLaunchUrl + launchUrl correctamente
     final uri = Uri(scheme: 'tel', path: phone);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
@@ -1828,7 +1734,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ✅ FIX: función auxiliar para llamadas desde reclamos (con título personalizable)
   Future<void> _confirmAndCallReclamo(String rawPhone, String titulo) async {
     final phone = rawPhone.replaceAll(RegExp(r'[^0-9+]'), '');
     if (phone.trim().isEmpty) return;
@@ -1870,9 +1775,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ==========================
-  // NORMATIVAS
-  // ==========================
   Future<List<dynamic>> _fetchNormativas() async {
     final res = await http.get(
       Uri.parse("$_apiBase/normativas"),
@@ -1890,10 +1792,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return [];
   }
 
-  // ==========================
-  // RECLAMOS
-  // ✅ FIX: corregido \$index+1 y \$phone que aparecían como texto literal
-  // ==========================
   Future<void> _fetchReclamos() async {
     try {
       if (!mounted) return;
@@ -2005,7 +1903,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     final activo = item["activo"] == true;
 
                     final bool isWhatsApp = key.contains("whatsapp");
-                    // ✅ FIX: corregido el label — ya no usa \$index+1 sino interpolación correcta
                     final String label = isWhatsApp
                         ? t("reclamos_whatsapp")
                         : "${t("reclamos_phone")} ${index + 1}";
@@ -2044,7 +1941,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           : null,
                       onTap: activo && value.isNotEmpty
                           ? () async {
-                              // ✅ FIX: usar _confirmAndCallReclamo con phone correcto (sin \$phone)
                               await _confirmAndCallReclamo(value, label);
                             }
                           : null,
@@ -2190,9 +2086,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ==========================
-  // Drawer de Historial
-  // ==========================
   void _openHistorialDrawer() {
     final isDarkMode = AppSettings.darkMode.value;
     final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
@@ -2405,9 +2298,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================
-  // UI
-  // ==========================
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<bool>(
@@ -2441,7 +2331,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   flexibleSpace: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [kPrimaryDark.withOpacity(1), kPrimary.withOpacity(0.78)],
+                        colors: [kPrimaryDark.withOpacity(1), kPrimary.withOpacity(0.65)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -2487,8 +2377,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           if (_routeLabelMarkers.isNotEmpty) MarkerLayer(markers: _routeLabelMarkers),
                           if (_inicioFinMarkers.isNotEmpty) MarkerLayer(markers: _inicioFinMarkers),
-                          // ✅ FIX: labels permanentes de la ruta seleccionada - siempre visibles
-                          // Se renderizan encima de todo, no se borran con _aplicarFiltroRutas
                           if (_selectedRoutePermanentLabels.isNotEmpty)
                             MarkerLayer(markers: _selectedRoutePermanentLabels),
                           MarkerLayer(
@@ -2513,7 +2401,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
 
-                    // Overlay de carga global (rutas del trufi)
                     if (_isLoadingRutaTrufi)
                       Positioned.fill(
                         child: Container(
@@ -2552,7 +2439,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
-                    // Overlay GPS
                     if (_isLoadingGPS)
                       Positioned(
                         top: 90,
@@ -2560,7 +2446,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _loadingChip(t("loading_gps"), Icons.gps_fixed),
                       ),
 
-                    // Overlay cargando mapa/GeoJSON
                     if (_isLoadingGeoJSON)
                       Positioned(
                         top: 90,
@@ -2568,7 +2453,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _loadingChip(t("loading_geojson"), Icons.map_outlined),
                       ),
 
-                    // Overlay cargando rutas
                     if (_isLoadingRutas && !_isLoadingRutaTrufi)
                       Positioned(
                         top: _isLoadingGeoJSON ? 140 : 90,
@@ -2576,7 +2460,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _loadingChip(t("loading_route"), Icons.route),
                       ),
 
-                    // Overlay cargando normativas
+                    if (_isLoadingTrufis || _isLoadingRadiotaxis || _isLoadingSindicatos)
+                      Positioned(
+                        top: (_isLoadingGeoJSON || (_isLoadingRutas && !_isLoadingRutaTrufi)) ? 190 : 90,
+                        left: 16,
+                        child: _loadingChip(t("loading_data"), Icons.directions_bus_outlined),
+                      ),
+
+                    if (_isLoadingParadas)
+                      Positioned(
+                        top: (_isLoadingGeoJSON || (_isLoadingRutas && !_isLoadingRutaTrufi) || _isLoadingTrufis || _isLoadingRadiotaxis) ? 240 : 90,
+                        left: 16,
+                        child: _loadingChip(t("loading_stops"), Icons.local_taxi_outlined),
+                      ),
+
                     if (_isLoadingNormativas)
                       Positioned.fill(
                         child: Container(
@@ -2611,7 +2508,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     Positioned(
                       left: 16,
                       bottom: 22,
+                      child: SizedBox(
+                      width: 150, // ajusta este valor
                       child: _routesFilterDropdown(isDarkMode),
+                    ),
                     ),
 
                     if (_selectedTrufiName != null && _selectedTrufiName!.trim().isNotEmpty)
@@ -2621,7 +2521,102 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _selectedTrufiCard(isDarkMode),
                       ),
 
-                    // Banner "fuera de Colcapirhua"
+                    if (_currentPosition == null && !_gpsOffBannerDismissed)
+                      Positioned(
+                        bottom: 130,
+                        left: 16,
+                        right: 80,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF064656),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.28),
+                                blurRadius: 14,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.gps_off, color: Colors.white, size: 22),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "GPS apagado",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    const Text(
+                                      "Activa tu ubicación para ver rutas cercanas.",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        GestureDetector(
+                                          onTap: () async {
+                                            setState(() => _gpsOffBannerDismissed = true);
+                                            await _getCurrentLocation();
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.28),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Text(
+                                              "Activar ubicación",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: () => setState(() => _gpsOffBannerDismissed = true),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.12),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Text(
+                                              "Cancelar",
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     if (_isOutsideColcapirhua && !_outsideBannerDismissed && _currentPosition != null)
                       Positioned(
                         bottom: 130,
@@ -2630,7 +2625,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
-                            color: Colors.orange.shade700,
+                            color: kPrimaryDark,
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
@@ -2750,7 +2745,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Chip de carga pequeño
   Widget _loadingChip(String label, IconData icon) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -2785,9 +2779,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================
-  // UI: Dropdown de rutas
-  // ==========================
   Widget _routesFilterDropdown(bool isDarkMode) {
     final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.92);
     final textColor = isDarkMode ? Colors.white : Colors.black87;
@@ -2796,84 +2787,137 @@ class _HomeScreenState extends State<HomeScreen> {
     final radius = AppSettings.radiusMeters.value.round();
     final currentLabel = _routeFilterMode == RouteFilterMode.nearby ? "${t("routes_nearby")} ($radius m)" : t("routes_all");
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black12),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 12, offset: const Offset(0, 6)),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _isLoadingRutas
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
-                )
-              : const Icon(Icons.route, color: kPrimary),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(t("routes_filter"), style: TextStyle(fontWeight: FontWeight.w800, color: textColor)),
-              const SizedBox(height: 2),
-              Text(
-                _routeFilterMode == RouteFilterMode.nearby && _currentPosition == null ? t("gps_off") : currentLabel,
-                style: TextStyle(fontSize: 12, color: subTextColor),
-              ),
-            ],
-          ),
-          const SizedBox(width: 10),
-          PopupMenuButton<RouteFilterMode>(
-            tooltip: "",
-            icon: Icon(Icons.expand_more, color: textColor),
-            onSelected: (mode) async {
-              setState(() => _routeFilterMode = mode);
-
-              if (_routeFilterMode == RouteFilterMode.nearby) {
-                if (_currentPosition == null) {
-                  await _getCurrentLocation();
-                }
-              }
-              _aplicarFiltroRutas();
-              _aplicarFiltroParadas();
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: RouteFilterMode.nearby,
-                child: Row(
-                  children: [
-                    Icon(Icons.my_location, color: textColor),
-                    const SizedBox(width: 10),
-                    Text("${t("routes_nearby")} (${AppSettings.radiusMeters.value.round()} m)"),
-                  ],
+    return GestureDetector(
+      onTap: () => _mostrarOpcionesRutas(isDarkMode, textColor),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black12),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 12, offset: const Offset(0, 6)),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _isLoadingRutas
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                  )
+                : const Icon(Icons.route, color: kPrimary),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t("routes_filter"), style: TextStyle(fontWeight: FontWeight.w800, color: textColor)),
+                const SizedBox(height: 2),
+                Text(
+                  currentLabel,
+                  style: TextStyle(fontSize: 12, color: subTextColor),
                 ),
-              ),
-              PopupMenuItem(
-                value: RouteFilterMode.all,
-                child: Row(
-                  children: [
-                    Icon(Icons.map_outlined, color: textColor),
-                    const SizedBox(width: 10),
-                    Text(t("routes_all")),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // ==========================
-  // UI: Card del trufi seleccionado
-  // ==========================
+  void _mostrarOpcionesRutas(bool isDarkMode, Color textColor) {
+    final sheetBg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 46,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                t("routes_filter"),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kPrimary),
+              ),
+              const SizedBox(height: 8),
+              const Divider(),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _routeFilterMode == RouteFilterMode.nearby ? kPrimary : kPrimary.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.my_location, color: _routeFilterMode == RouteFilterMode.nearby ? Colors.white : kPrimary, size: 20),
+                ),
+                title: Text(
+                  "${t("routes_nearby")} (${AppSettings.radiusMeters.value.round()} m)",
+                  style: TextStyle(fontWeight: FontWeight.w700, color: textColor),
+                ),
+                trailing: _routeFilterMode == RouteFilterMode.nearby
+                    ? const Icon(Icons.check_circle, color: kPrimary)
+                    : const Icon(Icons.radio_button_unchecked, color: kPrimary),
+                onTap: () async {
+                  Navigator.pop(context);
+                  setState(() => _routeFilterMode = RouteFilterMode.nearby);
+                  if (_currentPosition == null) await _getCurrentLocation();
+                  _aplicarFiltroRutas();
+                  _aplicarFiltroParadas();
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _routeFilterMode == RouteFilterMode.all ? kPrimary : kPrimary.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.map_outlined, color: _routeFilterMode == RouteFilterMode.all ? Colors.white : kPrimary, size: 20),
+                ),
+                title: Text(
+                  t("routes_all"),
+                  style: TextStyle(fontWeight: FontWeight.w700, color: textColor),
+                ),
+                trailing: _routeFilterMode == RouteFilterMode.all
+                    ? const Icon(Icons.check_circle, color: kPrimary)
+                    : const Icon(Icons.radio_button_unchecked, color: kPrimary),
+                onTap: () async {
+                  Navigator.pop(context);
+                  setState(() {
+                    _routeFilterMode = RouteFilterMode.all;
+                    isTrufiSelected = true;
+                  });
+                  _aplicarFiltroRutas();
+                  _aplicarFiltroParadas();
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _selectedTrufiCard(bool isDarkMode) {
     final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.92);
     final textColor = isDarkMode ? Colors.white : Colors.black87;
@@ -2937,7 +2981,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 _selectedTrufiId = null;
                 _selectedTrufiName = null;
                 _rutaPuntos = [];
-                // ✅ Al X limpiar también las labels permanentes y restaurar todas las rutas
                 _selectedRoutePermanentLabels = [];
               });
 
@@ -2958,9 +3001,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================
-  // Botón 3D
-  // ==========================
   Widget _buildMapButton3D({
     required IconData icon,
     required bool isActive,
@@ -2992,12 +3032,86 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================
-  // BottomSheet dinámico (Trufi vs Radiotaxi)
-  // ✅ FIX: usa StatefulBuilder para leer _trufis/_radioTaxis en tiempo real
-  // ==========================
   void _showFullWidthBottomSheet(BuildContext context, String type) {
     final bool isLookingForTrufi = (type == t("trufi"));
+
+    _openSheetWhenReady(context, type, isLookingForTrufi);
+  }
+
+  Future<void> _openSheetWhenReady(
+    BuildContext context,
+    String type,
+    bool isLookingForTrufi,
+  ) async {
+    if (isLookingForTrufi && _trufis.isEmpty) {
+      if (_isLoadingTrufis || _isLoadingDatos) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              duration: const Duration(seconds: 5),
+              backgroundColor: kPrimary,
+              content: Row(
+                children: [
+                  const SizedBox(
+                    width: 18, height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(t("loading_data")),
+                ],
+              ),
+            ),
+          );
+        }
+        int waited = 0;
+        while ((_isLoadingTrufis || _isLoadingDatos) && waited < 60) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          waited++;
+        }
+        if (mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        if (_trufis.isEmpty && mounted) await _fetchTrufis();
+      } else {
+        await _fetchTrufis();
+      }
+    }
+
+    if (!isLookingForTrufi && _radioTaxis.isEmpty) {
+      if (_isLoadingRadiotaxis || _isLoadingDatos) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              duration: const Duration(seconds: 5),
+              backgroundColor: kPrimary,
+              content: Row(
+                children: [
+                  const SizedBox(
+                    width: 18, height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(t("loading_data")),
+                ],
+              ),
+            ),
+          );
+        }
+        int waited = 0;
+        while ((_isLoadingRadiotaxis || _isLoadingDatos) && waited < 60) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          waited++;
+        }
+        if (mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        if (_radioTaxis.isEmpty && mounted) await _fetchRadioTaxis();
+      } else {
+        await _fetchRadioTaxis();
+      }
+    }
+
+    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
@@ -3011,9 +3125,9 @@ class _HomeScreenState extends State<HomeScreen> {
             final textColor = isDarkMode ? Colors.white : Colors.black87;
             final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
 
-            // ✅ Leer la lista DENTRO del builder para que tenga los datos actuales
             final List<Map<String, dynamic>> dataList =
                 isLookingForTrufi ? _trufis : _radioTaxis;
+            final bool isLoading = isLookingForTrufi ? _isLoadingTrufis : _isLoadingRadiotaxis;
 
             return Container(
               width: double.infinity,
@@ -3043,7 +3157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Divider(),
                   SizedBox(
                     height: 300,
-                    child: _isLoadingDatos && dataList.isEmpty
+                    child: isLoading && dataList.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -3057,8 +3171,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           )
                         : dataList.isEmpty
                             ? Center(
-                                child: Text(t("no_data"),
-                                    style: TextStyle(color: subTextColor)))
+                                child: Text(
+                                  t("no_data"),
+                                  style: TextStyle(color: subTextColor),
+                                ),
+                              )
                             : ListView.separated(
                                 itemCount: dataList.length,
                                 separatorBuilder: (_, __) => const Divider(),
@@ -3132,10 +3249,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================
-  // ✅ SIDEBAR REORGANIZADO
-  // Orden profesional con separadores visuales claros
-  // ==========================
   Drawer _buildSidebarDrawer() {
     final drawerWidth = MediaQuery.of(context).size.width * 0.75;
 
@@ -3151,7 +3264,6 @@ class _HomeScreenState extends State<HomeScreen> {
             final sectionHeaderColor = isDarkMode ? Colors.white38 : Colors.black38;
             final dividerColor = isDarkMode ? Colors.white12 : Colors.black12;
 
-            // Helper: encabezado de sección
             Widget sectionHeader(String label) => Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                   child: Text(
@@ -3165,7 +3277,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
 
-            // Helper: tile estándar uniforme
             Widget drawerTile({
               required IconData icon,
               required String title,
@@ -3206,7 +3317,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  // ─── HEADER ───
                   Container(
                     padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                     decoration: BoxDecoration(
@@ -3234,10 +3344,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                  // ─── SECCIÓN: TRANSPORTE ───
                   sectionHeader("Transporte"),
 
-                  // SINDICATOS
                   ExpansionTile(
                     leading: const Icon(Icons.groups, color: kPrimary, size: 22),
                     title: Text(
@@ -3290,7 +3398,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           }).toList(),
                   ),
 
-                  // RADIOTAXIS
                   ExpansionTile(
                     leading: const Icon(Icons.local_taxi, color: kPrimary, size: 22),
                     title: Text(
@@ -3346,7 +3453,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   Divider(height: 1, color: dividerColor),
 
-                  // ─── SECCIÓN: INFORMACIÓN Y SERVICIOS ───
                   sectionHeader("Información y Servicios"),
 
                   drawerTile(
@@ -3396,10 +3502,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   Divider(height: 1, color: dividerColor),
 
-                  // ─── SECCIÓN: MUNICIPIO ───
                   sectionHeader("Municipio de Colcapirhua"),
 
-                  // REDES SOCIALES
                   ExpansionTile(
                     leading: const Icon(Icons.share, color: kPrimary, size: 22),
                     title: Text(
@@ -3429,10 +3533,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   Divider(height: 1, color: dividerColor),
 
-                  // ─── SECCIÓN: CONFIGURACIÓN ───
                   sectionHeader("Configuración"),
 
-                  // Idioma
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     child: Row(
@@ -3468,7 +3570,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                  // Modo oscuro
                   SwitchListTile(
                     value: AppSettings.darkMode.value,
                     activeColor: kPrimary,
@@ -3481,7 +3582,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   ),
 
-                  // Radio configurable
                   ValueListenableBuilder<double>(
                     valueListenable: AppSettings.radiusMeters,
                     builder: (context, meters, _) {
@@ -3520,7 +3620,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
 
-                  // Centrar
                   ValueListenableBuilder<String>(
                     valueListenable: AppSettings.centerMode,
                     builder: (_, mode, __) {
@@ -3575,7 +3674,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   Divider(height: 1, color: dividerColor),
 
-                  // ─── SECCIÓN: ACERCA DE ───
                   sectionHeader("Acerca de"),
 
                   drawerTile(
@@ -3608,7 +3706,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Helper para tiles de redes sociales
   Widget _socialTile(IconData icon, String name, String url, Color textColor) {
     return ListTile(
       dense: true,
