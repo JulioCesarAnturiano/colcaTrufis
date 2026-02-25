@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AppSetting;
+use App\Models\Appsetting;
 
 class AppSettingsController extends Controller
 {
     // GET /api/public/settings/reclamos
     public function reclamos()
 {
-    $items = \App\Models\AppSetting::query()
+    $items =Appsetting::query()
         ->where('group', 'reclamos')
         ->get(['id', 'key', 'value', 'activo']);
 

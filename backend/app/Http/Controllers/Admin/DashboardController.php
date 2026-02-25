@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Trufi;
 use App\Models\TrufiRuta;
-use App\Models\SindicatoRadiotaxi;
+use App\Models\Sindicatoradiotaxi;
 use App\Models\User;
 use App\Models\Normativa;
 
@@ -27,7 +27,7 @@ class DashboardController extends Controller
 
     // NUEVAS
     'total_usuarios'   => User::count(),
-    'total_radiotaxis' => SindicatoRadiotaxi::count(),
+    'total_radiotaxis' => Sindicatoradiotaxi::count(),
     'total_normativas' => Normativa::count(),
 ];
 

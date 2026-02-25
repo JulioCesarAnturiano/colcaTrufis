@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\TrufiSeleccion;
+use App\Models\Trufiseleccion;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +17,7 @@ class ReporteAdminController extends Controller
 
         $desde = Carbon::now()->subDays($dias);
 
-        $top = TrufiSeleccion::query()
+        $top = Trufiseleccion::query()
             ->select('idtrufi', DB::raw('COUNT(*) as total'))
             ->where('created_at', '>=', $desde)
             ->groupBy('idtrufi')

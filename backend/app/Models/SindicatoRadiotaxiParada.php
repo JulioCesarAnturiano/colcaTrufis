@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class SindicatoRadiotaxiParada extends Model
+class Sindicatoradiotaxiparada extends Model
 {
     protected $table = 'sindicato_radiotaxi_paradas';
 

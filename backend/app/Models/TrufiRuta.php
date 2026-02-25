@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class TrufiRuta extends Model
+class Trufiruta extends Model
 {
     protected $table = 'trufi_rutas'; // Especificar tabla
 
@@ -32,6 +32,6 @@ class TrufiRuta extends Model
 
     public function sindicatoRadiotaxi()
     {
-        return $this->belongsTo(SindicatoRadiotaxi::class, 'sindicato_radiotaxi_id');
+        return $this->belongsTo(Sindicatoradiotaxi::class, 'sindicato_radiotaxi_id');
     }
 }

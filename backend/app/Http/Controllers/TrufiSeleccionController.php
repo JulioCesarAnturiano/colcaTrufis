@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TrufiSeleccion;
+use App\Models\Trufiseleccion;
 use Illuminate\Http\Request;
 
 class TrufiSeleccionController extends Controller

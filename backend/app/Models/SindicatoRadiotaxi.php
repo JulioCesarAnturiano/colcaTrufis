@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class SindicatoRadiotaxi extends Model
+class Sindicatoradiotaxi extends Model
 {
     protected $table = 'sindicato_radiotaxis';
 
@@ -14,7 +14,7 @@ class SindicatoRadiotaxi extends Model
     ];
 
     public function parada(){
-    return $this->hasOne(\App\Models\SindicatoRadiotaxiParada::class, 'sindicato_radiotaxi_id');
+    return $this->hasOne(\App\Models\Sindicatoradiotaxiparada::class, 'sindicato_radiotaxi_id');
     }
 
 }

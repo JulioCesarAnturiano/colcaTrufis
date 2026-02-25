@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Trufi;
-use App\Models\TrufiRuta;
+use App\Models\Trufiruta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 

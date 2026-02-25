@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\AppSetting;
+use App\Models\Appsetting;
 use Illuminate\Http\Request;
 
 class AppSettingsAdminController extends Controller
 {
     public function editReclamos()
     {
-        $items = AppSetting::where('group', 'reclamos')
+        $items = Appsetting::where('group', 'reclamos')
             ->orderBy('key')
             ->get();
 
@@ -26,7 +26,7 @@ class AppSettingsAdminController extends Controller
         ]);
 
         foreach ($data['settings'] as $id => $row) {
-            AppSetting::where('id', $id)->update([
+            Appsetting::where('id', $id)->update([
                 'value' => $row['value'] ?? null,
                 'activo' => isset($row['activo']) ? (bool)$row['activo'] : false,
                 'updated_by' => optional($request->user())->id_usuario ?? null,

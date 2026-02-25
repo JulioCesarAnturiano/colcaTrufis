@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\SindicatoRadioTaxi;
-use App\Models\SindicatoRadiotaxiParada;
+use App\Models\Sindicatoradiotaxi;
+use App\Models\Sindicatoradiotaxiparada;
 
 
 class RadioTaxiAdminController extends Controller
@@ -16,7 +16,7 @@ class RadioTaxiAdminController extends Controller
     $usuario = $request->user();
     if (!$usuario) return redirect()->route('login');
 
-    $radiotaxis = SindicatoRadioTaxi::with('parada')
+    $radiotaxis = Sindicatoradiotaxi::with('parada')
         ->orderBy('nombre_comercial')
         ->paginate(20);
 
@@ -45,12 +45,12 @@ public function store(Request $request)
     DB::beginTransaction();
 
     try {
-        $radiotaxi = SindicatoRadioTaxi::create([
+        $radiotaxi = Sindicatoradiotaxi::create([
             'nombre_comercial' => $data['nombre_comercial'],
             'telefono_base' => $data['telefono_base'],
         ]);
 
-        $parada = SindicatoRadiotaxiParada::updateOrCreate(
+        $parada = Sindicatoradiotaxiparada::updateOrCreate(
             ['sindicato_radiotaxi_id' => $radiotaxi->id],
             [
                 'latitud' => $data['latitud'],
@@ -83,7 +83,7 @@ public function edit(Request $request, $id)
     $usuario = $request->user();
     if (!$usuario) return redirect()->route('login');
 
-    $radiotaxi = SindicatoRadioTaxi::with('parada')->findOrFail($id);
+    $radiotaxi = Sindicatoradiotaxi::with('parada')->findOrFail($id);
 
     return view('admin.radiotaxis.edit', compact('radiotaxi', 'usuario'));
 }
@@ -98,14 +98,14 @@ public function edit(Request $request, $id)
         'longitud' => ['required','numeric'],
     ]);
 
-    $radiotaxi = SindicatoRadioTaxi::findOrFail($id);
+    $radiotaxi = Sindicatoradiotaxi::findOrFail($id);
 
     $radiotaxi->update([
         'nombre_comercial' => $request->nombre_comercial,
         'telefono_base' => $request->telefono_base,
     ]);
 
-    SindicatoRadiotaxiParada::updateOrCreate(
+    Sindicatoradiotaxiparada::updateOrCreate(
         ['sindicato_radiotaxi_id' => $radiotaxi->id],
         [
             'latitud' => $request->latitud,
@@ -119,8 +119,8 @@ public function edit(Request $request, $id)
 }
 public function destroy(Request $request, $id)
 {
-    SindicatoRadiotaxiParada::where('sindicato_radiotaxi_id', $id)->delete();
-    SindicatoRadioTaxi::where('id', $id)->delete();
+    Sindicatoradiotaxiparada::where('sindicato_radiotaxi_id', $id)->delete();
+    Sindicatoradiotaxi::where('id', $id)->delete();
 
     return redirect()->route('admin.radiotaxis.index')
         ->with('success', 'RadioTaxi eliminado correctamente.');

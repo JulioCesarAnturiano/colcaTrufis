@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SindicatoRadioTaxi;
-use App\Models\SindicatoRadiotaxiParada;
+use App\Models\Sindicatoradiotaxi;
+use App\Models\Sindicatoradiotaxiparada;
 use Illuminate\Http\Request;
 
-class SindicatoRadioTaxisController extends Controller
+class SindicatoradiotaxisController extends Controller
 {
     // GET /api/sindicato-radiotaxis
     // Lista radiotaxis + parada (ideal para Flutter)
     public function index()
     {
         return response()->json(
-            SindicatoRadioTaxi::query()
+            Sindicatoradiotaxi::query()
                 ->with(['parada' => function ($q) {
                     $q->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion', 'estado');
                 }])
@@ -32,9 +32,9 @@ class SindicatoRadioTaxisController extends Controller
             'telefono_base' => ['required', 'string', 'max:255'],
         ]);
 
-        $sindicatoRadioTaxi = SindicatoRadioTaxi::create($data);
+        $Sindicatoradiotaxi = Sindicatoradiotaxi::create($data);
 
-        return response()->json($sindicatoRadioTaxi, 201);
+        return response()->json($Sindicatoradiotaxi, 201);
     }
 
     // GET /api/sindicato-radiotaxis/{id}
@@ -42,7 +42,7 @@ class SindicatoRadioTaxisController extends Controller
     public function show($id)
     {
         return response()->json(
-            SindicatoRadioTaxi::with(['parada' => function ($q) {
+            Sindicatoradiotaxi::with(['parada' => function ($q) {
                 $q->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion', 'estado');
             }])->findOrFail($id)
         );
@@ -51,16 +51,16 @@ class SindicatoRadioTaxisController extends Controller
     // PUT/PATCH /api/sindicato-radiotaxis/{id}
     public function update(Request $request, $id)
     {
-        $sindicatoRadioTaxi = SindicatoRadioTaxi::findOrFail($id);
+        $Sindicatoradiotaxi = Sindicatoradiotaxi::findOrFail($id);
 
         $data = $request->validate([
             'nombre_comercial' => ['sometimes', 'required', 'string', 'max:255'],
             'telefono_base' => ['sometimes', 'required', 'string', 'max:255'],
         ]);
 
-        $sindicatoRadioTaxi->update($data);
+        $Sindicatoradiotaxi->update($data);
 
-        return response()->json($sindicatoRadioTaxi);
+        return response()->json($Sindicatoradiotaxi);
     }
 
 
@@ -74,7 +74,7 @@ class SindicatoRadioTaxisController extends Controller
     public function paradas()
     {
         return response()->json(
-            SindicatoRadiotaxiParada::query()
+            Sindicatoradiotaxiparada::query()
                 ->where('estado', 1)
                 ->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion')
                 ->orderByDesc('id')
@@ -86,7 +86,7 @@ class SindicatoRadioTaxisController extends Controller
     // Devuelve la parada de un radiotaxi específico
     public function paradaPorRadiotaxi($id)
     {
-        $parada = SindicatoRadiotaxiParada::query()
+        $parada = Sindicatoradiotaxiparada::query()
             ->where('sindicato_radiotaxi_id', $id)
             ->where('estado', 1)
             ->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion', 'estado')
@@ -100,7 +100,7 @@ class SindicatoRadioTaxisController extends Controller
     }
     public function paradasGeojson()
 {
-    $paradas = SindicatoRadiotaxiParada::query()
+    $paradas = Sindicatoradiotaxiparada::query()
         ->where('estado', 1)
         ->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion')
         ->orderByDesc('id')
@@ -132,7 +132,7 @@ class SindicatoRadioTaxisController extends Controller
 
 public function paradaGeojsonPorRadiotaxi($id)
 {
-    $p = SindicatoRadiotaxiParada::query()
+    $p = Sindicatoradiotaxiparada::query()
         ->where('sindicato_radiotaxi_id', $id)
         ->where('estado', 1)
         ->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion')

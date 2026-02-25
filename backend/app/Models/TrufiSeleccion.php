@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class TrufiSeleccion extends Model
+class Trufiseleccion extends Model
 {
     protected $table = 'trufi_selecciones';
 
