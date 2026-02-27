@@ -25,8 +25,8 @@ class _SplashScreenState extends State<SplashScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromARGB(255, 0, 0, 0), // parecido al fondo superior
-              Color.fromARGB(255, 0, 0, 0), // parecido al fondo inferior
+              Color.fromARGB(255, 28, 76, 82), // parecido al fondo superior
+              Color.fromARGB(255, 81, 188, 193), // parecido al fondo inferior
             ],
           ),
         ),

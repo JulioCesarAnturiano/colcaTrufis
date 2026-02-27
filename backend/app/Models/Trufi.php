@@ -31,7 +31,7 @@ class Trufi extends Model
     // Relaciones
     public function rutas()
     {
-        return $this->hasMany(\App\Models\TrufiRuta::class, 'idtrufi', 'idtrufi');
+        return $this->hasMany(\App\Models\Trufiruta::class, 'idtrufi', 'idtrufi');
     }
 
     public function sindicato()
