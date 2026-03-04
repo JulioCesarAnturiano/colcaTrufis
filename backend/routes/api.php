@@ -63,3 +63,6 @@ Route::get('/referencias/{id}', [ReferenciaController::class, 'show']);
 
 Route::get('/trufis/{idtrufi}/referencias', [ReferenciaController::class, 'byTrufi']);
 Route::get('/radiotaxis/{id}/referencias', [ReferenciaController::class, 'byRadiotaxi']);
+// Ubicaciones (Calles)
+Route::get('/trufis/{idtrufi}/ubicaciones', [TrufirutaController::class, 'ubicacionesPorTrufi']);
+Route::get('/ubicaciones', [TrufirutaController::class, 'ubicacionesTodas']);

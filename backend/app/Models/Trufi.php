@@ -62,5 +62,9 @@ public function referencias(): MorphMany
 {
     return $this->morphMany(Referencia::class, 'referenciable');
 }
-
+public function rutaUbicaciones()
+{
+    return $this->hasMany(\App\Models\Trufirutaubicacion::class, 'idtrufi', 'idtrufi')
+        ->orderBy('orden');
+}
 }

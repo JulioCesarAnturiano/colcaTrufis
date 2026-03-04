@@ -62,6 +62,42 @@
         </div>
     </div>
 
+    {{-- ✅ Tabla De Ubicaciones (Calles) --}}
+    @if(isset($ubicaciones) && $ubicaciones->count())
+        <div class="card ct-stat-card mt-3">
+            <div class="card-body">
+                <h5 class="mb-3">Ubicaciones De La Ruta</h5>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 90px;">Orden</th>
+                                <th>Vía</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($ubicaciones as $u)
+                                <tr>
+                                    <td>{{ $u->orden }}</td>
+                                    <td class="fw-semibold">{{ $u->nombre_via }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="form-text mt-2">
+                    Estas Ubicaciones Se Regeneran Automáticamente Cada Vez Que Reemplazas La Ruta.
+                </div>
+            </div>
+        </div>
+    @else
+        <div class="alert alert-info mt-3">
+            Aún No Hay Ubicaciones Generadas Para Esta Ruta.
+        </div>
+    @endif
+
 @endsection
 
 @push('styles')
@@ -112,49 +148,48 @@
             }
 
             // ✅ Precargar desde tu API pública (GeoJSON por idtrufi)
-  async function precargarRuta() {
-    const idtrufi = @json($idtrufi);
-    const baseUrl = @json(url('/'));
+            async function precargarRuta() {
+                const idtrufi = @json($idtrufi);
+                const baseUrl = @json(url('/'));
 
-    // ✅ Endpoint real que te funciona
-    const url = `${baseUrl}/api/trufis/${idtrufi}/rutas/geojson`;
+                // ✅ Endpoint real que te funciona
+                const url = `${baseUrl}/api/trufis/${idtrufi}/rutas/geojson`;
 
-    try {
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                try {
+                    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
 
-        if (!res.ok) {
-            alert(`No Se Pudo Precargar La Ruta.\nEndpoint: ${url}\nHTTP: ${res.status}`);
-            return;
-        }
+                    if (!res.ok) {
+                        alert(`No Se Pudo Precargar La Ruta.\nEndpoint: ${url}\nHTTP: ${res.status}`);
+                        return;
+                    }
 
-        const geojson = await res.json();
+                    const geojson = await res.json();
 
-        if (!geojson || geojson.type !== 'FeatureCollection') {
-            alert('La Respuesta No Es Un GeoJSON FeatureCollection Válido.');
-            return;
-        }
+                    if (!geojson || geojson.type !== 'FeatureCollection') {
+                        alert('La Respuesta No Es Un GeoJSON FeatureCollection Válido.');
+                        return;
+                    }
 
-        if (!geojson.features || geojson.features.length === 0) {
-            alert('No Hay Ruta Registrada Para Este Trufi (GeoJSON Vacío).');
-            return;
-        }
+                    if (!geojson.features || geojson.features.length === 0) {
+                        alert('No Hay Ruta Registrada Para Este Trufi (GeoJSON Vacío).');
+                        return;
+                    }
 
-        drawnItems.clearLayers();
+                    drawnItems.clearLayers();
 
-        const layer = L.geoJSON(geojson, {
-            onEachFeature: (feature, lyr) => drawnItems.addLayer(lyr)
-        });
+                    const layer = L.geoJSON(geojson, {
+                        onEachFeature: (feature, lyr) => drawnItems.addLayer(lyr)
+                    });
 
-        if (drawnItems.getLayers().length > 0) {
-            map.fitBounds(layer.getBounds());
-            updateGeojson();
-        }
-    } catch (e) {
-        alert('Error Al Intentar Precargar La Ruta.');
-        console.error(e);
-    }
-}
-
+                    if (drawnItems.getLayers().length > 0) {
+                        map.fitBounds(layer.getBounds());
+                        updateGeojson();
+                    }
+                } catch (e) {
+                    alert('Error Al Intentar Precargar La Ruta.');
+                    console.error(e);
+                }
+            }
 
             // Solo 1 ruta a la vez
             map.on(L.Draw.Event.CREATED, function (e) {
