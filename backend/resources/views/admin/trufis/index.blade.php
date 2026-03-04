@@ -35,6 +35,8 @@
                                 <th>Frecuencia</th>
                                 <th>Tipo</th>
                                 <th>Sindicato</th>
+                                <th>Referencias</th>
+                                <th>Horario</th>
                                 <th>Estado</th>
                                 <th style="width: 200px;">Acciones</th>
                             </tr>
@@ -49,6 +51,14 @@
                                     <td>{{ $t->frecuencia }}</td>
                                     <td>{{ $t->tipo }}</td>
                                     <td>{{ $t->sindicato->nombre ?? '-' }}</td>
+                                    <td>{{ optional($t->detalle)->referencias ?? '-' }}</td>
+                                    <td>
+                                        @php
+                                            $he = optional($t->detalle)->hora_entrada;
+                                            $hs = optional($t->detalle)->hora_salida;
+                                        @endphp
+                                        {{ $he || $hs ? (($he ?? '-') . ' - ' . ($hs ?? '-')) : '-' }}
+                                    </td>
                                     <td>
                                         <span class="badge {{ $t->estado ? 'bg-success' : 'bg-secondary' }}">
                                             {{ $t->estado ? 'Activo' : 'Inactivo' }}

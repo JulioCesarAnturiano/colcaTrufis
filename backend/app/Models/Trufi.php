@@ -34,6 +34,8 @@ class Trufi extends Model
         return $this->hasMany(\App\Models\Trufiruta::class, 'idtrufi', 'idtrufi');
     }
 
+
+    
     public function sindicato()
     {
         return $this->belongsTo(\App\Models\Sindicato::class, 'sindicato_id', 'id');
@@ -50,4 +52,13 @@ class Trufi extends Model
     {
         return $this->sindicato?->nombre;
     }
+    public function detalle()
+{
+    return $this->hasOne(Trufidetalle::class, 'trufi_id', 'idtrufi');
+}
+public function referencias()
+{
+    return $this->morphMany(Referencia::class, 'referenciable');
+}
+
 }

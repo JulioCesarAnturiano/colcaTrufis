@@ -16,5 +16,10 @@ class Sindicatoradiotaxi extends Model
     public function parada(){
     return $this->hasOne(\App\Models\Sindicatoradiotaxiparada::class, 'sindicato_radiotaxi_id');
     }
+ 
+public function referencias()
+{
+    return $this->morphMany(Referencia::class, 'referenciable');
+}
 
 }

@@ -13,8 +13,7 @@ use App\Http\Controllers\Admin\RadioTaxiAdminController;
 use App\Http\Controllers\Admin\NormativaAdminController;
 use App\Http\Controllers\Admin\ReporteAdminController;
 use App\Http\Controllers\Admin\AppSettingsAdminController;
-
-
+use App\Http\Controllers\Admin\ReferenciaAdminController;
 
 Route::get('/', fn() => redirect()->route('login'));
 
@@ -212,7 +211,28 @@ Route::delete('/normativas/{id}', [NormativaAdminController::class, 'destroy'])
     Route::put('/settings/reclamos', [AppSettingsAdminController::class, 'updateReclamos'])
     ->middleware('permission:admin.settings.editar')
     ->name('admin.settings.reclamos.update');
+   // REFERENCIAS (CRUD)
+Route::get('/referencias', [ReferenciaAdminController::class, 'index'])
+    ->middleware('permission:admin.referencias.ver')
+    ->name('admin.referencias');
 
+Route::get('/referencias/crear', [ReferenciaAdminController::class, 'create'])
+    ->middleware('permission:admin.referencias.crear')
+    ->name('admin.referencias.crear');
 
-    
+Route::post('/referencias', [ReferenciaAdminController::class, 'store'])
+    ->middleware('permission:admin.referencias.crear')
+    ->name('admin.referencias.guardar');
+
+Route::get('/referencias/{id}/editar', [ReferenciaAdminController::class, 'edit'])
+    ->middleware('permission:admin.referencias.editar')
+    ->name('admin.referencias.editar');
+
+Route::put('/referencias/{id}', [ReferenciaAdminController::class, 'update'])
+    ->middleware('permission:admin.referencias.editar')
+    ->name('admin.referencias.actualizar');
+
+Route::delete('/referencias/{id}', [ReferenciaAdminController::class, 'destroy'])
+    ->middleware('permission:admin.referencias.eliminar')
+    ->name('admin.referencias.eliminar');
 });

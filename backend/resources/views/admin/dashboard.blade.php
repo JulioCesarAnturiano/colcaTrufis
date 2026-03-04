@@ -260,72 +260,104 @@
         </div>
     </div>
 
-    {{-- ─── COLUMNA 2: RADIOTAXIS / NORMATIVAS ─── --}}
-    <div class="col-12 col-lg-4">
-        <div class="ct-action-card h-100">
+  {{-- ─── COLUMNA 2: RADIOTAXIS / NORMATIVAS / REFERENCIAS ─── --}}
+<div class="col-12 col-lg-4">
+    <div class="ct-action-card h-100">
 
-            <div class="ct-action-header ct-action-header--radiotaxis">
-                <div class="ct-action-header-icon">
-                    <i class="bi bi-taxi-front-fill"></i>
-                </div>
-                <div>
-                    <div class="ct-action-header-title">RadioTaxis &amp; Normativas</div>
-                    <div class="ct-action-header-sub">Gestión de taxis y reglamentos</div>
-                </div>
+        <div class="ct-action-header ct-action-header--radiotaxis">
+            <div class="ct-action-header-icon">
+                <i class="bi bi-taxi-front-fill"></i>
             </div>
-
-            <div class="ct-action-card-body">
-
-                {{-- RADIOTAXIS --}}
-                <div class="ct-action-section">
-                    <div class="ct-action-section-label">
-                        <i class="bi bi-taxi-front"></i>
-                        RadioTaxis
-                    </div>
-                    <div class="d-flex gap-2">
-                        @can('admin.radiotaxis.crear')
-                            <a href="{{ route('admin.radiotaxis.crear') }}"
-                               class="btn ct-btn ct-btn-create flex-fill">
-                                <i class="bi bi-plus-lg"></i> Crear
-                            </a>
-                        @endcan
-                        @can('admin.radiotaxis.ver')
-                            <a href="{{ route('admin.radiotaxis.index') }}"
-                               class="btn ct-btn ct-btn-view flex-fill">
-                                <i class="bi bi-list-ul"></i> Ver
-                            </a>
-                        @endcan
-                    </div>
-                </div>
-
-                <div class="ct-action-divider"></div>
-
-                {{-- NORMATIVAS --}}
-                <div class="ct-action-section">
-                    <div class="ct-action-section-label">
-                        <i class="bi bi-file-earmark-text-fill"></i>
-                        Normativas
-                    </div>
-                    <div class="d-flex gap-2">
-                        @can('admin.normativas.crear')
-                            <a href="{{ route('admin.normativas.crear') }}"
-                               class="btn ct-btn ct-btn-create flex-fill">
-                                <i class="bi bi-plus-lg"></i> Crear
-                            </a>
-                        @endcan
-                        @can('admin.normativas.ver')
-                            <a href="{{ route('admin.normativas.index') }}"
-                               class="btn ct-btn ct-btn-view flex-fill">
-                                <i class="bi bi-list-ul"></i> Ver
-                            </a>
-                        @endcan
-                    </div>
-                </div>
-
+            <div>
+                <div class="ct-action-header-title">RadioTaxis, Normativas & Referencias</div>
+                <div class="ct-action-header-sub">Gestión de taxis, reglamentos y puntos de referencia</div>
             </div>
         </div>
-    </div>
 
+        <div class="ct-action-card-body">
+
+            {{-- ================= RADIOTAXIS ================= --}}
+            <div class="ct-action-section">
+                <div class="ct-action-section-label">
+                    <i class="bi bi-taxi-front"></i>
+                    RadioTaxis
+                </div>
+
+                <div class="d-flex gap-2">
+                    @can('admin.radiotaxis.crear')
+                        <a href="{{ route('admin.radiotaxis.crear') }}"
+                           class="btn ct-btn ct-btn-create flex-fill">
+                            <i class="bi bi-plus-lg"></i> Crear
+                        </a>
+                    @endcan
+
+                    @can('admin.radiotaxis.ver')
+                        <a href="{{ route('admin.radiotaxis.index') }}"
+                           class="btn ct-btn ct-btn-view flex-fill">
+                            <i class="bi bi-list-ul"></i> Ver
+                        </a>
+                    @endcan
+                </div>
+            </div>
+
+            <div class="ct-action-divider"></div>
+
+            {{-- ================= NORMATIVAS ================= --}}
+            <div class="ct-action-section">
+                <div class="ct-action-section-label">
+                    <i class="bi bi-file-earmark-text-fill"></i>
+                    Normativas
+                </div>
+
+                <div class="d-flex gap-2">
+                    @can('admin.normativas.crear')
+                        <a href="{{ route('admin.normativas.crear') }}"
+                           class="btn ct-btn ct-btn-create flex-fill">
+                            <i class="bi bi-plus-lg"></i> Crear
+                        </a>
+                    @endcan
+
+                    @can('admin.normativas.ver')
+                        <a href="{{ route('admin.normativas.index') }}"
+                           class="btn ct-btn ct-btn-view flex-fill">
+                            <i class="bi bi-list-ul"></i> Ver
+                        </a>
+                    @endcan
+                </div>
+            </div>
+
+            <div class="ct-action-divider"></div>
+
+            {{-- ================= REFERENCIAS ================= --}}
+            <div class="ct-action-section">
+                <div class="ct-action-section-label">
+                    <i class="bi bi-bookmark-star-fill"></i>
+                    Referencias
+                </div>
+
+                <div class="d-flex gap-2">
+
+                    @can('admin.referencias.crear')
+                        <a href="{{ route('admin.referencias.crear') }}"
+                           class="btn ct-btn ct-btn-create flex-fill">
+                            <i class="bi bi-plus-lg"></i> Crear
+                        </a>
+                    @endcan
+
+                    @can('admin.referencias.ver')
+                        <a href="{{ route('admin.referencias') }}"
+                           class="btn ct-btn ct-btn-view flex-fill">
+                            <i class="bi bi-list-ul"></i> Ver
+                        </a>
+                    @endcan
+
+                    
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
     {{-- ─── COLUMNA 3: USUARIOS / REPORTES / CONFIG ─── --}}
     <div class="col-12 col-lg-4">
         <div class="ct-action-card h-100">

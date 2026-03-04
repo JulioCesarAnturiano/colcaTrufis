@@ -98,6 +98,44 @@
                         >{{ old('descripcion') }}</textarea>
                     </div>
 
+                    {{-- NUEVOS CAMPOS --}}
+                    <div class="col-12 mb-3">
+                        <hr>
+                        <h5 class="mb-3">Detalle De Trufi</h5>
+                    </div>
+
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label fw-semibold">Referencias</label>
+                        <input
+                            type="text"
+                            name="referencias"
+                            class="form-control"
+                            required
+                            value="{{ old('referencias') }}"
+                            placeholder="Ej: Plaza Principal - Mercado - Hospital"
+                        >
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Hora Entrada</label>
+                        <input
+                            type="time"
+                            name="hora_entrada"
+                            class="form-control"
+                            value="{{ old('hora_entrada') }}"
+                        >
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Hora Salida</label>
+                        <input
+                            type="time"
+                            name="hora_salida"
+                            class="form-control"
+                            value="{{ old('hora_salida') }}"
+                        >
+                    </div>
+
                 </div>
 
                 {{-- Acciones --}}
