@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Referencia;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Trufi extends Model
 {
@@ -56,7 +58,7 @@ class Trufi extends Model
 {
     return $this->hasOne(Trufidetalle::class, 'trufi_id', 'idtrufi');
 }
-public function referencias()
+public function referencias(): MorphMany
 {
     return $this->morphMany(Referencia::class, 'referenciable');
 }

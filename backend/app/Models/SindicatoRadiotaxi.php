@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Referencia;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Sindicatoradiotaxi extends Model
 {
@@ -17,7 +19,8 @@ class Sindicatoradiotaxi extends Model
     return $this->hasOne(\App\Models\Sindicatoradiotaxiparada::class, 'sindicato_radiotaxi_id');
     }
  
-public function referencias()
+
+public function referencias(): MorphMany
 {
     return $this->morphMany(Referencia::class, 'referenciable');
 }
