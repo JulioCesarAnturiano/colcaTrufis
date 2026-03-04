@@ -15,7 +15,6 @@ class TrufiAdminController extends Controller
     public function listarTrufis()
     {
         $usuario = request()->user();
-
         if (!$usuario) {
             return redirect()->route('login');
         }
@@ -33,7 +32,9 @@ class TrufiAdminController extends Controller
     public function mostrarCrear()
     {
         $usuario = request()->user();
-        if (!$usuario) return redirect()->route('login');
+        if (!$usuario) {
+            return redirect()->route('login');
+        }
 
         $sindicatos = Sindicato::orderBy('nombre')->get();
 
@@ -43,7 +44,7 @@ class TrufiAdminController extends Controller
         ]);
     }
 
-    // Guardar trufi + detalle
+    // Guardar trufi + detalle (solo horario)
     public function guardarTrufi(Request $request)
     {
         $usuario = $request->user();
@@ -60,8 +61,7 @@ class TrufiAdminController extends Controller
             'sindicato_id' => 'required|exists:sindicatos,id',
             'estado'       => 'nullable|in:0,1',
 
-            // Trufidetalle
-            'referencias'  => 'required|string|max:255',
+            // Solo horario
             'hora_entrada' => 'nullable|date_format:H:i',
             'hora_salida'  => 'nullable|date_format:H:i',
         ]);
@@ -79,23 +79,27 @@ class TrufiAdminController extends Controller
                 'estado'       => $request->estado ?? 1,
             ]);
 
-            Trufidetalle::updateOrCreate(
-                ['trufi_id' => $trufi->idtrufi],
-                [
-                    'referencias'  => $request->referencias,
-                    'hora_entrada' => $request->hora_entrada,
-                    'hora_salida'  => $request->hora_salida,
-                ]
-            );
+            // Si al menos uno de los horarios viene, guardamos detalle
+            if ($request->filled('hora_entrada') || $request->filled('hora_salida')) {
+                Trufidetalle::updateOrCreate(
+                    ['trufi_id' => $trufi->idtrufi],
+                    [
+                        'hora_entrada' => $request->hora_entrada,
+                        'hora_salida'  => $request->hora_salida,
+                    ]
+                );
+            }
 
             DB::commit();
 
             return redirect()->route('admin.trufis.index')
                 ->with('success', 'Trufi creado exitosamente');
-
         } catch (\Throwable $e) {
             DB::rollBack();
-            dd($e->getMessage(), $e->getFile() . ':' . $e->getLine());
+
+            return back()
+                ->withInput()
+                ->with('error', 'Ocurrió un error al crear el trufi: ' . $e->getMessage());
         }
     }
 
@@ -103,9 +107,12 @@ class TrufiAdminController extends Controller
     public function mostrarEditar($id)
     {
         $usuario = request()->user();
-        if (!$usuario) return redirect()->route('login');
+        if (!$usuario) {
+            return redirect()->route('login');
+        }
 
-        $trufi = Trufi::with('detalle')->findOrFail($id);
+        // PK real: idtrufi
+        $trufi = Trufi::with('detalle')->where('idtrufi', $id)->firstOrFail();
         $sindicatos = Sindicato::orderBy('nombre')->get();
 
         return view('admin.trufis.edit', [
@@ -115,7 +122,7 @@ class TrufiAdminController extends Controller
         ]);
     }
 
-    // Actualizar trufi + detalle
+    // Actualizar trufi + detalle (solo horario)
     public function actualizarTrufi(Request $request, $id)
     {
         $usuario = $request->user();
@@ -123,7 +130,8 @@ class TrufiAdminController extends Controller
             return redirect()->route('login');
         }
 
-        $trufi = Trufi::findOrFail($id);
+        // PK real: idtrufi
+        $trufi = Trufi::where('idtrufi', $id)->firstOrFail();
 
         $request->validate([
             'nom_linea'    => 'required|string|max:255',
@@ -134,8 +142,7 @@ class TrufiAdminController extends Controller
             'sindicato_id' => 'required|exists:sindicatos,id',
             'estado'       => 'nullable|in:0,1',
 
-            // Trufidetalle
-            'referencias'  => 'required|string|max:255',
+            // Solo horario
             'hora_entrada' => 'nullable|date_format:H:i',
             'hora_salida'  => 'nullable|date_format:H:i',
         ]);
@@ -153,23 +160,27 @@ class TrufiAdminController extends Controller
                 'estado'       => $request->estado ?? 1,
             ]);
 
-            Trufidetalle::updateOrCreate(
-                ['trufi_id' => $trufi->idtrufi],
-                [
-                    'referencias'  => $request->referencias,
-                    'hora_entrada' => $request->hora_entrada,
-                    'hora_salida'  => $request->hora_salida,
-                ]
-            );
+            // Si al menos uno de los horarios viene, guardamos detalle
+            if ($request->filled('hora_entrada') || $request->filled('hora_salida')) {
+                Trufidetalle::updateOrCreate(
+                    ['trufi_id' => $trufi->idtrufi],
+                    [
+                        'hora_entrada' => $request->hora_entrada,
+                        'hora_salida'  => $request->hora_salida,
+                    ]
+                );
+            }
 
             DB::commit();
 
             return redirect()->route('admin.trufis.index')
                 ->with('success', 'Trufi actualizado exitosamente');
-
         } catch (\Throwable $e) {
             DB::rollBack();
-            dd($e->getMessage(), $e->getFile() . ':' . $e->getLine());
+
+            return back()
+                ->withInput()
+                ->with('error', 'Ocurrió un error al actualizar el trufi: ' . $e->getMessage());
         }
     }
 
@@ -182,7 +193,8 @@ class TrufiAdminController extends Controller
             return redirect()->route('login')->with('error', 'No autorizado');
         }
 
-        $trufi = Trufi::findOrFail($id);
+        // PK real: idtrufi
+        $trufi = Trufi::where('idtrufi', $id)->firstOrFail();
         $trufi->delete();
 
         return redirect()->route('admin.trufis.index')

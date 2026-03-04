@@ -99,22 +99,10 @@
                         >{{ old('descripcion', $trufi->descripcion) }}</textarea>
                     </div>
 
-                    {{-- NUEVOS CAMPOS --}}
+                    {{-- DETALLE (Solo Horarios) --}}
                     <div class="col-12 mb-3">
                         <hr>
-                        <h5 class="mb-3">Detalle De Trufi</h5>
-                    </div>
-
-                    <div class="col-md-12 mb-3">
-                        <label class="form-label fw-semibold">Referencias</label>
-                        <input
-                            type="text"
-                            name="referencias"
-                            class="form-control"
-                            required
-                            value="{{ old('referencias', optional($trufi->detalle)->referencias) }}"
-                            placeholder="Ej: Plaza Principal - Mercado - Hospital"
-                        >
+                        <h5 class="mb-3">Detalle De Trufi (Solo Horarios)</h5>
                     </div>
 
                     <div class="col-md-6 mb-3">
