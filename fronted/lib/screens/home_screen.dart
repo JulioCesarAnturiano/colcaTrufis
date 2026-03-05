@@ -357,86 +357,179 @@ class _HomeScreenState extends State<HomeScreen> {
     return "${fecha.day}/${fecha.month}/${fecha.year}";
   }
 
-  Future<void> _fetchSindicatos() async {
-    try {
-      if (!mounted) return;
-      setState(() { _isLoadingDatos = true; _isLoadingSindicatos = true; });
-      final sindicatos = await _apiService.getSindicatos();
-      if (!mounted) return;
-      setState(() {
-        _sindicatos = List<Map<String, dynamic>>.from(sindicatos);
-        _isLoadingDatos = false;
-        _isLoadingSindicatos = false;
-      });
-    } catch (e) {
-      print("Error fetching sindicatos: $e");
-      if (!mounted) return;
-      setState(() { _isLoadingDatos = false; _isLoadingSindicatos = false; });
+  // ==========================
+// FETCH SINDICATOS (CORREGIDO - usa http.get directo)
+// ==========================
+Future<void> _fetchSindicatos() async {
+  try {
+    if (!mounted) return;
+    setState(() { _isLoadingDatos = true; _isLoadingSindicatos = true; });
+
+    final res = await http.get(
+      Uri.parse("$_apiBase/sindicatos"),
+      headers: const {"Accept": "application/json"},
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception("HTTP ${res.statusCode}");
     }
-  }
 
-  Future<void> _fetchRadioTaxis() async {
-    try {
-      if (!mounted) return;
-      setState(() => _isLoadingRadiotaxis = true);
-      final radioTaxis = await _apiService.getRadioTaxis();
-      if (!mounted) return;
+    final body = jsonDecode(res.body);
+    List<dynamic> data = [];
 
-      _radiotaxiNameById.clear();
-      for (final it in radioTaxis) {
-        final id = int.tryParse((it["id"] ?? "").toString());
-        final name = (it["nombre_comercial"] ?? "").toString();
-        if (id != null && name.trim().isNotEmpty) {
-          _radiotaxiNameById[id] = name;
-        }
+    if (body is List) {
+      data = body;
+    } else if (body is Map) {
+      if (body["data"] is Map && body["data"]["sindicatos"] is List) {
+        data = body["data"]["sindicatos"] as List;
+      } else if (body["sindicatos"] is List) {
+        data = body["sindicatos"] as List;
+      } else if (body["data"] is List) {
+        data = body["data"] as List;
+      } else if (body["success"] == true && body["data"] is List) {
+        data = body["data"] as List;
       }
-
-      setState(() {
-        _radioTaxis = List<Map<String, dynamic>>.from(radioTaxis);
-        _isLoadingRadiotaxis = false;
-      });
-
-      if (_paradasRadiotaxis.isNotEmpty) {
-        _aplicarFiltroParadas();
-      }
-    } catch (e) {
-      print("Error fetching radiotaxis: $e");
-      if (!mounted) return;
-      setState(() => _isLoadingRadiotaxis = false);
     }
+
+    if (!mounted) return;
+    setState(() {
+      _sindicatos = data.map((e) => e as Map<String, dynamic>).toList();
+      _isLoadingDatos = false;
+      _isLoadingSindicatos = false;
+    });
+  } catch (e) {
+    print("Error fetching sindicatos: $e");
+    if (!mounted) return;
+    setState(() { _isLoadingDatos = false; _isLoadingSindicatos = false; });
   }
+}
 
-  Future<void> _fetchTrufis() async {
-    try {
-      if (!mounted) return;
-      setState(() => _isLoadingTrufis = true);
-      final trufis = await _apiService.getTrufis();
-      if (!mounted) return;
+// ==========================
+// FETCH RADIOTAXIS (CORREGIDO - usa http.get directo)
+// ==========================
+Future<void> _fetchRadioTaxis() async {
+  try {
+    if (!mounted) return;
+    setState(() => _isLoadingRadiotaxis = true);
 
-      _trufiNameById.clear();
-      for (final it in trufis) {
-        final id = int.tryParse((it["idtrufi"] ?? "").toString());
-        final name = (it["nom_linea"] ?? "").toString();
-        if (id != null && name.trim().isNotEmpty) {
-          _trufiNameById[id] = name;
-        }
-      }
+    final res = await http.get(
+      Uri.parse("$_apiBase/radiotaxis"),
+      headers: const {"Accept": "application/json"},
+    );
 
-      setState(() {
-        _trufis = List<Map<String, dynamic>>.from(trufis);
-        _isLoadingTrufis = false;
-      });
-
-      if (_rutasVisibles.isNotEmpty) {
-        _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
-      }
-      if (mounted) setState(() {});
-    } catch (e) {
-      print("Error fetching trufis: $e");
-      if (!mounted) return;
-      setState(() => _isLoadingTrufis = false);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception("HTTP ${res.statusCode}");
     }
+
+    final body = jsonDecode(res.body);
+    List<dynamic> data = [];
+
+    if (body is List) {
+      data = body;
+    } else if (body is Map) {
+      if (body["data"] is Map && body["data"]["radiotaxis"] is List) {
+        data = body["data"]["radiotaxis"] as List;
+      } else if (body["radiotaxis"] is List) {
+        data = body["radiotaxis"] as List;
+      } else if (body["data"] is List) {
+        data = body["data"] as List;
+      } else if (body["success"] == true && body["data"] is List) {
+        data = body["data"] as List;
+      }
+    }
+
+    final radioTaxis = data.map((e) => e as Map<String, dynamic>).toList();
+
+    // Actualizar caché de nombres
+    _radiotaxiNameById.clear();
+    for (final it in radioTaxis) {
+      final id = int.tryParse((it["id"] ?? "").toString());
+      final name = (it["nombre_comercial"] ?? "").toString();
+      if (id != null && name.trim().isNotEmpty) {
+        _radiotaxiNameById[id] = name;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _radioTaxis = radioTaxis;
+      _isLoadingRadiotaxis = false;
+    });
+
+    // Si ya hay paradas cargadas, reconstruir sus labels
+    if (_paradasRadiotaxis.isNotEmpty) {
+      _aplicarFiltroParadas();
+    }
+  } catch (e) {
+    print("Error fetching radiotaxis: $e");
+    if (!mounted) return;
+    setState(() => _isLoadingRadiotaxis = false);
   }
+}
+
+// ==========================
+// FETCH TRUFIS (CORREGIDO - usa http.get directo)
+// ==========================
+Future<void> _fetchTrufis() async {
+  try {
+    if (!mounted) return;
+    setState(() => _isLoadingTrufis = true);
+
+    final res = await http.get(
+      Uri.parse("$_apiBase/trufis"),
+      headers: const {"Accept": "application/json"},
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception("HTTP ${res.statusCode}");
+    }
+
+    final body = jsonDecode(res.body);
+    List<dynamic> data = [];
+
+    if (body is List) {
+      data = body;
+    } else if (body is Map) {
+      if (body["data"] is Map && body["data"]["trufis"] is List) {
+        data = body["data"]["trufis"] as List;
+      } else if (body["trufis"] is List) {
+        data = body["trufis"] as List;
+      } else if (body["data"] is List) {
+        data = body["data"] as List;
+      } else if (body["success"] == true && body["data"] is List) {
+        data = body["data"] as List;
+      }
+    }
+
+    final trufis = data.map((e) => e as Map<String, dynamic>).toList();
+
+    // Actualizar caché de nombres de líneas
+    _trufiNameById.clear();
+    for (final it in trufis) {
+      final id = int.tryParse((it["idtrufi"] ?? "").toString());
+      final name = (it["nom_linea"] ?? "").toString();
+      if (id != null && name.trim().isNotEmpty) {
+        _trufiNameById[id] = name;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _trufis = trufis;
+      _isLoadingTrufis = false;
+    });
+
+    // Si ya hay rutas visibles, reconstruir labels
+    if (_rutasVisibles.isNotEmpty) {
+      _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+    }
+    if (mounted) setState(() {});
+  } catch (e) {
+    print("Error fetching trufis: $e");
+    if (!mounted) return;
+    setState(() => _isLoadingTrufis = false);
+  }
+}
 
   Future<void> _fetchParadasRadiotaxis() async {
     try {
@@ -1775,6 +1868,27 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _abrirWhatsApp(String rawPhone) async {
+    final phone = rawPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (phone.trim().isEmpty) return;
+
+    final waUrl = Uri.parse("https://wa.me/$phone");
+    if (await canLaunchUrl(waUrl)) {
+      await launchUrl(waUrl, mode: LaunchMode.externalApplication);
+    } else {
+      final waIntent = Uri.parse("whatsapp://send?phone=$phone");
+      if (await canLaunchUrl(waIntent)) {
+        await launchUrl(waIntent, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No se pudo abrir WhatsApp")),
+          );
+        }
+      }
+    }
+  }
+
   Future<List<dynamic>> _fetchNormativas() async {
     final res = await http.get(
       Uri.parse("$_apiBase/normativas"),
@@ -1913,13 +2027,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         height: 42,
                         decoration: BoxDecoration(
                           color: activo && value.isNotEmpty
-                              ? kPrimary.withOpacity(0.12)
+                              ? (isWhatsApp ? Colors.green.withOpacity(0.12) : kPrimary.withOpacity(0.12))
                               : Colors.grey.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
                           isWhatsApp ? Icons.chat : Icons.phone,
-                          color: activo && value.isNotEmpty ? kPrimary : Colors.grey,
+                          color: activo && value.isNotEmpty
+                              ? (isWhatsApp ? Colors.green : kPrimary)
+                              : Colors.grey,
                           size: 22,
                         ),
                       ),
@@ -1937,13 +2053,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       trailing: activo && value.isNotEmpty
-                          ? Icon(Icons.call, color: kPrimary)
+                          ? Icon(
+                              isWhatsApp ? Icons.chat : Icons.call,
+                              color: isWhatsApp ? Colors.green : kPrimary,
+                            )
                           : null,
-                      onTap: activo && value.isNotEmpty
-                          ? () async {
-                              await _confirmAndCallReclamo(value, label);
-                            }
-                          : null,
+                    onTap: activo && value.isNotEmpty
+                      ? () async {
+                          await _confirmAndCallReclamo(value, label);
+                        }
+                      : null,
                     );
                   },
                 ),
@@ -2441,35 +2560,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     if (_isLoadingGPS)
                       Positioned(
-                        top: 90,
+                        bottom: MediaQuery.of(context).size.height * 0.5,
                         right: 16,
                         child: _loadingChip(t("loading_gps"), Icons.gps_fixed),
                       ),
 
                     if (_isLoadingGeoJSON)
                       Positioned(
-                        top: 90,
+                        bottom: MediaQuery.of(context).size.height * 0.5,
                         left: 16,
                         child: _loadingChip(t("loading_geojson"), Icons.map_outlined),
                       ),
 
                     if (_isLoadingRutas && !_isLoadingRutaTrufi)
                       Positioned(
-                        top: _isLoadingGeoJSON ? 140 : 90,
+                        bottom: MediaQuery.of(context).size.height * 0.5 - 52,
                         left: 16,
                         child: _loadingChip(t("loading_route"), Icons.route),
                       ),
 
                     if (_isLoadingTrufis || _isLoadingRadiotaxis || _isLoadingSindicatos)
                       Positioned(
-                        top: (_isLoadingGeoJSON || (_isLoadingRutas && !_isLoadingRutaTrufi)) ? 190 : 90,
+                        bottom: MediaQuery.of(context).size.height * 0.5 - 104,
                         left: 16,
                         child: _loadingChip(t("loading_data"), Icons.directions_bus_outlined),
                       ),
 
                     if (_isLoadingParadas)
                       Positioned(
-                        top: (_isLoadingGeoJSON || (_isLoadingRutas && !_isLoadingRutaTrufi) || _isLoadingTrufis || _isLoadingRadiotaxis) ? 240 : 90,
+                        bottom: MediaQuery.of(context).size.height * 0.5 - 156,
                         left: 16,
                         child: _loadingChip(t("loading_stops"), Icons.local_taxi_outlined),
                       ),
@@ -2509,7 +2628,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       left: 16,
                       bottom: 22,
                       child: SizedBox(
-                      width: 150, // ajusta este valor
+                      width: 150,
                       child: _routesFilterDropdown(isDarkMode),
                     ),
                     ),
