@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Referencia;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Trufi extends Model
 {
@@ -31,9 +33,11 @@ class Trufi extends Model
     // Relaciones
     public function rutas()
     {
-        return $this->hasMany(\App\Models\TrufiRuta::class, 'idtrufi', 'idtrufi');
+        return $this->hasMany(\App\Models\Trufiruta::class, 'idtrufi', 'idtrufi');
     }
 
+
+    
     public function sindicato()
     {
         return $this->belongsTo(\App\Models\Sindicato::class, 'sindicato_id', 'id');
@@ -50,4 +54,17 @@ class Trufi extends Model
     {
         return $this->sindicato?->nombre;
     }
+    public function detalle()
+{
+    return $this->hasOne(Trufidetalle::class, 'trufi_id', 'idtrufi');
+}
+public function referencias(): MorphMany
+{
+    return $this->morphMany(Referencia::class, 'referenciable');
+}
+public function rutaUbicaciones()
+{
+    return $this->hasMany(\App\Models\Trufirutaubicacion::class, 'idtrufi', 'idtrufi')
+        ->orderBy('orden');
+}
 }

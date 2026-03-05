@@ -98,6 +98,32 @@
                         >{{ old('descripcion') }}</textarea>
                     </div>
 
+                    {{-- DETALLE (Solo Horarios) --}}
+                    <div class="col-12 mb-3">
+                        <hr>
+                        <h5 class="mb-3">Horario De Trufi</h5>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Hora Entrada</label>
+                        <input
+                            type="time"
+                            name="hora_entrada"
+                            class="form-control"
+                            value="{{ old('hora_entrada') }}"
+                        >
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Hora Salida</label>
+                        <input
+                            type="time"
+                            name="hora_salida"
+                            class="form-control"
+                            value="{{ old('hora_salida') }}"
+                        >
+                    </div>
+
                 </div>
 
                 {{-- Acciones --}}

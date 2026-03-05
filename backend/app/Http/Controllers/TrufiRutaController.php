@@ -6,6 +6,7 @@ use App\Models\Trufi;
 use App\Models\Trufiruta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Trufirutaubicacion;
 
 class TrufirutaController extends Controller
 {
@@ -127,6 +128,29 @@ public function geojsonTodas()
         "features" => $features
     ]);
 }
+// GET /api/trufis/{idtrufi}/ubicaciones
+public function ubicacionesPorTrufi($idtrufi)
+{
+    // Valida que exista el trufi
+    Trufi::findOrFail($idtrufi);
 
+    $ubicaciones = Trufirutaubicacion::where('idtrufi', (int) $idtrufi)
+        ->where('estado', 1)
+        ->orderBy('orden', 'asc')
+        ->get(['idtrufi', 'orden', 'nombre_via', 'tipo_via']);
+
+    return response()->json($ubicaciones);
+}
+
+// GET /api/ubicaciones
+public function ubicacionesTodas()
+{
+    $data =Trufirutaubicacion::where('estado', 1)
+        ->orderBy('idtrufi', 'asc')
+        ->orderBy('orden', 'asc')
+        ->get(['idtrufi', 'orden', 'nombre_via', 'tipo_via']);
+
+    return response()->json($data);
+}
 
 }

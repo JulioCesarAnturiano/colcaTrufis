@@ -7,6 +7,8 @@ use App\Models\Trufi;
 use App\Models\Trufiruta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Trufirutaubicacion;
+use App\Services\GeocodingService;
 
 class RutaAdminController extends Controller
 {
@@ -61,32 +63,34 @@ public function listarRutas(Request $request)
 }
 
     // Guardar ruta (Opción 2: continuar el orden desde el último punto)
-    public function guardarRuta(Request $request)
-    {
-        $request->validate([
-            'idtrufi' => 'required|integer',
-            'geojson' => 'required|string',
-        ]);
+   public function guardarRuta(Request $request, GeocodingService $geoService)
+{
+    $request->validate([
+        'idtrufi' => 'required|integer',
+        'geojson' => 'required|string',
+    ]);
 
-        $geo = json_decode($request->geojson, true);
+    $geo = json_decode($request->geojson, true);
 
-        if (!$geo || empty($geo['features'])) {
-            return back()->with('error', 'GeoJSON inválido.')->withInput();
-        }
+    if (!$geo || empty($geo['features'])) {
+        return back()->with('error', 'GeoJSON inválido.')->withInput();
+    }
 
-        $feature = $geo['features'][0] ?? null;
-        if (!$feature || ($feature['geometry']['type'] ?? '') !== 'LineString') {
-            return back()->with('error', 'Debes dibujar una línea (ruta).')->withInput();
-        }
+    $feature = $geo['features'][0] ?? null;
+    if (!$feature || ($feature['geometry']['type'] ?? '') !== 'LineString') {
+        return back()->with('error', 'Debes dibujar una línea (ruta).')->withInput();
+    }
 
-        $coords = $feature['geometry']['coordinates'] ?? [];
-        if (count($coords) < 2) {
-            return back()->with('error', 'La ruta debe tener al menos 2 puntos.')->withInput();
-        }
+    $coords = $feature['geometry']['coordinates'] ?? [];
+    if (count($coords) < 2) {
+        return back()->with('error', 'La ruta debe tener al menos 2 puntos.')->withInput();
+    }
 
-        $idtrufi = (int) $request->idtrufi;
+    $idtrufi = (int) $request->idtrufi;
 
-        // ✅ AQUÍ: calcular el orden inicial según el último orden existente
+    DB::beginTransaction();
+    try {
+        // 1) Insertar Puntos.
         $ultimo = DB::table('trufi_rutas')
             ->where('idtrufi', $idtrufi)
             ->max('orden');
@@ -94,9 +98,7 @@ public function listarRutas(Request $request)
         $orden = ($ultimo ?? 0) + 1;
 
         $rows = [];
-
         foreach ($coords as $c) {
-            // GeoJSON viene como [lng, lat]
             $lng = $c[0];
             $lat = $c[1];
 
@@ -109,29 +111,66 @@ public function listarRutas(Request $request)
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
-
             $orden++;
         }
 
         DB::table('trufi_rutas')->insert($rows);
 
-        return redirect()->route('admin.rutas.index')->with('success', 'Ruta guardada correctamente.');
+        // 2) Generar Ubicaciones (Calles) Y Guardarlas.
+        Trufirutaubicacion::where('idtrufi', $idtrufi)->delete();
+
+        $ubicaciones = $geoService->buildUbicacionesFromCoords($coords, 10);
+
+        $ordenU = 1;
+        foreach ($ubicaciones as $u) {
+            Trufirutaubicacion::create([
+                'idtrufi' => $idtrufi,
+                'orden' => $ordenU,
+                'nombre_via' => $u['nombre_via'],
+                'tipo_via' => $u['tipo_via'] ?? null,
+                'meta' => $u['meta'] ?? null,
+                'estado' => 1,
+            ]);
+            $ordenU++;
+        }
+
+        DB::commit();
+        return redirect()->route('admin.rutas.index')->with('success', 'Ruta y ubicaciones guardadas correctamente.');
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        return back()->with('error', 'Error al guardar ruta y ubicaciones.')->withInput();
     }
+}
 
 public function mostrarEditarRuta($idtrufi)
 {
     $usuario = request()->user();
     if (!$usuario) return redirect()->route('login');
 
-    $trufis = DB::table('trufis')->select('idtrufi', 'nom_linea')->orderBy('nom_linea')->get();
-    $trufiSeleccionado = DB::table('trufis')->where('idtrufi', $idtrufi)->first();
+    $trufis = DB::table('trufis')
+        ->select('idtrufi', 'nom_linea')
+        ->orderBy('nom_linea')
+        ->get();
 
-    return view('admin.rutas.edit', compact('trufis', 'idtrufi', 'trufiSeleccionado', 'usuario'));
+    $trufiSeleccionado = DB::table('trufis')
+        ->where('idtrufi', $idtrufi)
+        ->first();
+
+    $ubicaciones = \App\Models\Trufirutaubicacion::where('idtrufi', (int) $idtrufi)
+        ->orderBy('orden')
+        ->get();
+
+    return view('admin.rutas.edit', compact(
+        'trufis',
+        'idtrufi',
+        'trufiSeleccionado',
+        'usuario',
+        'ubicaciones'
+    ));
 }
 
 
-
-public function actualizarRuta(Request $request, $idtrufi)
+public function actualizarRuta(Request $request, $idtrufi, \App\Services\GeocodingService $geoService)
 {
     $usuario = $request->user();
     if (!$usuario) return redirect()->route('login');
@@ -158,16 +197,17 @@ public function actualizarRuta(Request $request, $idtrufi)
 
     DB::beginTransaction();
     try {
-        // 1) Eliminar ruta anterior completa
-        DB::table('trufi_rutas')->where('idtrufi', $idtrufi)->delete();
+        // 1) Eliminar ruta anterior completa.
+        DB::table('trufi_rutas')->where('idtrufi', (int) $idtrufi)->delete();
 
-        // 2) Insertar la nueva desde orden 1
+        // 2) Insertar la nueva ruta desde orden 1.
         $rows = [];
         $orden = 1;
 
         foreach ($coords as $c) {
-            $lng = $c[0];
-            $lat = $c[1];
+            // GeoJSON: [lng, lat]
+            $lng = (float) $c[0];
+            $lat = (float) $c[1];
 
             $rows[] = [
                 'idtrufi'    => (int) $idtrufi,
@@ -178,33 +218,62 @@ public function actualizarRuta(Request $request, $idtrufi)
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
+
             $orden++;
         }
 
         DB::table('trufi_rutas')->insert($rows);
 
+        // 3) Reemplazar ubicaciones (calles) de la ruta.
+        \App\Models\Trufirutaubicacion::where('idtrufi', (int) $idtrufi)->delete();
+
+        $ubicaciones = $geoService->buildUbicacionesFromCoords($coords, 10); // Cada 10 puntos (ajustable)
+
+        $ordenU = 1;
+        foreach ($ubicaciones as $u) {
+            \App\Models\Trufirutaubicacion::create([
+                'idtrufi' => (int) $idtrufi,
+                'orden' => $ordenU,
+                'nombre_via' => $u['nombre_via'],
+                'tipo_via' => $u['tipo_via'] ?? null,
+                'meta' => $u['meta'] ?? null,
+                'estado' => 1,
+            ]);
+            $ordenU++;
+        }
+
         DB::commit();
+
         return redirect()->route('admin.rutas.index')
-            ->with('success', 'Ruta reemplazada correctamente.');
+            ->with('success', 'Ruta y ubicaciones reemplazadas correctamente.');
     } catch (\Throwable $e) {
         DB::rollBack();
-        return back()->with('error', 'Error al reemplazar la ruta.')->withInput();
+
+        return back()->with('error', 'Error al reemplazar la ruta y sus ubicaciones.')->withInput();
     }
 }
-
-
-
 
 public function eliminarRuta($idtrufi)
 {
     $usuario = request()->user();
     if (!$usuario) return redirect()->route('login');
 
-    DB::table('trufi_rutas')->where('idtrufi', $idtrufi)->delete();
+    DB::beginTransaction();
+    try {
+        DB::table('trufi_rutas')->where('idtrufi', (int) $idtrufi)->delete();
 
-    return redirect()->route('admin.rutas.index')
-        ->with('success', 'Ruta eliminada.');
+        \App\Models\Trufirutaubicacion::where('idtrufi', (int) $idtrufi)->delete();
+
+        DB::commit();
+
+        return redirect()->route('admin.rutas.index')
+            ->with('success', 'Ruta y ubicaciones eliminadas.');
+    } catch (\Throwable $e) {
+        DB::rollBack();
+
+        return redirect()->route('admin.rutas.index')
+            ->with('error', 'Error al eliminar la ruta.');
+    }
 }
-
 
 }

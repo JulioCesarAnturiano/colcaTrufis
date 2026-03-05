@@ -54,6 +54,11 @@ class RolesSeeder extends Seeder
     //reclamos
     'admin.settings.ver',
     'admin.settings.editar',
+    //referencias
+            'admin.referencias.ver',
+            'admin.referencias.crear',
+            'admin.referencias.editar',
+            'admin.referencias.eliminar',
 ];
 
 
@@ -80,6 +85,7 @@ class RolesSeeder extends Seeder
             //reclamos
             'admin.settings.ver',
             'admin.settings.editar',
+            
         ]);
     }
 }

@@ -35,6 +35,7 @@
                                 <th>Frecuencia</th>
                                 <th>Tipo</th>
                                 <th>Sindicato</th>
+                                <th>Horario</th>
                                 <th>Estado</th>
                                 <th style="width: 200px;">Acciones</th>
                             </tr>
@@ -44,16 +45,39 @@
                             @foreach($trufis as $t)
                                 <tr>
                                     <td>{{ $t->idtrufi }}</td>
-                                    <td class="fw-semibold">{{ $t->nom_linea }}</td>
+
+                                    <td class="fw-semibold">
+                                        {{ $t->nom_linea }}
+                                    </td>
+
                                     <td>{{ $t->costo }}</td>
+
                                     <td>{{ $t->frecuencia }}</td>
+
                                     <td>{{ $t->tipo }}</td>
-                                    <td>{{ $t->sindicato->nombre ?? '-' }}</td>
+
+                                    <td>
+                                        {{ $t->sindicato->nombre ?? '-' }}
+                                    </td>
+
+                                    {{-- Horario --}}
+                                    <td>
+                                        @php
+                                            $he = optional($t->detalle)->hora_entrada;
+                                            $hs = optional($t->detalle)->hora_salida;
+                                        @endphp
+
+                                        {{ $he || $hs ? (($he ?? '-') . ' - ' . ($hs ?? '-')) : '-' }}
+                                    </td>
+
+                                    {{-- Estado --}}
                                     <td>
                                         <span class="badge {{ $t->estado ? 'bg-success' : 'bg-secondary' }}">
                                             {{ $t->estado ? 'Activo' : 'Inactivo' }}
                                         </span>
                                     </td>
+
+                                    {{-- Acciones --}}
                                     <td>
                                         <div class="d-flex gap-1">
 
@@ -74,6 +98,7 @@
                                                 >
                                                     @csrf
                                                     @method('DELETE')
+
                                                     <button class="btn ct-btn ct-btn-danger btn-sm">
                                                         Eliminar
                                                     </button>
@@ -82,6 +107,7 @@
 
                                         </div>
                                     </td>
+
                                 </tr>
                             @endforeach
                         </tbody>
@@ -95,6 +121,7 @@
         <div class="mt-3">
             {{ $trufis->links() }}
         </div>
+
     @else
         <div class="alert alert-info">
             No Hay Trufis Registrados.

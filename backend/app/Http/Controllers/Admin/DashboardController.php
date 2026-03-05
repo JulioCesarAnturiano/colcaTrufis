@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Trufi;
-use App\Models\TrufiRuta;
+use App\Models\Trufiruta;
 use App\Models\Sindicatoradiotaxi;
 use App\Models\User;
 use App\Models\Normativa;
@@ -23,7 +23,7 @@ class DashboardController extends Controller
         $estadisticas = [
     'total_trufis'     => Trufi::count(),
     'trufis_activos'   => Trufi::where('estado', 1)->count(),
-    'total_rutas'      => TrufiRuta::distinct('idtrufi')->count('idtrufi'),
+    'total_rutas'      => Trufiruta::distinct('idtrufi')->count('idtrufi'),
 
     // NUEVAS
     'total_usuarios'   => User::count(),
