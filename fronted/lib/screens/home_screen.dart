@@ -73,9 +73,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final GeoJsonParser _zonaParser = GeoJsonParser();
 
-  final ApiService _apiService = ApiService(baseUrl: "https://moviruta.colcapirhua.gob.bo/api");
+  final ApiService _apiService = ApiService(baseUrl: "http://127.0.0.1:8000/api");
 
-  static const String _apiBase = "https://moviruta.colcapirhua.gob.bo/api";
+  static const String _apiBase = "http://127.0.0.1:8000/api";
 
   Position? _currentPosition;
 
@@ -103,6 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _selectedTrufiName;
 
   List<Map<String, dynamic>> _rutaPuntos = [];
+  List<Map<String, dynamic>> _referenciasSelectedTrufi = [];
+  List<Map<String, dynamic>> _referenciasSelectedRadiotaxi = [];
 
   final Map<int, String> _trufiNameById = {};
 
@@ -222,6 +224,8 @@ class _HomeScreenState extends State<HomeScreen> {
       "outside_title": {"es": "Estás fuera de Colcapirhua", "en": "You're outside Colcapirhua", "qu": "Colcapirhua-manta llojsisqa kanki"},
       "outside_body": {"es": "Esta app muestra trufis y radiotaxis de Colcapirhua. Puedes seguir usándola normalmente.", "en": "This app shows trufis and radio taxis from Colcapirhua. You can still use it normally.", "qu": "Kay app Colcapirhua-pi trufi, radiotaxi-kunata rikuchin. Allinllatam llamk'aqtinki."},
       "outside_dismiss": {"es": "Entendido", "en": "Got it", "qu": "Yachani"},
+      "references_location": {"es": "Referencias", "en": "References", "qu": "Referencia-kuna"},
+      "no_references": {"es": "No hay referencias", "en": "No references", "qu": "Mana referencia-kuna"},
     };
     return dict[key]?[lang] ?? dict[key]?["es"] ?? key;
   }
@@ -910,7 +914,6 @@ Future<void> _fetchTrufis() async {
     }
 
     setState(() => _isLoadingRutas = true);
-    await Future.delayed(const Duration(milliseconds: 30));
     if (!mounted) return;
 
     if (_routeFilterMode == RouteFilterMode.all) {
@@ -1084,29 +1087,111 @@ Future<void> _fetchTrufis() async {
     );
     final name = (radiotaxiId != null) ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId") : "Parada";
 
-    if (lat == null || lng == null) return;
+    if (lat == null || lng == null || radiotaxiId == null) return;
 
+    // Cargar referencias del radiotaxi
+    try {
+      print("🔍 Cargando referencias para radiotaxi $radiotaxiId...");
+      final referenciasData = await _apiService.getReferenciasDeRadiotaxi(radiotaxiId);
+      print("📦 Datos de referencias recibidos: $referenciasData");
+      final referencias = referenciasData.map((e) {
+        if (e is Map<String, dynamic>) return e;
+        return <String, dynamic>{};
+      }).toList();
+      
+      if (!mounted) return;
+      
+      setState(() {
+        _referenciasSelectedRadiotaxi = referencias;
+      });
+      
+      // Mostrar modal con referencias
+      _mostrarReferenciasRadiotaxiModal(name, referencias);
+    } catch (e) {
+      print("Error cargando referencias de radiotaxi: $e");
+      // Si falla, mostrar solo la dirección de la parada
+      final isDarkMode = AppSettings.darkMode.value;
+      final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+      final textColor = isDarkMode ? Colors.white : Colors.black87;
+
+      final direccion = await _getAddressFromLatLng(LatLng(lat, lng));
+
+      if (!mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (_) {
+          return Container(
+            decoration: BoxDecoration(
+              color: sheetColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 50,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  t("stop_address"),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: kPrimary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ListTile(
+                  leading: const Icon(Icons.local_taxi, color: kPrimary, size: 32),
+                  title: Text(
+                    name,
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  subtitle: Text(
+                    direccion,
+                    style: TextStyle(color: textColor),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  void _mostrarReferenciasRadiotaxiModal(String radiotaxiName, List<Map<String, dynamic>> referencias) {
     final isDarkMode = AppSettings.darkMode.value;
     final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
-
-    final direccion = await _getAddressFromLatLng(LatLng(lat, lng));
-
-    if (!mounted) return;
+    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) {
         return Container(
+          height: MediaQuery.of(context).size.height * 0.6,
           decoration: BoxDecoration(
             color: sheetColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
           ),
-          padding: const EdgeInsets.all(20),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
+              const SizedBox(height: 10),
               Container(
                 width: 50,
                 height: 5,
@@ -1117,29 +1202,56 @@ Future<void> _fetchTrufis() async {
               ),
               const SizedBox(height: 15),
               Text(
-                t("stop_address"),
+                radiotaxiName,
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.w900,
                   color: kPrimary,
                 ),
               ),
-              const SizedBox(height: 10),
-              ListTile(
-                leading: const Icon(Icons.local_taxi, color: kPrimary, size: 32),
-                title: Text(
-                  name,
-                  style: TextStyle(
-                    color: textColor,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                subtitle: Text(
-                  direccion,
-                  style: TextStyle(color: textColor),
+              const SizedBox(height: 8),
+              Text(
+                t("references_location"),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: subTextColor,
                 ),
               ),
               const SizedBox(height: 10),
+              const Divider(),
+              Expanded(
+                child: referencias.isEmpty
+                    ? Center(
+                        child: Text(
+                          t("no_references"),
+                          style: TextStyle(color: subTextColor),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: referencias.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final ref = referencias[index];
+                          final nombre = (ref['nombre'] ?? ref['name'] ?? '').toString();
+
+                          if (nombre.isEmpty) return const SizedBox.shrink();
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Text(
+                              nombre,
+                              style: TextStyle(
+                                color: textColor,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 16,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
             ],
           ),
         );
@@ -1259,7 +1371,6 @@ Future<void> _fetchTrufis() async {
   void _mostrarInfoRuta(String lineName, String? sindicatoName, int idtrufi) {
     final isDarkMode = AppSettings.darkMode.value;
     final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
-    final textColor = isDarkMode ? Colors.white : Colors.black87;
     final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
 
     showModalBottomSheet(
@@ -1511,6 +1622,51 @@ Future<void> _fetchTrufis() async {
     return resultado;
   }
 
+  List<Map<String, dynamic>> _convertirUbicacionesAMapas(List<dynamic> ubicaciones) {
+    final resultado = <Map<String, dynamic>>[];
+    
+    print("📍 _convertirUbicacionesAMapas recibió: $ubicaciones");
+    print("📍 Tipo: ${ubicaciones.runtimeType}, Length: ${ubicaciones.length}");
+    
+    try {
+      int numeroPunto = 1;
+      
+      for (final ubicacion in ubicaciones) {
+        print("📍 Procesando ubicación $numeroPunto: $ubicacion");
+        
+        if (ubicacion is! Map<String, dynamic>) {
+          print("⚠️ Ubicación no es Map: ${ubicacion.runtimeType}");
+          continue;
+        }
+        
+        final lat = double.tryParse((ubicacion['latitud'] ?? ubicacion['lat'] ?? ubicacion['latitude'] ?? '').toString());
+        final lng = double.tryParse((ubicacion['longitud'] ?? ubicacion['lng'] ?? ubicacion['longitude'] ?? '').toString());
+        final direccion = (ubicacion['nombre'] ?? ubicacion['nombre_calle'] ?? ubicacion['direccion'] ?? ubicacion['calle'] ?? '').toString();
+        
+        print("📍 Lat: $lat, Lng: $lng, Dirección: $direccion");
+        
+        if (lat == null || lng == null) {
+          print("⚠️ Coordenadas nulas para punto $numeroPunto");
+          continue;
+        }
+        
+        resultado.add({
+          'punto': numeroPunto,
+          'latLng': LatLng(lat, lng),
+          'direccion': direccion.isNotEmpty ? direccion : '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}',
+        });
+        
+        print("✅ Punto $numeroPunto agregado correctamente");
+        numeroPunto++;
+      }
+      print("✅ Total de ubicaciones convertidas: ${resultado.length}");
+    } catch (e) {
+      print("❌ Error convirtiendo ubicaciones: $e");
+    }
+    
+    return resultado;
+  }
+
   Future<String> _getAddressFromLatLng(LatLng location) async {
     try {
       final url = Uri.parse(
@@ -1578,7 +1734,32 @@ Future<void> _fetchTrufis() async {
         return;
       }
 
-      final puntosRuta = await _extraerPuntosRuta(ruta.first.points);
+      // Cargar ubicaciones del backend
+      List<Map<String, dynamic>> puntosRuta = [];
+      try {
+        print("🔍 Cargando ubicaciones para trufi $idtrufi...");
+        final ubicacionesData = await _apiService.getUbicacionesPorTrufi(idtrufi);
+        print("📦 Datos crudos recibidos: $ubicacionesData");
+        puntosRuta = _convertirUbicacionesAMapas(ubicacionesData);
+        print("✅ Ubicaciones cargadas: ${puntosRuta.length} puntos");
+      } catch (e) {
+        print("❌ Error cargando ubicaciones: $e");
+      }
+
+      // Cargar referencias del trufi
+      List<Map<String, dynamic>> referenciasData = [];
+      try {
+        print("🔍 Cargando referencias para trufi $idtrufi...");
+        final refData = await _apiService.getReferenciasDestrufi(idtrufi);
+        print("📦 Datos de referencias recibidos: $refData");
+        referenciasData = refData.map((e) {
+          if (e is Map<String, dynamic>) return e;
+          return <String, dynamic>{};
+        }).toList();
+        print("✅ Referencias cargadas: ${referenciasData.length} referencias");
+      } catch (e) {
+        print("❌ Error cargando referencias: $e");
+      }
 
       if (!mounted) return;
 
@@ -1598,6 +1779,7 @@ Future<void> _fetchTrufis() async {
         _selectedRoutePermanentLabels = labelMarkers;
 
         _rutaPuntos = puntosRuta;
+        _referenciasSelectedTrufi = referenciasData;
         _isLoadingRutaTrufi = false;
       });
 
@@ -1693,13 +1875,42 @@ Future<void> _fetchTrufis() async {
                 ),
               ),
               const SizedBox(height: 15),
-              Text(
-                t("route_points"),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: kPrimary,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        t("route_points"),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: kPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_referenciasSelectedTrufi.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kAqua,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () => _mostrarReferenciasModal(true),
+                        icon: const Icon(Icons.location_city, size: 18),
+                        label: Text(
+                          "${t("references_location")} (${_referenciasSelectedTrufi.length})",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               if (_selectedTrufiName != null)
                 Padding(
@@ -1717,9 +1928,48 @@ Future<void> _fetchTrufis() async {
               Expanded(
                 child: _rutaPuntos.isEmpty
                     ? Center(
-                        child: Text(
-                          t("no_data"),
-                          style: TextStyle(color: subTextColor),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              t("no_data"),
+                              style: TextStyle(color: subTextColor),
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: kAqua.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Debug Info:",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: subTextColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "Puntos de ruta: ${_rutaPuntos.length}",
+                                    style: TextStyle(fontSize: 11, color: subTextColor),
+                                  ),
+                                  Text(
+                                    "Referencias: ${_referenciasSelectedTrufi.length}",
+                                    style: TextStyle(fontSize: 11, color: subTextColor),
+                                  ),
+                                  Text(
+                                    "Trufi ID: $_selectedTrufiId",
+                                    style: TextStyle(fontSize: 11, color: subTextColor),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       )
                     : ListView.separated(
@@ -1760,6 +2010,86 @@ Future<void> _fetchTrufis() async {
                                 _mapController.move(latLng, 17);
                               }
                             },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _mostrarReferenciasModal(bool esTrufi) {
+    final isDarkMode = AppSettings.darkMode.value;
+    final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+    
+    final referencias = esTrufi ? _referenciasSelectedTrufi : _referenciasSelectedRadiotaxi;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.6,
+          decoration: BoxDecoration(
+            color: sheetColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 15),
+              Text(
+                t("references_location"),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: kPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Divider(),
+              Expanded(
+                child: referencias.isEmpty
+                    ? Center(
+                        child: Text(
+                          t("no_references"),
+                          style: TextStyle(color: subTextColor),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: referencias.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final ref = referencias[index];
+                          final nombre = (ref['nombre'] ?? ref['name'] ?? '').toString();
+
+                          if (nombre.isEmpty) return const SizedBox.shrink();
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Text(
+                              nombre,
+                              style: TextStyle(
+                                color: textColor,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 16,
+                              ),
+                            ),
                           );
                         },
                       ),

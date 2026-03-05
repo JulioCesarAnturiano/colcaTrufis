@@ -78,4 +78,46 @@ class ApiService {
     throw Exception('Formato inesperado para GeoJSON Todas Rutas');
   }
 
+  // Referencias
+  Future<List<dynamic>> getReferencias() async {
+    final data = await _get('/referencias');
+    print("🔍 getReferencias() retornó: $data (tipo: ${data.runtimeType})");
+    if (data is List) return data;
+    print("⚠️ Esperaba List, recibí ${data.runtimeType}");
+    return [];
+  }
+
+  Future<List<dynamic>> getReferenciasDestrufi(int idTrufi) async {
+    final data = await _get('/trufis/$idTrufi/referencias');
+    print("🔍 getReferenciasDestrufi($idTrufi) retornó: $data (tipo: ${data.runtimeType})");
+    if (data is List) return data;
+    print("⚠️ Esperaba List, recibí ${data.runtimeType}");
+    return [];
+  }
+
+  Future<List<dynamic>> getReferenciasDeRadiotaxi(int idRadiotaxi) async {
+    final data = await _get('/radiotaxis/$idRadiotaxi/referencias');
+    print("🔍 getReferenciasDeRadiotaxi($idRadiotaxi) retornó: $data (tipo: ${data.runtimeType})");
+    if (data is List) return data;
+    print("⚠️ Esperaba List, recibí ${data.runtimeType}");
+    return [];
+  }
+
+  // Ubicaciones
+  Future<List<dynamic>> getUbicacionesPorTrufi(int idTrufi) async {
+    final data = await _get('/trufis/$idTrufi/ubicaciones');
+    print("🔍 getUbicacionesPorTrufi($idTrufi) retornó: $data (tipo: ${data.runtimeType})");
+    if (data is List) return data;
+    print("⚠️ Esperaba List, recibí ${data.runtimeType}");
+    return [];
+  }
+
+  Future<List<dynamic>> getUbicacionesTodas() async {
+    final data = await _get('/ubicaciones');
+    print("🔍 getUbicacionesTodas() retornó: $data (tipo: ${data.runtimeType})");
+    if (data is List) return data;
+    print("⚠️ Esperaba List, recibí ${data.runtimeType}");
+    return [];
+  }
+
 }

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 
+const Color kPrimary = Color(0xFF09596E);
+const Color kPrimaryDark = Color(0xFF064656);
+const Color kAqua = Color(0xFF19B7B0);
+
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -19,23 +23,23 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        // ✅ Fondo que combina con pant.png (elimina bordes blancos)
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromRGBO(0, 44, 62, 1), // parecido al fondo superior
-              Color.fromRGBO(0, 44, 62, 1), 
-              Color.fromARGB(255, 28, 76, 82), // parecido al fondo superior
-              Color.fromARGB(255, 81, 188, 193), // parecido al fondo inferior
+              kPrimaryDark,
+              kPrimary,
+              kAqua.withOpacity(0.8),
             ],
           ),
         ),
         child: Center(
           child: Image.asset(
-            'assets/images/pant.png',
-            fit: BoxFit.contain, // no recorta, solo elimina el blanco del fondo
+            'assets/images/logo_appp.png',
+            width: 200,
+            height: 200,
+            fit: BoxFit.contain,
           ),
         ),
       ),
