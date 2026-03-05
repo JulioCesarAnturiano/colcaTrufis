@@ -102,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _selectedTrufiId;
   String? _selectedTrufiName;
 
-  List<Map<String, dynamic>> _rutaPuntos = [];
+  List<Map<String, dynamic>> _rutasVias = [];
   List<Map<String, dynamic>> _referenciasSelectedTrufi = [];
   List<Map<String, dynamic>> _referenciasSelectedRadiotaxi = [];
 
@@ -1223,9 +1223,44 @@ Future<void> _fetchTrufis() async {
               Expanded(
                 child: referencias.isEmpty
                     ? Center(
-                        child: Text(
-                          t("no_references"),
-                          style: TextStyle(color: subTextColor),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              t("no_references"),
+                              style: TextStyle(color: subTextColor),
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: kAqua.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Debug Info:",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: subTextColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "Radiotaxi: $radiotaxiName",
+                                    style: TextStyle(fontSize: 11, color: subTextColor),
+                                  ),
+                                  Text(
+                                    "Datos: $referencias",
+                                    style: TextStyle(fontSize: 9, color: subTextColor),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       )
                     : ListView.separated(
@@ -1734,14 +1769,30 @@ Future<void> _fetchTrufis() async {
         return;
       }
 
-      // Cargar ubicaciones del backend
-      List<Map<String, dynamic>> puntosRuta = [];
+      // Cargar ubicaciones del backend (solo nombres de vías, sin geodatos)
+      List<Map<String, dynamic>> rutasVias = [];
       try {
         print("🔍 Cargando ubicaciones para trufi $idtrufi...");
         final ubicacionesData = await _apiService.getUbicacionesPorTrufi(idtrufi);
         print("📦 Datos crudos recibidos: $ubicacionesData");
-        puntosRuta = _convertirUbicacionesAMapas(ubicacionesData);
-        print("✅ Ubicaciones cargadas: ${puntosRuta.length} puntos");
+        
+        // Convertir a List<Map> ordenado por 'orden'
+        List<Map<String, dynamic>> vias = [];
+        for (var item in ubicacionesData) {
+          if (item is Map<String, dynamic>) {
+            vias.add(item);
+          }
+        }
+        
+        // Ordenar por 'orden'
+        vias.sort((a, b) {
+          final ordenA = (a['orden'] as num?)?.toInt() ?? 999;
+          final ordenB = (b['orden'] as num?)?.toInt() ?? 999;
+          return ordenA.compareTo(ordenB);
+        });
+        
+        rutasVias = vias;
+        print("✅ Ubicaciones cargadas: ${rutasVias.length} vías");
       } catch (e) {
         print("❌ Error cargando ubicaciones: $e");
       }
@@ -1778,7 +1829,7 @@ Future<void> _fetchTrufis() async {
 
         _selectedRoutePermanentLabels = labelMarkers;
 
-        _rutaPuntos = puntosRuta;
+        _rutasVias = rutasVias;
         _referenciasSelectedTrufi = referenciasData;
         _isLoadingRutaTrufi = false;
       });
@@ -1926,7 +1977,7 @@ Future<void> _fetchTrufis() async {
                 ),
               const Divider(),
               Expanded(
-                child: _rutaPuntos.isEmpty
+                child: _rutasVias.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1955,7 +2006,7 @@ Future<void> _fetchTrufis() async {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    "Puntos de ruta: ${_rutaPuntos.length}",
+                                    "Vías de ruta: ${_rutasVias.length}",
                                     style: TextStyle(fontSize: 11, color: subTextColor),
                                   ),
                                   Text(
@@ -1974,19 +2025,18 @@ Future<void> _fetchTrufis() async {
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _rutaPuntos.length,
+                        itemCount: _rutasVias.length,
                         separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (context, index) {
-                          final punto = _rutaPuntos[index];
-                          final numero = punto['punto'] ?? (index + 1);
-                          final direccion = punto['direccion'] ?? t("no_data");
-                          final latLng = punto['latLng'] as LatLng?;
+                          final via = _rutasVias[index];
+                          final orden = via['orden'] ?? (index + 1);
+                          final nombreVia = via['nombre_via'] ?? t("no_data");
 
                           return ListTile(
                             leading: CircleAvatar(
                               backgroundColor: kPrimary.withOpacity(0.15),
                               child: Text(
-                                '$numero',
+                                '$orden',
                                 style: const TextStyle(
                                   color: kPrimary,
                                   fontWeight: FontWeight.bold,
@@ -1994,22 +2044,12 @@ Future<void> _fetchTrufis() async {
                               ),
                             ),
                             title: Text(
-                              '$direccion',
+                              nombreVia,
                               style: TextStyle(
                                 color: textColor,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            trailing: const Icon(
-                              Icons.location_on,
-                              color: kAqua,
-                            ),
-                            onTap: () {
-                              if (latLng != null) {
-                                Navigator.pop(context);
-                                _mapController.move(latLng, 17);
-                              }
-                            },
                           );
                         },
                       ),
@@ -2065,9 +2105,44 @@ Future<void> _fetchTrufis() async {
               Expanded(
                 child: referencias.isEmpty
                     ? Center(
-                        child: Text(
-                          t("no_references"),
-                          style: TextStyle(color: subTextColor),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              t("no_references"),
+                              style: TextStyle(color: subTextColor),
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: kAqua.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Debug Info:",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: subTextColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "Tipo: ${esTrufi ? 'Trufi' : 'RadioTaxi'}",
+                                    style: TextStyle(fontSize: 11, color: subTextColor),
+                                  ),
+                                  Text(
+                                    "Datos: $referencias",
+                                    style: TextStyle(fontSize: 9, color: subTextColor),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       )
                     : ListView.separated(
@@ -3411,7 +3486,7 @@ Future<void> _fetchTrufis() async {
             ),
           ),
           const SizedBox(width: 4),
-          if (_rutaPuntos.isNotEmpty)
+          if (_rutasVias.isNotEmpty)
             InkWell(
               onTap: _mostrarVentanaRecorrido,
               child: Container(
@@ -3429,7 +3504,7 @@ Future<void> _fetchTrufis() async {
               setState(() {
                 _selectedTrufiId = null;
                 _selectedTrufiName = null;
-                _rutaPuntos = [];
+                _rutasVias = [];
                 _selectedRoutePermanentLabels = [];
               });
 

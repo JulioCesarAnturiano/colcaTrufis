@@ -90,16 +90,36 @@ class ApiService {
   Future<List<dynamic>> getReferenciasDestrufi(int idTrufi) async {
     final data = await _get('/trufis/$idTrufi/referencias');
     print("🔍 getReferenciasDestrufi($idTrufi) retornó: $data (tipo: ${data.runtimeType})");
+    
+    // Si es paginación Laravel con 'data' adentro
+    if (data is Map && data['data'] is List) {
+      final referencias = data['data'] as List;
+      print("✅ Referencias extraídas del JSON paginado: ${referencias.length}");
+      return referencias;
+    }
+    
+    // Si es directo List
     if (data is List) return data;
-    print("⚠️ Esperaba List, recibí ${data.runtimeType}");
+    
+    print("⚠️ Esperaba List o Map con 'data', recibí ${data.runtimeType}");
     return [];
   }
 
   Future<List<dynamic>> getReferenciasDeRadiotaxi(int idRadiotaxi) async {
     final data = await _get('/radiotaxis/$idRadiotaxi/referencias');
     print("🔍 getReferenciasDeRadiotaxi($idRadiotaxi) retornó: $data (tipo: ${data.runtimeType})");
+    
+    // Si es paginación Laravel con 'data' adentro
+    if (data is Map && data['data'] is List) {
+      final referencias = data['data'] as List;
+      print("✅ Referencias extraídas del JSON paginado: ${referencias.length}");
+      return referencias;
+    }
+    
+    // Si es directo List
     if (data is List) return data;
-    print("⚠️ Esperaba List, recibí ${data.runtimeType}");
+    
+    print("⚠️ Esperaba List o Map con 'data', recibí ${data.runtimeType}");
     return [];
   }
 
