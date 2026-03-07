@@ -57,18 +57,23 @@ public function byTrufi($idtrufi, Request $request)
 
     // GET /api/radiotaxis/{id}/referencias
     public function byRadiotaxi($id, Request $request)
-{
-    $perPage = (int) $request->query('per_page', 50);
+    {
+        $perPage = (int) $request->query('per_page', 50);
 
-    Sindicatoradiotaxi::where('id', $id)->firstOrFail();
+        Sindicatoradiotaxi::where('id', $id)->firstOrFail();
 
-    $referencias = Referencia::query()
-        ->where('referenciable_type', 'App\\\\Models\\\\Sindicatoradiotaxi')
-        ->where('referenciable_id', $id)
-        ->select(['id', 'referencia', 'created_at'])
-        ->orderByDesc('id')
-        ->paginate($perPage);
+        $referencias = Referencia::query()
+            ->whereIn('referenciable_type', [
+                Sindicatoradiotaxi::class,
+                'App\\Models\\Sindicatoradiotaxi',
+                'App\\\\Models\\\\Sindicatoradiotaxi',
+                'sindicatoradiotaxi',
+            ])
+            ->where('referenciable_id', $id)
+            ->select(['id', 'referencia', 'created_at'])
+            ->orderByDesc('id')
+            ->paginate($perPage);
 
-    return response()->json($referencias);
-}
+        return response()->json($referencias);
+    }
 }

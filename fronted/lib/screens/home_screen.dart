@@ -5,7 +5,6 @@ import 'dart:math' as Math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_geojson/flutter_map_geojson.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -13,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 const Color kPrimary = Color(0xFF09596E);
 const Color kPrimaryDark = Color(0xFF064656);
@@ -71,11 +71,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isTrufiSelected = true;
   final MapController _mapController = MapController();
 
-  final GeoJsonParser _zonaParser = GeoJsonParser();
+  final ApiService _apiService = ApiService(baseUrl: "https://moviruta.colcapirhua.gob.bo/api");
 
-  final ApiService _apiService = ApiService(baseUrl: "http://127.0.0.1:8000/api");
-
-  static const String _apiBase = "http://127.0.0.1:8000/api";
+  static const String _apiBase = "https://moviruta.colcapirhua.gob.bo/api";
 
   Position? _currentPosition;
 
@@ -101,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int? _selectedTrufiId;
   String? _selectedTrufiName;
+  Map<String, dynamic>? _selectedTrufiHorario;
 
   List<Map<String, dynamic>> _rutasVias = [];
   List<Map<String, dynamic>> _referenciasSelectedTrufi = [];
@@ -114,6 +113,8 @@ class _HomeScreenState extends State<HomeScreen> {
   double? _lastZoomForCircle;
 
   bool _alreadyInit = false;
+  bool _isLoadingTranslations = false;
+  VoidCallback? _langChangeListener;
 
   RouteFilterMode _routeFilterMode = RouteFilterMode.nearby;
 
@@ -152,82 +153,242 @@ class _HomeScreenState extends State<HomeScreen> {
   double? _colcaBoundsMinLng;
   double? _colcaBoundsMaxLng;
 
+  // Diccionario de traducciones: idioma → clave → texto.
+  // El español está hardcodeado; inglés y quechua se obtienen del API y se cachean.
+  // Cada llamada a t() es una simple búsqueda en este mapa.
+  static final Map<String, Map<String, String>> _tDict = {
+    'es': {
+      "menu": "Menú",
+      "sindicatos": "Sindicatos",
+      "radiotaxis": "Radiotaxis",
+      "language": "Idioma",
+      "darkmode": "Modo oscuro",
+      "center_title": "Centrar",
+      "center_colcapirhua": "Centrar Colcapirhua",
+      "center_location": "Centrar ubicación",
+      "radius_title": "Distancia de rutas",
+      "radius_sub": "Radio (metros)",
+      "base": "Base",
+      "selected": "Seleccionaste",
+      "id": "ID",
+      "of_colcapirhua": "de Colcapirhua",
+      "trufi": "Trufi",
+      "radiotaxi": "Radiotaxi",
+      "routes_filter": "Rutas",
+      "routes_nearby": "Cerca",
+      "routes_all": "Todas",
+      "gps_off": "GPS apagado: mostrando todas",
+      "no_route": "No se encontró ruta",
+      "no_data": "Sin datos",
+      "call_confirm": "¿Deseas llamar a este radiotaxi?",
+      "cancel": "Cancelar",
+      "call": "Llamar",
+      "normativas": "Normativas",
+      "open_pdf": "Abrir PDF",
+      "close": "Cerrar",
+      "details": "Detalle",
+      "category": "Categoría",
+      "title": "Título",
+      "description": "Descripción",
+      "about": "Acerca de nosotros",
+      "about_title": "ColcaTrufis",
+      "about_body":
+          "ColcaTrufis te ayuda a visualizar rutas de trufis y radiotaxis en Colcapirhua. Puedes ver rutas cercanas a tu ubicación (según el radio configurado) o todas las rutas disponibles, y seleccionar una línea para ver su recorrido con inicio y fin.",
+      "stops": "Paradas",
+      "social_networks": "Redes Sociales",
+      "official_page": "Página Oficial",
+      "route_points": "Recorrido de la ruta",
+      "stop_address": "Dirección de parada",
+      "point": "Punto",
+      "history": "Historial",
+      "history_trufis": "Trufis recientes",
+      "history_radiotaxis": "Radiotaxis recientes",
+      "history_empty": "Sin historial",
+      "history_clear": "Limpiar historial",
+      "history_clear_confirm": "¿Limpiar historial?",
+      "used_at": "Usado",
+      "loading_route": "Cargando ruta...",
+      "loading_data": "Cargando datos...",
+      "loading_gps": "Obteniendo ubicación...",
+      "loading_stops": "Cargando paradas...",
+      "loading_norms": "Cargando normativas...",
+      "loading_geojson": "Cargando mapa...",
+      "reclamos": "Números de Reclamos",
+      "reclamos_call": "Llamar a Reclamos",
+      "reclamos_phone": "Teléfono de reclamos",
+      "reclamos_whatsapp": "WhatsApp de reclamos",
+      "reclamos_inactive": "No disponible",
+      "outside_title": "Estás fuera de Colcapirhua",
+      "outside_body": "Esta app muestra trufis y radiotaxis de Colcapirhua. Puedes seguir usándola normalmente.",
+      "outside_dismiss": "Entendido",
+      "references_location": "Referencias",
+      "no_references": "No hay referencias",
+      "ubicacion": "Ubicación",
+      "no_ubicaciones": "No hay ubicaciones",
+      "schedule": "Horario de atención",
+      "schedule_from": "Desde",
+      "schedule_to": "hasta",
+      "no_schedule": "Sin horario registrado",
+      "phone": "Teléfono",
+      "translating": "Traduciendo...",
+    },
+    'en': {
+      "menu": "Menu",
+      "sindicatos": "Unions",
+      "radiotaxis": "Radiotaxis",
+      "language": "Language",
+      "darkmode": "Dark mode",
+      "center_title": "Center",
+      "center_colcapirhua": "Center Colcapirhua",
+      "center_location": "Center location",
+      "radius_title": "Route distance",
+      "radius_sub": "Radius (meters)",
+      "base": "Base",
+      "selected": "You selected",
+      "id": "ID",
+      "of_colcapirhua": "of Colcapirhua",
+      "trufi": "Trufi",
+      "radiotaxi": "Radiotaxi",
+      "routes_filter": "Routes",
+      "routes_nearby": "Nearby",
+      "routes_all": "All",
+      "gps_off": "GPS off: showing all",
+      "no_route": "Route not found",
+      "no_data": "No data",
+      "call_confirm": "Do you want to call this radiotaxi?",
+      "cancel": "Cancel",
+      "call": "Call",
+      "normativas": "Regulations",
+      "open_pdf": "Open PDF",
+      "close": "Close",
+      "details": "Detail",
+      "category": "Category",
+      "title": "Title",
+      "description": "Description",
+      "about": "About us",
+      "about_title": "ColcaTrufis",
+      "about_body":
+          "ColcaTrufis helps you visualize trufi and radiotaxi routes in Colcapirhua. You can see routes near your location (based on the configured radius) or all available routes, and select a line to see its journey with start and end points.",
+      "stops": "Stops",
+      "social_networks": "Social Networks",
+      "official_page": "Official Page",
+      "route_points": "Route journey",
+      "stop_address": "Stop address",
+      "point": "Point",
+      "history": "History",
+      "history_trufis": "Recent trufis",
+      "history_radiotaxis": "Recent radiotaxis",
+      "history_empty": "No history",
+      "history_clear": "Clear history",
+      "history_clear_confirm": "Clear history?",
+      "used_at": "Used",
+      "loading_route": "Loading route...",
+      "loading_data": "Loading data...",
+      "loading_gps": "Getting location...",
+      "loading_stops": "Loading stops...",
+      "loading_norms": "Loading regulations...",
+      "loading_geojson": "Loading map...",
+      "reclamos": "Complaint Numbers",
+      "reclamos_call": "Call Complaints",
+      "reclamos_phone": "Complaints phone",
+      "reclamos_whatsapp": "Complaints WhatsApp",
+      "reclamos_inactive": "Not available",
+      "outside_title": "You are outside Colcapirhua",
+      "outside_body":
+          "This app shows trufis and radiotaxis from Colcapirhua. You can continue using it normally.",
+      "outside_dismiss": "Understood",
+      "references_location": "References",
+      "no_references": "No references",
+      "ubicacion": "Location",
+      "no_ubicaciones": "No locations",
+      "schedule": "Service hours",
+      "schedule_from": "From",
+      "schedule_to": "to",
+      "no_schedule": "No schedule registered",
+      "phone": "Phone",
+      "translating": "Translating...",
+    },
+    'qu': {
+      "menu": "Menú",
+      "sindicatos": "Sindicatokuna",
+      "radiotaxis": "Radiotaxikuna",
+      "language": "Simi",
+      "darkmode": "Tutayaq rikuchiy",
+      "center_title": "Chawpiman",
+      "center_colcapirhua": "Colcapirhuata chawpiman",
+      "center_location": "Kaypi kasqata chawpiman",
+      "radius_title": "Ñan karuyninmanta",
+      "radius_sub": "Muyu (metrokunapi)",
+      "base": "Saphi",
+      "selected": "Akllarqanki",
+      "id": "ID",
+      "of_colcapirhua": "Colcapirhua ukhupi",
+      "trufi": "Trufi",
+      "radiotaxi": "Radiotaxi",
+      "routes_filter": "Ñankuna",
+      "routes_nearby": "Qayllapi",
+      "routes_all": "Llapan",
+      "gps_off": "GPS wañuq: llapan ñankuna rikuchikun",
+      "no_route": "Mana ñan tarikunchu",
+      "no_data": "Mana willaychu",
+      "call_confirm": "Kay radiotaxita waqyankichu?",
+      "cancel": "Mana",
+      "call": "Waqyay",
+      "normativas": "Kamachikuna",
+      "open_pdf": "PDF kichariy",
+      "close": "Wischuy",
+      "details": "Chikan willakuy",
+      "category": "Rikch'aqkuna",
+      "title": "Sutiy",
+      "description": "Willakuy",
+      "about": "Noqaykumanta",
+      "about_title": "ColcaTrufis",
+      "about_body":
+          "ColcaTrufis yanapan Colcapirhua ukhupi trufi ñankuna qhawariyta. Qayllapi ñankunata icha llapan ñankunata rikuyta atinki, hinallataq huk ñanta akllaspaqa puriyninta qhawanki.",
+      "stops": "Samariy sitiokuna",
+      "social_networks": "Yachachiy llika",
+      "official_page": "Qhawarikunapaq llikha",
+      "route_points": "Ñan puriy",
+      "stop_address": "Samariy sitiopa ñannin",
+      "point": "Punto",
+      "history": "Qhipa llamk'asqakuna",
+      "history_trufis": "Qhipa trufis",
+      "history_radiotaxis": "Qhipa radiotaxis",
+      "history_empty": "Mana historialniyoqchu",
+      "history_clear": "Historial pichay",
+      "history_clear_confirm": "Historialniyta pichayta munankichu?",
+      "used_at": "Llamk'asqa",
+      "loading_route": "Ñan apaykashan...",
+      "loading_data": "Willakuykuna apaykashan...",
+      "loading_gps": "Kaypi kasqata mashkashan...",
+      "loading_stops": "Samariy sitiokuna apaykashan...",
+      "loading_norms": "Kamachikuna apaykashan...",
+      "loading_geojson": "Mapa apaykashan...",
+      "reclamos": "Qhaparikuna numerokuna",
+      "reclamos_call": "Qhaparikunaman waqyay",
+      "reclamos_phone": "Qhaparikuna teléfono",
+      "reclamos_whatsapp": "Qhaparikuna WhatsApp",
+      "reclamos_inactive": "Mana kanchu",
+      "outside_title": "Colcapirhua hawapi kanki",
+      "outside_body":
+          "Kay app Colcapirhua ukhupi taxis ñankunata rikuchin. Allinllata llamk'achiy atinkim.",
+      "outside_dismiss": "Yachasqani",
+      "references_location": "Qhawaykunakuna",
+      "no_references": "Mana qhawaykunachu",
+      "ubicacion": "Kaypi kasqay",
+      "no_ubicaciones": "Mana kasqaykunachu",
+      "schedule": "Yanapanakuy pachay",
+      "schedule_from": "Hamuymanta",
+      "schedule_to": "kama",
+      "no_schedule": "Mana pachay qelqasqachu",
+      "phone": "Teléfono",
+      "translating": "Tirakushan...",
+    },
+  };
+
   String t(String key) {
     final lang = AppSettings.language.value;
-    final dict = <String, Map<String, String>>{
-      "menu": {"es": "Menú", "en": "Menu", "qu": "Menu"},
-      "sindicatos": {"es": "Sindicatos", "en": "Unions", "qu": "Sindicato-kuna"},
-      "radiotaxis": {"es": "Radiotaxis", "en": "Radio taxis", "qu": "RadioTaxi-kuna"},
-      "language": {"es": "Idioma", "en": "Language", "qu": "Simi"},
-      "darkmode": {"es": "Modo oscuro", "en": "Dark mode", "qu": "Yanay mode"},
-      "center_title": {"es": "Centrar", "en": "Center", "qu": "Ch'uyanchay"},
-      "center_colcapirhua": {"es": "Centrar Colcapirhua", "en": "Center Colcapirhua", "qu": "Colcapirhua ch'uyanchay"},
-      "center_location": {"es": "Centrar ubicación", "en": "Center location", "qu": "Maypichus ch'uyanchay"},
-      "radius_title": {"es": "Distancia de rutas", "en": "Routes distance", "qu": "Ñan ch'usaq"},
-      "radius_sub": {"es": "Radio (metros)", "en": "Radius (meters)", "qu": "Radio (metro-kuna)"},
-      "base": {"es": "Base", "en": "Base", "qu": "Base"},
-      "selected": {"es": "Seleccionaste", "en": "You selected", "qu": "Akllarirqanki"},
-      "id": {"es": "ID", "en": "ID", "qu": "ID"},
-      "of_colcapirhua": {"es": "de Colcapirhua", "en": "in Colcapirhua", "qu": "Colcapirhua-pi"},
-      "trufi": {"es": "Trufi", "en": "Trufi", "qu": "Trufi"},
-      "radiotaxi": {"es": "Radiotaxi", "en": "Radio taxi", "qu": "RadioTaxi"},
-      "routes_filter": {"es": "Rutas", "en": "Routes", "qu": "Ñan-kuna"},
-      "routes_nearby": {"es": "Cerca", "en": "Nearby", "qu": "Aswan qaylla"},
-      "routes_all": {"es": "Todas", "en": "All", "qu": "Llapan"},
-      "gps_off": {"es": "GPS apagado: mostrando todas", "en": "GPS off: showing all", "qu": "GPS mana llamk'anchu: llapan"},
-      "no_route": {"es": "No se encontró ruta", "en": "Route not found", "qu": "Ñan mana tarikunchu"},
-      "no_data": {"es": "Sin datos", "en": "No data", "qu": "Mana datos"},
-      "call_confirm": {"es": "¿Deseas llamar a este radiotaxi?", "en": "Do you want to call this radio taxi?", "qu": "Kay radiotaxi-ta waqayta munankichu?"},
-      "cancel": {"es": "Cancelar", "en": "Cancel", "qu": "Mana"},
-      "call": {"es": "Llamar", "en": "Call", "qu": "Waqay"},
-      "normativas": {"es": "Normativas", "en": "Regulations", "qu": "Kamachiykuna"},
-      "open_pdf": {"es": "Abrir PDF", "en": "Open PDF", "qu": "PDF kichay"},
-      "close": {"es": "Cerrar", "en": "Close", "qu": "Wichay"},
-      "details": {"es": "Detalle", "en": "Details", "qu": "Willay"},
-      "category": {"es": "Categoría", "en": "Category", "qu": "K'iti"},
-      "title": {"es": "Título", "en": "Title", "qu": "Sutin"},
-      "description": {"es": "Descripción", "en": "Description", "qu": "Willay"},
-      "about": {"es": "Acerca de nosotros", "en": "About us", "qu": "Imamanta"},
-      "about_title": {"es": "ColcaTrufis", "en": "ColcaTrufis", "qu": "ColcaTrufis"},
-      "about_body": {
-        "es":
-            "ColcaTrufis te ayuda a visualizar rutas de trufis y radiotaxis en Colcapirhua. Puedes ver rutas cercanas a tu ubicación (según el radio configurado) o todas las rutas disponibles, y seleccionar una línea para ver su recorrido con inicio y fin.",
-        "en":
-            "ColcaTrufis helps you visualize trufi and radio taxi routes in Colcapirhua. You can view nearby routes (based on the configured radius) or all routes, and select a line to see its path with start and end.",
-        "qu":
-            "ColcaTrufis Colcapirhua-pi trufi, radiotaxi ñan-kunata rikuchin. Radio akllasqa kaqman hina qaylla ñan-kunata utaq llapan ñan-kunata rikuyta atinki; huk linea akllaspayki qallariy, tukuyta rikunki.",
-      },
-      "stops": {"es": "Paradas", "en": "Stops", "qu": "Sayay"},
-      "social_networks": {"es": "Redes Sociales", "en": "Social Networks", "qu": "Redes Sociales"},
-      "official_page": {"es": "Página Oficial", "en": "Official Page", "qu": "Página Oficial"},
-      "route_points": {"es": "Recorrido de la ruta", "en": "Route path", "qu": "Ñan puriynin"},
-      "stop_address": {"es": "Dirección de parada", "en": "Stop address", "qu": "Sayay direccion"},
-      "point": {"es": "Punto", "en": "Point", "qu": "Punto"},
-      "history": {"es": "Historial", "en": "History", "qu": "Qhipa kaq"},
-      "history_trufis": {"es": "Trufis recientes", "en": "Recent trufis", "qu": "Qhipa trufi-kuna"},
-      "history_radiotaxis": {"es": "Radiotaxis recientes", "en": "Recent radio taxis", "qu": "Qhipa radiotaxi-kuna"},
-      "history_empty": {"es": "Sin historial", "en": "No history", "qu": "Mana qhipa"},
-      "history_clear": {"es": "Limpiar historial", "en": "Clear history", "qu": "Huqariy"},
-      "history_clear_confirm": {"es": "¿Limpiar historial?", "en": "Clear history?", "qu": "Huqariyta munankichu?"},
-      "used_at": {"es": "Usado", "en": "Used", "qu": "Llamk'asqa"},
-      "loading_route": {"es": "Cargando ruta...", "en": "Loading route...", "qu": "Ñan carganki..."},
-      "loading_data": {"es": "Cargando datos...", "en": "Loading data...", "qu": "Datos carganki..."},
-      "loading_gps": {"es": "Obteniendo ubicación...", "en": "Getting location...", "qu": "Chiqan yachayta..."},
-      "loading_stops": {"es": "Cargando paradas...", "en": "Loading stops...", "qu": "Sayay carganki..."},
-      "loading_norms": {"es": "Cargando normativas...", "en": "Loading regulations...", "qu": "Kamachiykuna carganki..."},
-      "loading_geojson": {"es": "Cargando mapa...", "en": "Loading map...", "qu": "Mapa carganki..."},
-      "reclamos": {"es": "Números de Reclamos", "en": "Complaint Numbers", "qu": "Reclamo números"},
-      "reclamos_call": {"es": "Llamar a Reclamos", "en": "Call Complaints", "qu": "Reclamo waqay"},
-      "reclamos_phone": {"es": "Teléfono de reclamos", "en": "Complaint phone", "qu": "Reclamo telefono"},
-      "reclamos_whatsapp": {"es": "WhatsApp de reclamos", "en": "Complaints WhatsApp", "qu": "Reclamo WhatsApp"},
-      "reclamos_inactive": {"es": "No disponible", "en": "Not available", "qu": "Mana"},
-      "outside_title": {"es": "Estás fuera de Colcapirhua", "en": "You're outside Colcapirhua", "qu": "Colcapirhua-manta llojsisqa kanki"},
-      "outside_body": {"es": "Esta app muestra trufis y radiotaxis de Colcapirhua. Puedes seguir usándola normalmente.", "en": "This app shows trufis and radio taxis from Colcapirhua. You can still use it normally.", "qu": "Kay app Colcapirhua-pi trufi, radiotaxi-kunata rikuchin. Allinllatam llamk'aqtinki."},
-      "outside_dismiss": {"es": "Entendido", "en": "Got it", "qu": "Yachani"},
-      "references_location": {"es": "Referencias", "en": "References", "qu": "Referencia-kuna"},
-      "no_references": {"es": "No hay referencias", "en": "No references", "qu": "Mana referencia-kuna"},
-    };
-    return dict[key]?[lang] ?? dict[key]?["es"] ?? key;
+    return _tDict[lang]?[key] ?? _tDict['es']?[key] ?? key;
   }
 
   @override
@@ -239,12 +400,18 @@ class _HomeScreenState extends State<HomeScreen> {
     _radiusListener = () {
       if (!mounted) return;
       if (_currentPosition != null) {
-        _recalcCircleRadiusPx(_mapController.camera.zoom);
+        _recalcCircleRadiusPx(_mapController.camera.zoom, force: true);
       }
       _aplicarFiltroRutas();
       _aplicarFiltroParadas();
     };
     AppSettings.radiusMeters.addListener(_radiusListener!);
+
+    // Language change: traducciones hardcodeadas en _tDict — cambio instantáneo
+    _langChangeListener = () {
+      if (mounted) setState(() {});
+    };
+    AppSettings.language.addListener(_langChangeListener!);
 
     _initAll();
   }
@@ -253,6 +420,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     if (_radiusListener != null) {
       AppSettings.radiusMeters.removeListener(_radiusListener!);
+    }
+    if (_langChangeListener != null) {
+      AppSettings.language.removeListener(_langChangeListener!);
     }
     _positionStream?.cancel();
     super.dispose();
@@ -582,27 +752,84 @@ Future<void> _fetchTrufis() async {
 
       final String response = await rootBundle.loadString('assets/geojson/colcapirhua.geojson');
 
-      _zonaParser.polygons.clear();
-      _zonaParser.polylines.clear();
-      _zonaParser.markers.clear();
+      // Parsear manualmente para unir todos los LineStrings en un solo polígono cerrado
+      final geo = jsonDecode(response) as Map<String, dynamic>;
+      final features = (geo['features'] as List?) ?? [];
 
-      _zonaParser.parseGeoJsonAsString(response);
+      // Extraer las líneas como listas de LatLng
+      final segments = <List<LatLng>>[];
+      for (final f in features) {
+        if (f is! Map) continue;
+        final geom = f['geometry'];
+        if (geom is! Map || geom['type'] != 'LineString') continue;
+        final coords = geom['coordinates'];
+        if (coords is! List) continue;
+        final pts = <LatLng>[];
+        for (final c in coords) {
+          if (c is! List || c.length < 2) continue;
+          pts.add(LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()));
+        }
+        if (pts.length >= 2) segments.add(pts);
+      }
+
+      // Encadenar segmentos para formar un contorno cerrado
+      final allPoints = <LatLng>[];
+      if (segments.isNotEmpty) {
+        final used = List<bool>.filled(segments.length, false);
+        // Empezar con el primer segmento
+        used[0] = true;
+        allPoints.addAll(segments[0]);
+
+        for (int pass = 1; pass < segments.length; pass++) {
+          final tail = allPoints.last;
+          int bestIdx = -1;
+          double bestDist = double.infinity;
+          bool bestReverse = false;
+
+          for (int i = 0; i < segments.length; i++) {
+            if (used[i]) continue;
+            final seg = segments[i];
+            final dStart = _distSq(tail, seg.first);
+            final dEnd = _distSq(tail, seg.last);
+            if (dStart < bestDist) {
+              bestDist = dStart;
+              bestIdx = i;
+              bestReverse = false;
+            }
+            if (dEnd < bestDist) {
+              bestDist = dEnd;
+              bestIdx = i;
+              bestReverse = true;
+            }
+          }
+
+          if (bestIdx == -1) break;
+          used[bestIdx] = true;
+          final seg = bestReverse ? segments[bestIdx].reversed.toList() : segments[bestIdx];
+          allPoints.addAll(seg);
+        }
+      }
 
       if (!mounted) return;
       setState(() {
-        colcapirhuaPolygons = _zonaParser.polygons.map((p) {
-          return Polygon(
-            points: p.points,
-            color: kPrimaryDark.withOpacity(0.13),
-            borderColor: kPrimaryDark.withOpacity(0.90),
-            borderStrokeWidth: 3.5,
-            isFilled: true,
-          );
-        }).toList();
+        if (allPoints.length >= 3) {
+          colcapirhuaPolygons = [
+            Polygon(
+              points: allPoints,
+              color: kPrimary.withOpacity(0.13),
+              borderColor: kPrimaryDark.withOpacity(0.92),
+              borderStrokeWidth: 3.0,
+              isFilled: true,
+            ),
+          ];
+        } else {
+          colcapirhuaPolygons = [];
+        }
 
-        colcapirhuaLines = _zonaParser.polylines.map((l) {
+        // Mantener las líneas del contorno
+        colcapirhuaLines = segments.map((pts) {
           return Polyline(
-            points: l.points,
+            points: pts,
             strokeWidth: 3.5,
             color: kPrimaryDark.withOpacity(0.92),
           );
@@ -622,6 +849,12 @@ Future<void> _fetchTrufis() async {
         _isLoadingGeoJSON = false;
       });
     }
+  }
+
+  double _distSq(LatLng a, LatLng b) {
+    final dlat = a.latitude - b.latitude;
+    final dlng = a.longitude - b.longitude;
+    return dlat * dlat + dlng * dlng;
   }
 
   void _calcularBoundingBoxColca(String geoJsonStr) {
@@ -878,10 +1111,10 @@ Future<void> _fetchTrufis() async {
     return meters / metersPerPixel;
   }
 
-  void _recalcCircleRadiusPx(double zoom) {
+  void _recalcCircleRadiusPx(double zoom, {bool force = false}) {
     if (_currentPosition == null) return;
 
-    if (_lastZoomForCircle != null && (zoom - _lastZoomForCircle!).abs() < 0.05) return;
+    if (!force && _lastZoomForCircle != null && (zoom - _lastZoomForCircle!).abs() < 0.05) return;
     _lastZoomForCircle = zoom;
 
     final meters = AppSettings.radiusMeters.value;
@@ -915,6 +1148,12 @@ Future<void> _fetchTrufis() async {
 
     setState(() => _isLoadingRutas = true);
     if (!mounted) return;
+
+    // Si hay un trufi seleccionado mostrando su ruta, no sobrescribir
+    if (_selectedTrufiId != null) {
+      setState(() => _isLoadingRutas = false);
+      return;
+    }
 
     if (_routeFilterMode == RouteFilterMode.all) {
       setState(() {
@@ -1177,6 +1416,12 @@ Future<void> _fetchTrufis() async {
     final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
     final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final cardBg = isDarkMode ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
+
+    final items = referencias.where((r) {
+      final n = (r['referencia'] ?? r['nombre'] ?? r['name'] ?? '').toString().trim();
+      return n.isNotEmpty;
+    }).toList();
 
     showModalBottomSheet(
       context: context,
@@ -1193,99 +1438,156 @@ Future<void> _fetchTrufis() async {
             children: [
               const SizedBox(height: 10),
               Container(
-                width: 50,
+                width: 46,
                 height: 5,
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              const SizedBox(height: 15),
-              Text(
-                radiotaxiName,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: kPrimary,
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [kPrimaryDark, kPrimary],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.local_taxi, color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            radiotaxiName,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              color: kPrimary,
+                            ),
+                          ),
+                          Text(
+                            t("ubicacion"),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: subTextColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                t("references_location"),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: subTextColor,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Divider(),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
               Expanded(
-                child: referencias.isEmpty
+                child: items.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            Icon(Icons.location_off_outlined, size: 48, color: subTextColor.withOpacity(0.5)),
+                            const SizedBox(height: 12),
                             Text(
-                              t("no_references"),
-                              style: TextStyle(color: subTextColor),
-                            ),
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: kAqua.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Debug Info:",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: subTextColor,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    "Radiotaxi: $radiotaxiName",
-                                    style: TextStyle(fontSize: 11, color: subTextColor),
-                                  ),
-                                  Text(
-                                    "Datos: $referencias",
-                                    style: TextStyle(fontSize: 9, color: subTextColor),
-                                  ),
-                                ],
-                              ),
+                              t("no_ubicaciones"),
+                              style: TextStyle(color: subTextColor, fontSize: 15),
                             ),
                           ],
                         ),
                       )
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        itemCount: referencias.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final ref = referencias[index];
-                          final nombre = (ref['nombre'] ?? ref['name'] ?? '').toString();
-
-                          if (nombre.isEmpty) return const SizedBox.shrink();
-
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: Text(
-                              nombre,
-                              style: TextStyle(
-                                color: textColor,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 16,
+                    : items.length == 1
+                        ? Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: cardBg,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: kPrimary.withOpacity(0.15), width: 1.5),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 52,
+                                    height: 52,
+                                    decoration: BoxDecoration(
+                                      color: kPrimary.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: const Icon(Icons.place_rounded, color: kPrimary, size: 28),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      (items[0]['referencia'] ?? items[0]['nombre'] ?? items[0]['name'] ?? '').toString(),
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          );
-                        },
-                      ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                            itemCount: items.length,
+                            itemBuilder: (context, index) {
+                              final nombre = (items[index]['referencia'] ?? items[index]['nombre'] ?? items[index]['name'] ?? '').toString();
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: cardBg,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: kPrimary.withOpacity(0.10), width: 1),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          color: kPrimary.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '${index + 1}',
+                                            style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w800, fontSize: 13),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Icon(Icons.place_rounded, color: kAqua, size: 18),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          nombre,
+                                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14.5),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
               ),
             ],
           ),
@@ -1300,9 +1602,9 @@ Future<void> _fetchTrufis() async {
       CircleMarker(
         point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
         radius: _circleRadiusPx,
-        color: kPrimary.withOpacity(0.12),
-        borderColor: kPrimary.withOpacity(0.55),
-        borderStrokeWidth: 2,
+        color: const Color(0xFFFF6B2B).withOpacity(0.15),
+        borderColor: const Color(0xFFFF6B2B).withOpacity(0.85),
+        borderStrokeWidth: 2.5,
       ),
     ];
   }
@@ -1747,14 +2049,22 @@ Future<void> _fetchTrufis() async {
 
   Future<void> _mostrarRutaDeUnTrufi(int idtrufi, {String? nombreLinea}) async {
     if (!mounted) return;
-    setState(() => _isLoadingRutaTrufi = true);
 
     try {
-      final geo = await _apiService.getGeoJsonPorTrufi(idtrufi);
+      // Lanzar GeoJSON + ubicaciones + referencias en paralelo
+      // Así el modal abre con TODOS los datos ya listos
+      final results = await Future.wait([
+        _apiService.getGeoJsonPorTrufi(idtrufi),
+        _apiService.getUbicacionesPorTrufi(idtrufi).catchError((_) => <dynamic>[]),
+        _apiService.getReferenciasDestrufi(idtrufi).catchError((_) => <dynamic>[]),
+      ]);
 
-      if (geo == null || geo['features'] == null || (geo['features'] as List).isEmpty) {
+      final geo = results[0] as Map<String, dynamic>;
+      final ubicacionesRaw = results[1] as List<dynamic>;
+      final refRaw = results[2] as List<dynamic>;
+
+      if (geo['features'] == null || (geo['features'] as List).isEmpty) {
         if (!mounted) return;
-        setState(() => _isLoadingRutaTrufi = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t("no_route"))));
         return;
       }
@@ -1764,90 +2074,71 @@ Future<void> _fetchTrufis() async {
 
       if (ruta.isEmpty) {
         if (!mounted) return;
-        setState(() => _isLoadingRutaTrufi = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t("no_route"))));
         return;
       }
 
-      // Cargar ubicaciones del backend (solo nombres de vías, sin geodatos)
+      // Procesar ubicaciones
       List<Map<String, dynamic>> rutasVias = [];
       try {
-        print("🔍 Cargando ubicaciones para trufi $idtrufi...");
-        final ubicacionesData = await _apiService.getUbicacionesPorTrufi(idtrufi);
-        print("📦 Datos crudos recibidos: $ubicacionesData");
-        
-        // Convertir a List<Map> ordenado por 'orden'
-        List<Map<String, dynamic>> vias = [];
-        for (var item in ubicacionesData) {
-          if (item is Map<String, dynamic>) {
-            vias.add(item);
-          }
-        }
-        
-        // Ordenar por 'orden'
+        final vias = ubicacionesRaw.whereType<Map<String, dynamic>>().toList();
         vias.sort((a, b) {
           final ordenA = (a['orden'] as num?)?.toInt() ?? 999;
           final ordenB = (b['orden'] as num?)?.toInt() ?? 999;
           return ordenA.compareTo(ordenB);
         });
-        
         rutasVias = vias;
-        print("✅ Ubicaciones cargadas: ${rutasVias.length} vías");
-      } catch (e) {
-        print("❌ Error cargando ubicaciones: $e");
-      }
+      } catch (_) {}
 
-      // Cargar referencias del trufi
+      // Procesar referencias
       List<Map<String, dynamic>> referenciasData = [];
       try {
-        print("🔍 Cargando referencias para trufi $idtrufi...");
-        final refData = await _apiService.getReferenciasDestrufi(idtrufi);
-        print("📦 Datos de referencias recibidos: $refData");
-        referenciasData = refData.map((e) {
-          if (e is Map<String, dynamic>) return e;
-          return <String, dynamic>{};
-        }).toList();
-        print("✅ Referencias cargadas: ${referenciasData.length} referencias");
-      } catch (e) {
-        print("❌ Error cargando referencias: $e");
-      }
-
-      if (!mounted) return;
+        referenciasData = refRaw
+            .map((e) => e is Map<String, dynamic> ? e : <String, dynamic>{})
+            .where((e) => e.isNotEmpty)
+            .toList();
+      } catch (_) {}
 
       final nombre = nombreLinea ?? _trufiNameById[idtrufi] ?? "Línea $idtrufi";
-
       final labelMarkers = _buildRouteLabelsDirect(ruta, idtrufi, nombre);
 
+      if (!mounted) return;
       setState(() {
         _selectedTrufiId = idtrufi;
         _selectedTrufiName = nombre;
-
         _rutasVisibles = ruta;
-
         _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 1);
         _routeLabelMarkers = labelMarkers;
-
         _selectedRoutePermanentLabels = labelMarkers;
-
         _rutasVias = rutasVias;
         _referenciasSelectedTrufi = referenciasData;
         _isLoadingRutaTrufi = false;
       });
 
-      await _agregarAlHistorial(HistorialItem(
+      if (ruta.first.points.isNotEmpty) {
+        _mapController.move(ruta.first.points.first, 14.8);
+      }
+
+      // Abrir el modal — ya tiene todos los datos
+      _mostrarVentanaRecorrido();
+
+      // Horario en segundo plano (solo se muestra en la tarjeta, no en el modal)
+      _agregarAlHistorial(HistorialItem(
         id: idtrufi,
         nombre: nombre,
         tipo: 'trufi',
         fechaUso: DateTime.now(),
       ));
-
       _registrarSeleccionTrufi(idtrufi);
+      _apiService.getTrufiHorario(idtrufi).then((horarioData) {
+        if (!mounted) return;
+        setState(() {
+          _selectedTrufiHorario = (horarioData['hora_entrada'] != null || horarioData['hora_salida'] != null)
+              ? horarioData
+              : null;
+        });
+      }).catchError((_) {});
 
-      if (ruta.first.points.isNotEmpty) {
-        _mapController.move(ruta.first.points.first, 14.8);
-      }
-
-      _mostrarVentanaRecorrido();
     } catch (e) {
       print("Error mostrando ruta de trufi $idtrufi: $e");
       if (!mounted) return;
@@ -1982,72 +2273,71 @@ Future<void> _fetchTrufis() async {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            Icon(Icons.route_outlined, size: 48, color: subTextColor.withOpacity(0.5)),
+                            const SizedBox(height: 12),
                             Text(
                               t("no_data"),
-                              style: TextStyle(color: subTextColor),
-                            ),
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: kAqua.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Debug Info:",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: subTextColor,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    "Vías de ruta: ${_rutasVias.length}",
-                                    style: TextStyle(fontSize: 11, color: subTextColor),
-                                  ),
-                                  Text(
-                                    "Referencias: ${_referenciasSelectedTrufi.length}",
-                                    style: TextStyle(fontSize: 11, color: subTextColor),
-                                  ),
-                                  Text(
-                                    "Trufi ID: $_selectedTrufiId",
-                                    style: TextStyle(fontSize: 11, color: subTextColor),
-                                  ),
-                                ],
-                              ),
+                              style: TextStyle(color: subTextColor, fontSize: 15),
                             ),
                           ],
                         ),
                       )
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                         itemCount: _rutasVias.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final via = _rutasVias[index];
                           final orden = via['orden'] ?? (index + 1);
-                          final nombreVia = via['nombre_via'] ?? t("no_data");
+                          final nombreVia = (via['nombre_via'] ?? t("no_data")).toString();
+                          final isDark = AppSettings.darkMode.value;
+                          final cardBg = isDark ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
 
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: kPrimary.withOpacity(0.15),
-                              child: Text(
-                                '$orden',
-                                style: const TextStyle(
-                                  color: kPrimary,
-                                  fontWeight: FontWeight.bold,
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: cardBg,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: kPrimary.withOpacity(0.10),
+                                  width: 1,
                                 ),
                               ),
-                            ),
-                            title: Text(
-                              nombreVia,
-                              style: TextStyle(
-                                color: textColor,
-                                fontWeight: FontWeight.w600,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: kPrimary.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '$orden',
+                                        style: const TextStyle(
+                                          color: kPrimary,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Icon(Icons.turn_right_rounded, color: kAqua, size: 16),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      nombreVia,
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -2066,16 +2356,21 @@ Future<void> _fetchTrufis() async {
     final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
     final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
-    
+    final cardBg = isDarkMode ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
+
     final referencias = esTrufi ? _referenciasSelectedTrufi : _referenciasSelectedRadiotaxi;
+    final items = referencias.where((r) {
+      final n = (r['referencia'] ?? r['nombre'] ?? r['name'] ?? '').toString().trim();
+      return n.isNotEmpty;
+    }).toList();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) {
+      builder: (sheetCtx2) {
         return Container(
-          height: MediaQuery.of(context).size.height * 0.6,
+          height: MediaQuery.of(context).size.height * 0.4,
           decoration: BoxDecoration(
             color: sheetColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
@@ -2084,85 +2379,138 @@ Future<void> _fetchTrufis() async {
             children: [
               const SizedBox(height: 10),
               Container(
-                width: 50,
+                width: 46,
                 height: 5,
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              const SizedBox(height: 15),
-              Text(
-                t("references_location"),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: kPrimary,
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(sheetCtx2);
+                        _mostrarVentanaRecorrido();
+                      },
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: kPrimary.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded, color: kPrimary, size: 18),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [kPrimaryDark, kPrimary],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.place_rounded, color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            t("references_location"),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: kPrimary,
+                            ),
+                          ),
+                          Text(
+                            "${items.length} ${items.length == 1 ? 'referencia' : 'referencias'}",
+                            style: TextStyle(fontSize: 11, color: subTextColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 10),
-              const Divider(),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
               Expanded(
-                child: referencias.isEmpty
+                child: items.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            Icon(Icons.location_off_outlined, size: 48, color: subTextColor.withOpacity(0.5)),
+                            const SizedBox(height: 12),
                             Text(
                               t("no_references"),
-                              style: TextStyle(color: subTextColor),
-                            ),
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: kAqua.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Debug Info:",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: subTextColor,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    "Tipo: ${esTrufi ? 'Trufi' : 'RadioTaxi'}",
-                                    style: TextStyle(fontSize: 11, color: subTextColor),
-                                  ),
-                                  Text(
-                                    "Datos: $referencias",
-                                    style: TextStyle(fontSize: 9, color: subTextColor),
-                                  ),
-                                ],
-                              ),
+                              style: TextStyle(color: subTextColor, fontSize: 15),
                             ),
                           ],
                         ),
                       )
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        itemCount: referencias.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                        itemCount: items.length,
                         itemBuilder: (context, index) {
-                          final ref = referencias[index];
-                          final nombre = (ref['nombre'] ?? ref['name'] ?? '').toString();
-
-                          if (nombre.isEmpty) return const SizedBox.shrink();
-
+                          final nombre = (items[index]['referencia'] ?? items[index]['nombre'] ?? items[index]['name'] ?? '').toString();
                           return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: Text(
-                              nombre,
-                              style: TextStyle(
-                                color: textColor,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 16,
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: cardBg,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: kPrimary.withOpacity(0.10),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: kPrimary.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: const TextStyle(
+                                          color: kPrimary,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Icon(Icons.place_rounded, color: kAqua, size: 18),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      nombre,
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -2180,19 +2528,101 @@ Future<void> _fetchTrufis() async {
     final mode = AppSettings.centerMode.value;
 
     if (mode == "ubicacion") {
-      await _getCurrentLocation();
-      _aplicarFiltroRutas();
-      _aplicarFiltroParadas();
       if (_currentPosition != null) {
+        // Already know position — just move camera instantly
         _mapController.move(
           LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
           15,
         );
+      } else {
+        // No GPS yet — request it
+        await _getCurrentLocation();
+        if (_currentPosition != null) {
+          _mapController.move(
+            LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+            15,
+          );
+        }
       }
       return;
     }
 
     _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
+  }
+
+  /// Asks for CALL_PHONE permission if needed. Returns true if the call can proceed.
+  Future<bool> _requestPhonePermission() async {
+    var status = await Permission.phone.status;
+
+    if (status.isGranted) return true;
+
+    // Denied but can still ask
+    if (status.isDenied) {
+      status = await Permission.phone.request();
+      if (status.isGranted) return true;
+    }
+
+    // Permanently denied — guide user to settings
+    if (status.isPermanentlyDenied && mounted) {
+      final openSettings = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(children: [
+            Icon(Icons.phone_locked, color: kPrimary),
+            SizedBox(width: 10),
+            Text('Permiso de teléfono', style: TextStyle(color: kPrimary, fontWeight: FontWeight.w800)),
+          ]),
+          content: const Text(
+            'Para realizar llamadas necesitas activar el permiso de teléfono. '
+            'Ve a Ajustes > Aplicaciones > ColcaTrufis > Permisos y activa "Teléfono".',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              icon: const Icon(Icons.settings, size: 16),
+              label: const Text('Ir a Ajustes'),
+            ),
+          ],
+        ),
+      );
+      if (openSettings == true) await openAppSettings();
+      return false;
+    }
+
+    return false;
+  }
+
+  /// Launches [uri] with multiple fallback modes for maximum compatibility.
+  Future<void> _launchCallUri(Uri uri) async {
+    // Try external first (most compatible)
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    // Fallback: platform default (opens dialer on most devices)
+    try {
+      await launchUrl(uri, mode: LaunchMode.platformDefault);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo abrir el marcador para ${uri.path}'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _confirmAndCall(String rawPhone, {String? nombre, int? id}) async {
@@ -2202,17 +2632,36 @@ Future<void> _fetchTrufis() async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(t("radiotaxi")),
-        content: Text(t("call_confirm")),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(children: [
+          const Icon(Icons.local_taxi, color: kPrimary),
+          const SizedBox(width: 8),
+          Expanded(child: Text(nombre ?? t("radiotaxi"), style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w800, fontSize: 16))),
+        ]),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(t("call_confirm")),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(color: kPrimary.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
+            child: Row(children: [
+              const Icon(Icons.phone, color: kPrimary, size: 18),
+              const SizedBox(width: 8),
+              Text(phone, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: kPrimary)),
+            ]),
+          ),
+        ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t("cancel"))),
-          ElevatedButton(
+          ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: kPrimary,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: Text(t("call")),
+            icon: const Icon(Icons.call, size: 16),
+            label: Text(t("call")),
           ),
         ],
       ),
@@ -2220,16 +2669,10 @@ Future<void> _fetchTrufis() async {
 
     if (ok != true) return;
 
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("No se pudo realizar la llamada a $phone")),
-        );
-      }
-    }
+    final canCall = await _requestPhonePermission();
+    if (!canCall) return;
+
+    await _launchCallUri(Uri(scheme: 'tel', path: phone));
   }
 
   Future<void> _confirmAndCallReclamo(String rawPhone, String titulo) async {
@@ -2239,8 +2682,25 @@ Future<void> _fetchTrufis() async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(t("reclamos_call")),
-        content: Text(rawPhone),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(children: [
+          const Icon(Icons.headset_mic, color: kPrimary),
+          const SizedBox(width: 8),
+          Expanded(child: Text(t("reclamos_call"), style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w800, fontSize: 16))),
+        ]),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(titulo),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(color: kPrimary.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
+            child: Row(children: [
+              const Icon(Icons.phone, color: kPrimary, size: 18),
+              const SizedBox(width: 8),
+              Text(phone, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: kPrimary)),
+            ]),
+          ),
+        ]),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -2250,9 +2710,10 @@ Future<void> _fetchTrufis() async {
             style: ElevatedButton.styleFrom(
               backgroundColor: kPrimary,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(context, true),
-            icon: const Icon(Icons.call),
+            icon: const Icon(Icons.call, size: 16),
             label: Text(t("call")),
           ),
         ],
@@ -2261,16 +2722,10 @@ Future<void> _fetchTrufis() async {
 
     if (ok != true) return;
 
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("No se pudo realizar la llamada a $phone")),
-        );
-      }
-    }
+    final canCall = await _requestPhonePermission();
+    if (!canCall) return;
+
+    await _launchCallUri(Uri(scheme: 'tel', path: phone));
   }
 
   Future<void> _abrirWhatsApp(String rawPhone) async {
@@ -2855,7 +3310,7 @@ Future<void> _fetchTrufis() async {
                   flexibleSpace: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [kPrimaryDark.withOpacity(1), kPrimary.withOpacity(0.65)],
+                        colors: [kPrimaryDark, kPrimary.withOpacity(0.65)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -2926,41 +3381,10 @@ Future<void> _fetchTrufis() async {
                     ),
 
                     if (_isLoadingRutaTrufi)
-                      Positioned.fill(
-                        child: Container(
-                          color: Colors.black.withOpacity(0.45),
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const CircularProgressIndicator(color: kPrimary, strokeWidth: 3.5),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    t("loading_route"),
-                                    style: const TextStyle(
-                                      color: kPrimary,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+                      Positioned(
+                        left: 16,
+                        top: 90,
+                        child: _loadingChip(t("loading_route"), Icons.route),
                       ),
 
                     if (_isLoadingGPS)
@@ -2968,6 +3392,13 @@ Future<void> _fetchTrufis() async {
                         bottom: MediaQuery.of(context).size.height * 0.5,
                         right: 16,
                         child: _loadingChip(t("loading_gps"), Icons.gps_fixed),
+                      ),
+
+                    if (_isLoadingTranslations)
+                      Positioned(
+                        bottom: MediaQuery.of(context).size.height * 0.5,
+                        right: 16,
+                        child: _loadingChip(t("translating"), Icons.translate),
                       ),
 
                     if (_isLoadingGeoJSON)
@@ -2984,18 +3415,23 @@ Future<void> _fetchTrufis() async {
                         child: _loadingChip(t("loading_route"), Icons.route),
                       ),
 
-                    if (_isLoadingTrufis || _isLoadingRadiotaxis || _isLoadingSindicatos)
+                    // Loading indicators — organized column on the left
+                    if (_isLoadingTrufis || _isLoadingRadiotaxis || _isLoadingSindicatos || _isLoadingParadas)
                       Positioned(
-                        bottom: MediaQuery.of(context).size.height * 0.5 - 104,
                         left: 16,
-                        child: _loadingChip(t("loading_data"), Icons.directions_bus_outlined),
-                      ),
-
-                    if (_isLoadingParadas)
-                      Positioned(
-                        bottom: MediaQuery.of(context).size.height * 0.5 - 156,
-                        left: 16,
-                        child: _loadingChip(t("loading_stops"), Icons.local_taxi_outlined),
+                        bottom: 130,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_isLoadingTrufis || _isLoadingRadiotaxis || _isLoadingSindicatos) ...[  
+                              _loadingChip(t("loading_data"), Icons.directions_bus_outlined),
+                              const SizedBox(height: 6),
+                            ],
+                            if (_isLoadingParadas)
+                              _loadingChip(t("loading_stops"), Icons.local_taxi_outlined),
+                          ],
+                        ),
                       ),
 
                     if (_isLoadingNormativas)
@@ -3038,11 +3474,21 @@ Future<void> _fetchTrufis() async {
                     ),
                     ),
 
-                    if (_selectedTrufiName != null && _selectedTrufiName!.trim().isNotEmpty)
+                    if (_selectedTrufiName != null && _selectedTrufiName!.trim().isNotEmpty && isTrufiSelected)
                       Positioned(
                         left: 16,
-                        top: (_isLoadingGeoJSON || (_isLoadingRutas && !_isLoadingRutaTrufi)) ? 148 : 90,
-                        child: _selectedTrufiCard(isDarkMode),
+                        top: (_isLoadingGeoJSON || _isLoadingRutaTrufi) ? 148 : 90,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _selectedTrufiCard(isDarkMode),
+                            if (_selectedTrufiHorario != null) ...[  
+                              const SizedBox(height: 8),
+                              _scheduleCard(isDarkMode),
+                            ],
+                          ],
+                        ),
                       ),
 
                     if (_currentPosition == null && !_gpsOffBannerDismissed)
@@ -3504,6 +3950,7 @@ Future<void> _fetchTrufis() async {
               setState(() {
                 _selectedTrufiId = null;
                 _selectedTrufiName = null;
+                _selectedTrufiHorario = null;
                 _rutasVias = [];
                 _selectedRoutePermanentLabels = [];
               });
@@ -3519,6 +3966,71 @@ Future<void> _fetchTrufis() async {
               ),
               child: Icon(Icons.close, size: 18, color: textColor.withOpacity(0.8)),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _scheduleCard(bool isDarkMode) {
+    final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.95);
+    final subColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final entrada = _selectedTrufiHorario?['hora_entrada']?.toString() ?? '';
+    final salida = _selectedTrufiHorario?['hora_salida']?.toString() ?? '';
+    String fmt(String v) => v.length >= 5 ? v.substring(0, 5) : v;
+
+    final bool tieneHorario = entrada.isNotEmpty || salida.isNotEmpty;
+    String horarioStr;
+    if (entrada.isNotEmpty && salida.isNotEmpty) {
+      horarioStr = '${fmt(entrada)}\u2013${fmt(salida)}';
+    } else if (entrada.isNotEmpty) {
+      horarioStr = '${t("schedule_from")} ${fmt(entrada)}';
+    } else if (salida.isNotEmpty) {
+      horarioStr = 'Hasta ${fmt(salida)}';
+    } else {
+      horarioStr = t('no_schedule');
+    }
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 210),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: kPrimary.withOpacity(0.18)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 12, offset: const Offset(0, 6))],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: kPrimary.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.access_time_rounded, color: kPrimary, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                t('schedule'),
+                style: TextStyle(color: subColor, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.2),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                horarioStr,
+                style: TextStyle(
+                  color: tieneHorario ? kPrimary : subColor,
+                  fontWeight: tieneHorario ? FontWeight.w800 : FontWeight.w500,
+                  fontSize: tieneHorario ? 15 : 12,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -3710,9 +4222,9 @@ Future<void> _fetchTrufis() async {
                                       ? (item["nom_linea"] ?? "Sin nombre")
                                       : (item["nombre_comercial"] ?? "Sin nombre");
 
-                                  final String subtitulo = isLookingForTrufi
-                                      ? "${t("id")}: ${item["idtrufi"]}"
-                                      : "${t("base")}: ${item["telefono_base"] ?? 'S/N'}";
+                                  final String? subtitulo = isLookingForTrufi
+                                      ? null
+                                      : "${t("phone")}: ${item["telefono_base"] ?? 'S/N'}";
 
                                   return ListTile(
                                     leading: CircleAvatar(
@@ -3726,8 +4238,10 @@ Future<void> _fetchTrufis() async {
                                     ),
                                     title: Text(titulo,
                                         style: TextStyle(color: textColor)),
-                                    subtitle: Text(subtitulo,
-                                        style: TextStyle(color: subTextColor)),
+                                    subtitle: subtitulo != null
+                                        ? Text(subtitulo,
+                                            style: TextStyle(color: subTextColor))
+                                        : null,
                                     onTap: () async {
                                       Navigator.pop(sheetCtx);
 
@@ -3956,7 +4470,6 @@ Future<void> _fetchTrufis() async {
                               minLeadingWidth: 24,
                               leading: const Icon(Icons.phone, color: kPrimary, size: 18),
                               title: Text(nombre, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w600)),
-                              subtitle: Text('${t("base")}: $phone', style: TextStyle(color: subTextColor, fontSize: 12)),
                               onTap: () async {
                                 Navigator.pop(context);
                                 setState(() => isTrufiSelected = false);

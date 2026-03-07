@@ -140,4 +140,15 @@ class ApiService {
     return [];
   }
 
+  // Horario del trufi (hora_entrada, hora_salida)
+  Future<Map<String, dynamic>> getTrufiHorario(int idtrufi) async {
+    try {
+      final data = await _get('/trufis/$idtrufi/horario');
+      if (data is Map) return Map<String, dynamic>.from(data);
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
 }

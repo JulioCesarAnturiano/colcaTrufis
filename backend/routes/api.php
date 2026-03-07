@@ -57,12 +57,14 @@ Route::get('/radiotaxis/{id}/parada/geojson', [SindicatoRadioTaxisController::cl
 Route::post('/trufis/{idtrufi}/seleccion', [TrufiSeleccionController::class, 'registrar']);
 //reclamos vargas gey
 Route::get('/public/settings/reclamos', [AppSettingsController::class, 'reclamos']);
-// Referencias 
+// Referencias
 Route::get('/referencias', [ReferenciaController::class, 'index']);
 Route::get('/referencias/{id}', [ReferenciaController::class, 'show']);
 
 Route::get('/trufis/{idtrufi}/referencias', [ReferenciaController::class, 'byTrufi']);
 Route::get('/radiotaxis/{id}/referencias', [ReferenciaController::class, 'byRadiotaxi']);
+// Horario del trufi
+Route::get('/trufis/{id}/horario', [TrufiController::class, 'horario']);
 // Ubicaciones (Calles)
 Route::get('/trufis/{idtrufi}/ubicaciones', [TrufirutaController::class, 'ubicacionesPorTrufi']);
 Route::get('/ubicaciones', [TrufirutaController::class, 'ubicacionesTodas']);
