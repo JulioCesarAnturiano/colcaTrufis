@@ -963,10 +963,10 @@ Future<void> _fetchTrufis() async {
         polylines.add(
           Polyline(
             points: points,
-            strokeWidth: 3.1,
+            strokeWidth: 3.8,
             color: kAqua,
             borderColor: const Color(0xFF032530),
-            borderStrokeWidth: 1.5,
+            borderStrokeWidth: 1.8,
           ),
         );
         ids.add(idtrufi);
@@ -1230,14 +1230,24 @@ Future<void> _fetchTrufis() async {
             },
             child: Container(
               decoration: BoxDecoration(
-                color: kPrimary,
+                gradient: const LinearGradient(
+                  colors: [kPrimaryDark, kPrimary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withOpacity(0.95), width: 3),
+                border: Border.all(color: Colors.white, width: 3),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.25),
-                    blurRadius: 12,
-                    offset: const Offset(0, 8),
+                    color: kPrimary.withOpacity(0.30),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                    spreadRadius: 2,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -1290,11 +1300,22 @@ Future<void> _fetchTrufis() async {
 
   Widget _paradaNamePill(String name) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: kPrimary.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.6),
+        gradient: const LinearGradient(
+          colors: [kPrimaryDark, kPrimary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.92), width: 1.8),
+        boxShadow: [
+          BoxShadow(
+            color: kPrimary.withOpacity(0.30),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1602,11 +1623,71 @@ Future<void> _fetchTrufis() async {
       CircleMarker(
         point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
         radius: _circleRadiusPx,
-        color: const Color(0xFFFF6B2B).withOpacity(0.15),
-        borderColor: const Color(0xFFFF6B2B).withOpacity(0.85),
+        color: const Color.fromARGB(255, 128, 80, 9).withOpacity(0.30),
+        borderColor: const Color.fromARGB(255, 138, 87, 10).withOpacity(0.85),
         borderStrokeWidth: 2.5,
       ),
     ];
+  }
+
+  double _calculateBearing(LatLng a, LatLng b) {
+    final dLon = (b.longitude - a.longitude) * Math.pi / 180;
+    final lat1 = a.latitude * Math.pi / 180;
+    final lat2 = b.latitude * Math.pi / 180;
+    final y = Math.sin(dLon) * Math.cos(lat2);
+    final x = Math.cos(lat1) * Math.sin(lat2) -
+        Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+    return (Math.atan2(y, x) * 180 / Math.pi + 360) % 360;
+  }
+
+  List<Marker> _buildDirectionArrows(List<Polyline> polylines) {
+    final markers = <Marker>[];
+    const interval = 450.0;
+    const maxArrows = 120;
+
+    for (final pl in polylines) {
+      if (pl.points.length < 3) continue;
+      if (markers.length >= maxArrows) break;
+
+      double accumulated = 0;
+
+      for (int i = 1; i < pl.points.length; i++) {
+        if (markers.length >= maxArrows) break;
+        final prev = pl.points[i - 1];
+        final curr = pl.points[i];
+        final dist = Geolocator.distanceBetween(
+          prev.latitude, prev.longitude,
+          curr.latitude, curr.longitude,
+        );
+
+        accumulated += dist;
+
+        if (accumulated >= interval) {
+          accumulated = 0;
+          final bearing = _calculateBearing(prev, curr);
+
+          markers.add(
+            Marker(
+              point: curr,
+              width: 24,
+              height: 24,
+              child: Transform.rotate(
+                angle: bearing * Math.pi / 180,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(Icons.navigation_rounded, size: 22, color: Colors.white.withOpacity(0.9)),
+                    Icon(Icons.navigation_rounded, size: 16, color: kPrimaryDark.withOpacity(0.8)),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+      }
+    }
+
+    return markers;
   }
 
   List<Marker> _buildInicioFinMarkers(List<Polyline> polylines, {int maxRutas = 30}) {
@@ -1835,11 +1916,16 @@ Future<void> _fetchTrufis() async {
       message: tooltip,
       child: Container(
         decoration: BoxDecoration(
-          color: color,
+          gradient: LinearGradient(
+            colors: [color, color.withOpacity(0.8)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.95), width: 3),
+          border: Border.all(color: Colors.white, width: 3),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 12, offset: const Offset(0, 8)),
+            BoxShadow(color: color.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 6), spreadRadius: 2),
+            BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 8, offset: const Offset(0, 4)),
           ],
         ),
         child: Center(child: Icon(icon, color: Colors.white, size: 19)),
@@ -1881,11 +1967,22 @@ Future<void> _fetchTrufis() async {
 
   Widget _routeNamePill(String name) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: kAqua.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.6),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF15A8A2), kAqua],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.92), width: 1.8),
+        boxShadow: [
+          BoxShadow(
+            color: kAqua.withOpacity(0.30),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -3310,10 +3407,22 @@ Future<void> _fetchTrufis() async {
                   flexibleSpace: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [kPrimaryDark, kPrimary.withOpacity(0.65)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                        colors: [
+                          kPrimaryDark,
+                          kPrimary.withOpacity(0.82),
+                          kPrimary.withOpacity(0.45),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: const [0.0, 0.55, 1.0],
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: kPrimaryDark.withOpacity(0.25),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                   ),
                   title: Row(
@@ -3354,6 +3463,7 @@ Future<void> _fetchTrufis() async {
                           PolylineLayer(
                             polylines: _rutasVisibles,
                           ),
+                          MarkerLayer(markers: _buildDirectionArrows(_rutasVisibles)),
                           if (_routeLabelMarkers.isNotEmpty) MarkerLayer(markers: _routeLabelMarkers),
                           if (_inicioFinMarkers.isNotEmpty) MarkerLayer(markers: _inicioFinMarkers),
                           if (_selectedRoutePermanentLabels.isNotEmpty)
@@ -3371,9 +3481,21 @@ Future<void> _fetchTrufis() async {
                             markers: [
                               Marker(
                                 point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                                width: 40,
-                                height: 40,
-                                child: const Icon(Icons.person_pin_circle, size: 40, color: Colors.blue),
+                                width: 44,
+                                height: 44,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.blue.withOpacity(0.30),
+                                        blurRadius: 18,
+                                        spreadRadius: 6,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(Icons.person_pin_circle, size: 42, color: Color(0xFF1565C0)),
+                                ),
                               ),
                             ],
                           ),
@@ -3468,10 +3590,7 @@ Future<void> _fetchTrufis() async {
                     Positioned(
                       left: 16,
                       bottom: 22,
-                      child: SizedBox(
-                      width: 150,
                       child: _routesFilterDropdown(isDarkMode),
-                    ),
                     ),
 
                     if (_selectedTrufiName != null && _selectedTrufiName!.trim().isNotEmpty && isTrufiSelected)
@@ -3689,18 +3808,57 @@ Future<void> _fetchTrufis() async {
                             },
                           ),
                           const SizedBox(height: 25),
-                          FloatingActionButton(
-                            mini: true,
-                            heroTag: "btnCenter",
-                            backgroundColor: Colors.white,
-                            onPressed: _handleCenterFab,
-                            child: _isLoadingGPS
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
-                                  )
-                                : const Icon(Icons.my_location, color: kPrimary),
+                          GestureDetector(
+                            onTap: _handleCenterFab,
+                            child: Container(
+                              height: 48,
+                              width: 48,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(15),
+                                color: Colors.white,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.15),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 6),
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                                border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                              ),
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    child: Container(
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.white.withOpacity(0.7),
+                                            Colors.white.withOpacity(0),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Center(
+                                    child: _isLoadingGPS
+                                        ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                                          )
+                                        : const Icon(Icons.my_location, color: kPrimary, size: 22),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -3717,13 +3875,19 @@ Future<void> _fetchTrufis() async {
 
   Widget _loadingChip(String label, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withOpacity(0.96),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: kPrimaryDark.withOpacity(0.10),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
+          ),
         ],
+        border: Border.all(color: kPrimary.withOpacity(0.08), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -3741,7 +3905,7 @@ Future<void> _fetchTrufis() async {
             style: const TextStyle(
               color: kPrimary,
               fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -3750,47 +3914,79 @@ Future<void> _fetchTrufis() async {
   }
 
   Widget _routesFilterDropdown(bool isDarkMode) {
-    final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.92);
+    final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.96);
     final textColor = isDarkMode ? Colors.white : Colors.black87;
     final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
 
     final radius = AppSettings.radiusMeters.value.round();
-    final currentLabel = _routeFilterMode == RouteFilterMode.nearby ? "${t("routes_nearby")} ($radius m)" : t("routes_all");
+    final currentLabel = _routeFilterMode == RouteFilterMode.nearby
+        ? "${t("routes_nearby")} ($radius m)"
+        : t("routes_all");
 
     return GestureDetector(
       onTap: () => _mostrarOpcionesRutas(isDarkMode, textColor),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black12),
+          border: Border.all(color: kPrimary.withOpacity(0.10), width: 1),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 12, offset: const Offset(0, 6)),
+            BoxShadow(
+              color: kPrimaryDark.withOpacity(0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+              spreadRadius: 1,
+            ),
           ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _isLoadingRutas
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
-                  )
-                : const Icon(Icons.route, color: kPrimary),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(t("routes_filter"), style: TextStyle(fontWeight: FontWeight.w800, color: textColor)),
-                const SizedBox(height: 2),
-                Text(
-                  currentLabel,
-                  style: TextStyle(fontSize: 12, color: subTextColor),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [kPrimaryDark, kPrimary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: _isLoadingRutas
+                  ? const Padding(
+                      padding: EdgeInsets.all(6),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.route, color: Colors.white, size: 18),
             ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    t("routes_filter"),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: textColor,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    currentLabel,
+                    style: TextStyle(fontSize: 11.5, color: subTextColor, fontWeight: FontWeight.w500),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(Icons.expand_more_rounded, color: subTextColor, size: 18),
           ],
         ),
       ),
@@ -3889,7 +4085,7 @@ Future<void> _fetchTrufis() async {
   }
 
   Widget _selectedTrufiCard(bool isDarkMode) {
-    final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.92);
+    final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.95);
     final textColor = isDarkMode ? Colors.white : Colors.black87;
 
     return Container(
@@ -3897,30 +4093,35 @@ Future<void> _fetchTrufis() async {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black12),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: kPrimary.withOpacity(0.08), width: 1),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 12, offset: const Offset(0, 6)),
+          BoxShadow(
+            color: kPrimaryDark.withOpacity(0.10),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+            spreadRadius: 1,
+          ),
         ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [kPrimaryDark.withOpacity(0.95), kPrimary.withOpacity(0.9)],
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0A6B82), kPrimaryDark],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(13),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 10, offset: const Offset(0, 6)),
+                BoxShadow(color: kPrimaryDark.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 4)),
               ],
             ),
-            child: const Icon(Icons.directions_bus_filled, color: Colors.white),
+            child: const Icon(Icons.directions_bus_filled, color: Colors.white, size: 22),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -4045,24 +4246,70 @@ Future<void> _fetchTrufis() async {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        height: 60,
-        width: 60,
+        height: 62,
+        width: 62,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           gradient: isActive
-              ? LinearGradient(colors: [kPrimaryDark, kPrimary], begin: Alignment.topLeft, end: Alignment.bottomRight)
-              : LinearGradient(
-                  colors: [Colors.white.withOpacity(0.98), Colors.grey.shade200.withOpacity(0.95)],
+              ? const LinearGradient(
+                  colors: [Color(0xFF0A6B82), kPrimaryDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
+                )
+              : LinearGradient(
+                  colors: [Colors.white, Colors.grey.shade50],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.28), blurRadius: 14, offset: const Offset(0, 8)),
+            BoxShadow(
+              color: isActive
+                  ? kPrimaryDark.withOpacity(0.45)
+                  : Colors.black.withOpacity(0.15),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+              spreadRadius: 1,
+            ),
+            if (isActive)
+              BoxShadow(
+                color: kAqua.withOpacity(0.18),
+                blurRadius: 24,
+                offset: const Offset(0, 2),
+                spreadRadius: 2,
+              ),
           ],
-          border: Border.all(color: isActive ? Colors.white.withOpacity(0.12) : Colors.black12, width: 1),
+          border: Border.all(
+            color: isActive
+                ? Colors.white.withOpacity(0.22)
+                : Colors.grey.shade200,
+            width: 1.5,
+          ),
         ),
-        child: Center(
-          child: Icon(icon, color: isActive ? Colors.white : kPrimary, size: 35),
+        child: Stack(
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 28,
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withOpacity(isActive ? 0.22 : 0.65),
+                      Colors.white.withOpacity(0),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ),
+            Center(
+              child: Icon(icon, color: isActive ? Colors.white : kPrimary, size: 32),
+            ),
+          ],
         ),
       ),
     );
@@ -4169,52 +4416,114 @@ Future<void> _fetchTrufis() async {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: sheetColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  const SizedBox(height: 12),
                   Container(
-                    width: 50,
-                    height: 5,
+                    width: 42,
+                    height: 4.5,
                     decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(10)),
+                      color: (isDarkMode ? Colors.white24 : Colors.grey[300]),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  Text(
-                    "$type ${t("of_colcapirhua")}",
-                    style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: kPrimary),
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [kPrimaryDark, kPrimary],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: [
+                              BoxShadow(
+                                color: kPrimaryDark.withOpacity(0.25),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            isLookingForTrufi ? Icons.directions_bus_filled : Icons.local_taxi,
+                            color: Colors.white,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "$type ${t("of_colcapirhua")}",
+                                style: const TextStyle(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w900,
+                                  color: kPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                "${dataList.length} disponibles",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: subTextColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const Divider(),
+                  const SizedBox(height: 14),
+                  Divider(height: 1, color: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.06)),
                   SizedBox(
-                    height: 300,
+                    height: 320,
                     child: isLoading && dataList.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const CircularProgressIndicator(color: kPrimary),
-                                const SizedBox(height: 12),
+                                const CircularProgressIndicator(color: kPrimary, strokeWidth: 3),
+                                const SizedBox(height: 14),
                                 Text(t("loading_data"),
-                                    style: TextStyle(color: subTextColor)),
+                                    style: TextStyle(color: subTextColor, fontWeight: FontWeight.w500)),
                               ],
                             ),
                           )
                         : dataList.isEmpty
                             ? Center(
-                                child: Text(
-                                  t("no_data"),
-                                  style: TextStyle(color: subTextColor),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      isLookingForTrufi ? Icons.directions_bus_outlined : Icons.local_taxi_outlined,
+                                      size: 48,
+                                      color: subTextColor.withOpacity(0.4),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      t("no_data"),
+                                      style: TextStyle(color: subTextColor),
+                                    ),
+                                  ],
                                 ),
                               )
-                            : ListView.separated(
+                            : ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
                                 itemCount: dataList.length,
-                                separatorBuilder: (_, __) => const Divider(),
                                 itemBuilder: (context, index) {
                                   final item = dataList[index];
 
@@ -4226,58 +4535,117 @@ Future<void> _fetchTrufis() async {
                                       ? null
                                       : "${t("phone")}: ${item["telefono_base"] ?? 'S/N'}";
 
-                                  return ListTile(
-                                    leading: CircleAvatar(
-                                      backgroundColor: kPrimary.withOpacity(0.12),
-                                      child: Icon(
-                                        isLookingForTrufi
-                                            ? Icons.bus_alert
-                                            : Icons.local_taxi,
-                                        color: kPrimary,
+                                  final cardBg = isDarkMode
+                                      ? const Color(0xFF1A2744)
+                                      : const Color(0xFFF6F9FC);
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Material(
+                                      color: cardBg,
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(14),
+                                        onTap: () async {
+                                          Navigator.pop(sheetCtx);
+
+                                          if (isLookingForTrufi &&
+                                              item["idtrufi"] != null) {
+                                            final id = int.parse(
+                                                item["idtrufi"].toString());
+                                            _mostrarRutaDeUnTrufi(id,
+                                                nombreLinea: titulo);
+                                            return;
+                                          }
+
+                                          if (!isLookingForTrufi) {
+                                            final phone =
+                                                (item["telefono_base"] ?? "")
+                                                    .toString();
+                                            final id = int.tryParse(
+                                                (item["id"] ?? "").toString());
+                                            if (id != null) {
+                                              await _agregarAlHistorial(
+                                                  HistorialItem(
+                                                id: id,
+                                                nombre: titulo,
+                                                tipo: 'radiotaxi',
+                                                telefono: phone,
+                                                fechaUso: DateTime.now(),
+                                              ));
+                                            }
+                                            await _confirmAndCall(phone,
+                                                nombre: titulo, id: id);
+                                          }
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: 42,
+                                                height: 42,
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: isLookingForTrufi
+                                                        ? [kAqua.withOpacity(0.15), kAqua.withOpacity(0.06)]
+                                                        : [kPrimary.withOpacity(0.15), kPrimary.withOpacity(0.06)],
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                  ),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                child: Icon(
+                                                  isLookingForTrufi
+                                                      ? Icons.directions_bus_filled
+                                                      : Icons.local_taxi,
+                                                  color: isLookingForTrufi ? kAqua : kPrimary,
+                                                  size: 22,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      titulo,
+                                                      style: TextStyle(
+                                                        color: textColor,
+                                                        fontWeight: FontWeight.w700,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                    if (subtitulo != null) ...[
+                                                      const SizedBox(height: 3),
+                                                      Text(
+                                                        subtitulo,
+                                                        style: TextStyle(
+                                                          color: subTextColor,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                              Icon(
+                                                isLookingForTrufi
+                                                    ? Icons.arrow_forward_ios_rounded
+                                                    : Icons.phone_rounded,
+                                                color: isLookingForTrufi ? kAqua : kPrimary,
+                                                size: 16,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                    title: Text(titulo,
-                                        style: TextStyle(color: textColor)),
-                                    subtitle: subtitulo != null
-                                        ? Text(subtitulo,
-                                            style: TextStyle(color: subTextColor))
-                                        : null,
-                                    onTap: () async {
-                                      Navigator.pop(sheetCtx);
-
-                                      if (isLookingForTrufi &&
-                                          item["idtrufi"] != null) {
-                                        final id = int.parse(
-                                            item["idtrufi"].toString());
-                                        _mostrarRutaDeUnTrufi(id,
-                                            nombreLinea: titulo);
-                                        return;
-                                      }
-
-                                      if (!isLookingForTrufi) {
-                                        final phone =
-                                            (item["telefono_base"] ?? "")
-                                                .toString();
-                                        final id = int.tryParse(
-                                            (item["id"] ?? "").toString());
-                                        if (id != null) {
-                                          await _agregarAlHistorial(
-                                              HistorialItem(
-                                            id: id,
-                                            nombre: titulo,
-                                            tipo: 'radiotaxi',
-                                            telefono: phone,
-                                            fechaUso: DateTime.now(),
-                                          ));
-                                        }
-                                        await _confirmAndCall(phone,
-                                            nombre: titulo, id: id);
-                                      }
-                                    },
                                   );
                                 },
                               ),
                   ),
+                  const SizedBox(height: 8),
                 ],
               ),
             );
@@ -4303,15 +4671,28 @@ Future<void> _fetchTrufis() async {
             final dividerColor = isDarkMode ? Colors.white12 : Colors.black12;
 
             Widget sectionHeader(String label) => Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                  child: Text(
-                    label.toUpperCase(),
-                    style: TextStyle(
-                      color: sectionHeaderColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                    ),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 3,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: kAqua,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        label.toUpperCase(),
+                        style: TextStyle(
+                          color: sectionHeaderColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.4,
+                        ),
+                      ),
+                    ],
                   ),
                 );
 
@@ -4323,31 +4704,48 @@ Future<void> _fetchTrufis() async {
               bool loading = false,
               VoidCallback? onTap,
             }) =>
-                ListTile(
-                  leading: loading
-                      ? SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
-                        )
-                      : Icon(icon, color: kPrimary, size: 22),
-                  title: Text(
-                    title,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  subtitle: subtitle != null
-                      ? Text(
-                          subtitle,
-                          style: TextStyle(color: subTextColor, fontSize: 12),
-                        )
-                      : null,
-                  trailing: trailing,
-                  onTap: onTap,
-                  minLeadingWidth: 28,
+                  child: ListTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    leading: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: loading ? Colors.transparent : kPrimary.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: loading
+                          ? Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                              ),
+                            )
+                          : Icon(icon, color: kPrimary, size: 20),
+                    ),
+                    title: Text(
+                      title,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: subtitle != null
+                        ? Text(
+                            subtitle,
+                            style: TextStyle(color: subTextColor, fontSize: 12),
+                          )
+                        : null,
+                    trailing: trailing,
+                    onTap: onTap,
+                    minLeadingWidth: 28,
+                  ),
                 );
 
             return Container(
@@ -4355,140 +4753,289 @@ Future<void> _fetchTrufis() async {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [kPrimaryDark.withOpacity(0.98), kPrimary.withOpacity(0.92)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                  ClipRect(
+                    child: Container(
+                      width: double.infinity,
+                      height: 148,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF032D38), Color(0xFF064656), Color(0xFF09596E)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          stops: [0.0, 0.5, 1.0],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF032D38).withOpacity(0.35),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Image.asset('assets/images/logo_colca1.png', width: 110),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            "ColcaTrufis",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
+                      child: Stack(
+                        children: [
+                          // Large circle — top-right, half clipped
+                          Positioned(
+                            right: -45,
+                            top: -45,
+                            child: Container(
+                              width: 170,
+                              height: 170,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(0.07),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                          // Medium circle — bottom-right corner
+                          Positioned(
+                            right: -20,
+                            bottom: -20,
+                            child: Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(0.10),
+                              ),
+                            ),
+                          ),
+                          // Logo — left, vertically centered, slightly larger
+                          Positioned(
+                            left: 20,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: Image.asset(
+                                'assets/images/logo_colca1.png',
+                                width: 112,
+                                height: 112,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
                   sectionHeader("Transporte"),
 
-                  ExpansionTile(
-                    leading: const Icon(Icons.groups, color: kPrimary, size: 22),
-                    title: Text(
-                      t("sindicatos"),
-                      style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
-                    ),
-                    childrenPadding: const EdgeInsets.only(left: 16),
-                    children: _sindicatos.isEmpty
-                        ? [
-                            Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Row(
-                                children: [
-                                  const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    child: Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                        leading: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: kPrimary.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: const Icon(Icons.groups, color: kPrimary, size: 20),
+                        ),
+                        title: Text(
+                          t("sindicatos"),
+                          style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                        childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                        children: _sindicatos.isEmpty
+                            ? [
+                                Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(t("loading_data"), style: TextStyle(color: subTextColor, fontSize: 13)),
+                                    ],
                                   ),
-                                  const SizedBox(width: 10),
-                                  Text(t("loading_data"), style: TextStyle(color: subTextColor, fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                          ]
-                        : _sindicatos.map((s) {
-                            final String sindicatoNombre = s["nombre"] ?? "Sin Nombre";
-                            final List trufis = (s["trufis"] as List? ?? []);
+                                ),
+                              ]
+                            : _sindicatos.map((s) {
+                                final String sindicatoNombre = s["nombre"] ?? "Sin Nombre";
+                                final List trufis = (s["trufis"] as List? ?? []);
 
-                            return ExpansionTile(
-                              leading: const Icon(Icons.account_balance, color: kPrimary, size: 20),
-                              title: Text(sindicatoNombre, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w600)),
-                              childrenPadding: const EdgeInsets.only(left: 16),
-                              children: trufis.map<Widget>((tr) {
-                                final linea = (tr["nom_linea"] ?? "").toString();
-                                final id = int.tryParse((tr["idtrufi"] ?? "").toString());
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 4),
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode ? Colors.white.withOpacity(0.04) : kPrimary.withOpacity(0.03),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Theme(
+                                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                                    child: ExpansionTile(
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                                      leading: Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: BoxDecoration(
+                                          color: kPrimary.withOpacity(0.08),
+                                          borderRadius: BorderRadius.circular(9),
+                                        ),
+                                        child: const Icon(Icons.account_balance, color: kPrimary, size: 16),
+                                      ),
+                                      title: Text(sindicatoNombre, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w600)),
+                                      childrenPadding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+                                      children: trufis.map<Widget>((tr) {
+                                        final linea = (tr["nom_linea"] ?? "").toString();
+                                        final id = int.tryParse((tr["idtrufi"] ?? "").toString());
 
-                                return ListTile(
-                                  dense: true,
-                                  minLeadingWidth: 24,
-                                  leading: const Icon(Icons.directions_bus, color: kPrimary, size: 18),
-                                  title: Text(linea, style: TextStyle(color: textColor, fontSize: 13)),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    setState(() => isTrufiSelected = true);
-                                    if (id != null) _mostrarRutaDeUnTrufi(id, nombreLinea: linea);
-                                  },
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 3),
+                                          child: Material(
+                                            color: isDarkMode ? Colors.white.withOpacity(0.05) : Colors.white,
+                                            borderRadius: BorderRadius.circular(10),
+                                            child: InkWell(
+                                              borderRadius: BorderRadius.circular(10),
+                                              onTap: () {
+                                                Navigator.pop(context);
+                                                setState(() => isTrufiSelected = true);
+                                                if (id != null) _mostrarRutaDeUnTrufi(id, nombreLinea: linea);
+                                              },
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      width: 26,
+                                                      height: 26,
+                                                      decoration: BoxDecoration(
+                                                        color: kAqua.withOpacity(0.12),
+                                                        borderRadius: BorderRadius.circular(7),
+                                                      ),
+                                                      child: const Icon(Icons.directions_bus, color: kAqua, size: 14),
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(child: Text(linea, style: TextStyle(color: textColor, fontSize: 13))),
+                                                    Icon(Icons.chevron_right_rounded, color: subTextColor.withOpacity(0.4), size: 18),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
                                 );
                               }).toList(),
-                            );
-                          }).toList(),
-                  ),
-
-                  ExpansionTile(
-                    leading: const Icon(Icons.local_taxi, color: kPrimary, size: 22),
-                    title: Text(
-                      t("radiotaxis"),
-                      style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
                     ),
-                    childrenPadding: const EdgeInsets.only(left: 16),
-                    children: _radioTaxis.isEmpty
-                        ? [
-                            Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Row(
-                                children: [
-                                  const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(t("loading_data"), style: TextStyle(color: subTextColor, fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                          ]
-                        : _radioTaxis.map((rt) {
-                            final phone = (rt["telefono_base"] ?? "").toString();
-                            final nombre = rt["nombre_comercial"] ?? "Radiotaxi";
-                            final id = int.tryParse((rt["id"] ?? "").toString());
-
-                            return ListTile(
-                              dense: true,
-                              minLeadingWidth: 24,
-                              leading: const Icon(Icons.phone, color: kPrimary, size: 18),
-                              title: Text(nombre, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w600)),
-                              onTap: () async {
-                                Navigator.pop(context);
-                                setState(() => isTrufiSelected = false);
-                                if (id != null) {
-                                  await _agregarAlHistorial(HistorialItem(
-                                    id: id,
-                                    nombre: nombre,
-                                    tipo: 'radiotaxi',
-                                    telefono: phone,
-                                    fechaUso: DateTime.now(),
-                                  ));
-                                }
-                                await _confirmAndCall(phone, nombre: nombre, id: id);
-                              },
-                            );
-                          }).toList(),
                   ),
 
-                  Divider(height: 1, color: dividerColor),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    child: Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                        leading: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: kPrimary.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: const Icon(Icons.local_taxi, color: kPrimary, size: 20),
+                        ),
+                        title: Text(
+                          t("radiotaxis"),
+                          style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                        childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                        children: _radioTaxis.isEmpty
+                            ? [
+                                Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(t("loading_data"), style: TextStyle(color: subTextColor, fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
+                              ]
+                            : _radioTaxis.map((rt) {
+                                final phone = (rt["telefono_base"] ?? "").toString();
+                                final nombre = rt["nombre_comercial"] ?? "Radiotaxi";
+                                final id = int.tryParse((rt["id"] ?? "").toString());
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 3),
+                                  child: Material(
+                                    color: isDarkMode ? Colors.white.withOpacity(0.05) : Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(10),
+                                      onTap: () async {
+                                        Navigator.pop(context);
+                                        setState(() => isTrufiSelected = false);
+                                        if (id != null) {
+                                          await _agregarAlHistorial(HistorialItem(
+                                            id: id,
+                                            nombre: nombre,
+                                            tipo: 'radiotaxi',
+                                            telefono: phone,
+                                            fechaUso: DateTime.now(),
+                                          ));
+                                        }
+                                        await _confirmAndCall(phone, nombre: nombre, id: id);
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 26,
+                                              height: 26,
+                                              decoration: BoxDecoration(
+                                                color: kPrimary.withOpacity(0.10),
+                                                borderRadius: BorderRadius.circular(7),
+                                              ),
+                                              child: const Icon(Icons.local_taxi, color: kPrimary, size: 14),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(nombre, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w600)),
+                                                  if (phone.isNotEmpty)
+                                                    Text(phone, style: TextStyle(color: subTextColor, fontSize: 11.5)),
+                                                ],
+                                              ),
+                                            ),
+                                            Icon(Icons.phone_rounded, color: kPrimary.withOpacity(0.5), size: 17),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                      ),
+                    ),
+                  ),
+
+                  Divider(height: 1, indent: 20, endIndent: 20, color: dividerColor),
 
                   sectionHeader("Información y Servicios"),
 
@@ -4537,24 +5084,42 @@ Future<void> _fetchTrufis() async {
                     },
                   ),
 
-                  Divider(height: 1, color: dividerColor),
+                  const SizedBox(height: 6),
+                  Divider(height: 1, indent: 20, endIndent: 20, color: dividerColor),
 
                   sectionHeader("Municipio de Colcapirhua"),
 
-                  ExpansionTile(
-                    leading: const Icon(Icons.share, color: kPrimary, size: 22),
-                    title: Text(
-                      t("social_networks"),
-                      style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    child: Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                        leading: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: kPrimary.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: const Icon(Icons.share, color: kPrimary, size: 20),
+                        ),
+                        title: Text(
+                          t("social_networks"),
+                          style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                        childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                        children: [
+                          _socialTile(Icons.music_note, "TikTok", "https://www.tiktok.com/@gamdecolcapirhua?is_from_webapp=1&sender_device=pc", textColor),
+                          _socialTile(Icons.play_circle, "YouTube", "https://www.youtube.com/@gamdecolcapirhua", textColor),
+                          _socialTile(Icons.facebook, "Facebook", "https://www.facebook.com/municipiodecolcapirhua", textColor),
+                          _socialTile(Icons.camera_alt, "Instagram", "https://www.instagram.com/alcaldiadecolcapirhua", textColor),
+                          _socialTile(Icons.close, "X (Twitter)", "https://x.com/GAMColcapirhua", textColor),
+                        ],
+                      ),
                     ),
-                    childrenPadding: const EdgeInsets.only(left: 16),
-                    children: [
-                      _socialTile(Icons.music_note, "TikTok", "https://www.tiktok.com/@gamdecolcapirhua?is_from_webapp=1&sender_device=pc", textColor),
-                      _socialTile(Icons.play_circle, "YouTube", "https://www.youtube.com/@gamdecolcapirhua", textColor),
-                      _socialTile(Icons.facebook, "Facebook", "https://www.facebook.com/municipiodecolcapirhua", textColor),
-                      _socialTile(Icons.camera_alt, "Instagram", "https://www.instagram.com/alcaldiadecolcapirhua", textColor),
-                      _socialTile(Icons.close, "X (Twitter)", "https://x.com/GAMColcapirhua", textColor),
-                    ],
                   ),
 
                   drawerTile(
@@ -4568,68 +5133,98 @@ Future<void> _fetchTrufis() async {
                     },
                   ),
 
-                  Divider(height: 1, color: dividerColor),
+                  const SizedBox(height: 6),
+                  Divider(height: 1, indent: 20, endIndent: 20, color: dividerColor),
 
                   sectionHeader("Configuración"),
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.language, color: kPrimary, size: 22),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            t("language"),
-                            style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
-                          ),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    child: ListTile(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      leading: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: kPrimary.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(11),
                         ),
-                        ValueListenableBuilder<String>(
-                          valueListenable: AppSettings.language,
-                          builder: (_, lang, __) {
-                            return DropdownButton<String>(
-                              value: lang,
-                              dropdownColor: bg,
-                              style: TextStyle(color: textColor, fontSize: 13),
-                              underline: const SizedBox.shrink(),
-                              items: const [
-                                DropdownMenuItem(value: "es", child: Text("Español")),
-                                DropdownMenuItem(value: "en", child: Text("English")),
-                                DropdownMenuItem(value: "qu", child: Text("Quechua")),
-                              ],
-                              onChanged: (v) {
-                                if (v != null) AppSettings.language.value = v;
-                              },
-                            );
-                          },
-                        ),
-                      ],
+                        child: const Icon(Icons.language, color: kPrimary, size: 20),
+                      ),
+                      title: Text(
+                        t("language"),
+                        style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      trailing: ValueListenableBuilder<String>(
+                        valueListenable: AppSettings.language,
+                        builder: (_, lang, __) {
+                          return DropdownButton<String>(
+                            value: lang,
+                            dropdownColor: bg,
+                            style: TextStyle(color: textColor, fontSize: 13),
+                            underline: const SizedBox.shrink(),
+                            items: const [
+                              DropdownMenuItem(value: "es", child: Text("Español")),
+                              DropdownMenuItem(value: "en", child: Text("English")),
+                              DropdownMenuItem(value: "qu", child: Text("Quechua")),
+                            ],
+                            onChanged: (v) {
+                              if (v != null) AppSettings.language.value = v;
+                            },
+                          );
+                        },
+                      ),
+                      minLeadingWidth: 28,
                     ),
                   ),
 
-                  SwitchListTile(
-                    value: AppSettings.darkMode.value,
-                    activeColor: kPrimary,
-                    title: Text(
-                      t("darkmode"),
-                      style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    child: SwitchListTile(
+                      value: AppSettings.darkMode.value,
+                      activeColor: kAqua,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      title: Text(
+                        t("darkmode"),
+                        style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      onChanged: (v) => AppSettings.darkMode.value = v,
+                      secondary: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: kPrimary.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: const Icon(Icons.dark_mode, color: kPrimary, size: 20),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     ),
-                    onChanged: (v) => AppSettings.darkMode.value = v,
-                    secondary: const Icon(Icons.dark_mode, color: kPrimary, size: 22),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   ),
 
                   ValueListenableBuilder<double>(
                     valueListenable: AppSettings.radiusMeters,
                     builder: (context, meters, _) {
-                      return Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.radio_button_checked, color: kPrimary, size: 22),
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: kPrimary.withOpacity(0.10),
+                                    borderRadius: BorderRadius.circular(11),
+                                  ),
+                                  child: const Icon(Icons.radio_button_checked, color: kPrimary, size: 20),
+                                ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
@@ -4637,19 +5232,37 @@ Future<void> _fetchTrufis() async {
                                     style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
                                   ),
                                 ),
-                                Text(
-                                  "${meters.round()} m",
-                                  style: TextStyle(color: kPrimary, fontSize: 13, fontWeight: FontWeight.w700),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: kPrimary.withOpacity(0.10),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    "${meters.round()} m",
+                                    style: const TextStyle(color: kPrimary, fontSize: 12, fontWeight: FontWeight.w700),
+                                  ),
                                 ),
                               ],
                             ),
-                            Slider(
-                              value: meters.clamp(50, 2000),
-                              min: 50,
-                              max: 2000,
-                              divisions: 39,
-                              activeColor: kPrimary,
-                              onChanged: (v) => AppSettings.radiusMeters.value = v,
+                            const SizedBox(height: 4),
+                            SliderTheme(
+                              data: SliderThemeData(
+                                trackHeight: 3,
+                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                                activeTrackColor: kPrimary,
+                                inactiveTrackColor: kPrimary.withOpacity(0.12),
+                                thumbColor: kPrimary,
+                                overlayColor: kPrimary.withOpacity(0.10),
+                              ),
+                              child: Slider(
+                                value: meters.clamp(50, 2000),
+                                min: 50,
+                                max: 2000,
+                                divisions: 39,
+                                onChanged: (v) => AppSettings.radiusMeters.value = v,
+                              ),
                             ),
                           ],
                         ),
@@ -4709,7 +5322,8 @@ Future<void> _fetchTrufis() async {
                     },
                   ),
 
-                  Divider(height: 1, color: dividerColor),
+                  const SizedBox(height: 6),
+                  Divider(height: 1, indent: 20, endIndent: 20, color: dividerColor),
 
                   sectionHeader("Acerca de"),
 
@@ -4744,14 +5358,39 @@ Future<void> _fetchTrufis() async {
   }
 
   Widget _socialTile(IconData icon, String name, String url, Color textColor) {
-    return ListTile(
-      dense: true,
-      minLeadingWidth: 24,
-      leading: Icon(icon, color: kPrimary, size: 18),
-      title: Text(name, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w500)),
-      onTap: () async {
-        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-      },
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () async {
+            await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            child: Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: kPrimary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: kPrimary, size: 15),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(name, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w500)),
+                ),
+                Icon(Icons.open_in_new, size: 13, color: textColor.withOpacity(0.25)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
