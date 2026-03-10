@@ -15,7 +15,7 @@ class ReferenciaController extends Controller
         $perPage = (int) $request->query('per_page', 20);
 
         $referencias = Referencia::query()
-            ->select(['id', 'referencia', 'referenciable_type', 'referenciable_id', 'created_at'])
+            ->select(['id', 'referencia', 'referenciable_type', 'referenciable_id', 'latitud', 'longitud', 'created_at'])
             ->orderByDesc('id')
             ->paginate($perPage);
 
@@ -26,7 +26,7 @@ class ReferenciaController extends Controller
     public function show($id)
     {
         $ref = Referencia::query()
-            ->select(['id', 'referencia', 'referenciable_type', 'referenciable_id', 'created_at'])
+            ->select(['id', 'referencia', 'referenciable_type', 'referenciable_id', 'latitud', 'longitud', 'created_at'])
             ->findOrFail($id);
 
         return response()->json($ref);
@@ -48,7 +48,7 @@ public function byTrufi($idtrufi, Request $request)
             'trufi',                      // Si Alguna Vez Usas morphMap
         ])
         ->where('referenciable_id', $idtrufi)
-        ->select(['id', 'referencia', 'created_at'])
+        ->select(['id', 'referencia', 'latitud', 'longitud', 'created_at'])
         ->orderByDesc('id')
         ->paginate($perPage);
 
@@ -65,7 +65,7 @@ public function byTrufi($idtrufi, Request $request)
     $referencias = Referencia::query()
         ->where('referenciable_type', 'App\\\\Models\\\\Sindicatoradiotaxi')
         ->where('referenciable_id', $id)
-        ->select(['id', 'referencia', 'created_at'])
+        ->select(['id', 'referencia', 'latitud', 'longitud', 'created_at'])
         ->orderByDesc('id')
         ->paginate($perPage);
 

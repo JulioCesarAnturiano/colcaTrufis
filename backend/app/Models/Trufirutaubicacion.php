@@ -12,7 +12,10 @@ class Trufirutaubicacion extends Model
         'idtrufi',
         'orden',
         'nombre_via',
+        'interseccion',
         'tipo_via',
+        'latitud',
+        'longitud',
         'meta',
         'estado',
     ];

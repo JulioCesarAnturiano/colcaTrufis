@@ -12,6 +12,8 @@ class Referencia extends Model
         'referencia',
         'referenciable_id',
         'referenciable_type',
+        'latitud',
+        'longitud',
     ];
 
     public function referenciable()

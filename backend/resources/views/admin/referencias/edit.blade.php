@@ -87,6 +87,22 @@
                     <input type="hidden" name="referenciable_id" id="referenciableId" value="">
                 </div>
 
+                <!-- Mapa para Seleccionar Ubicación -->
+                <div class="mb-3">
+                    <label class="form-label">📍 Ubicación (Haz click en el mapa para marcar)</label>
+                    <div id="mapContainerRef" style="height: 400px; border: 1px solid #ddd; border-radius: 0.5rem; margin-bottom: 10px;"></div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label>Latitud</label>
+                            <input type="number" step="0.00000001" name="latitud" id="latitudInput" class="form-control" placeholder="Latitud" value="{{ old('latitud', $referencia->latitud) }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label>Longitud</label>
+                            <input type="number" step="0.00000001" name="longitud" id="longitudInput" class="form-control" placeholder="Longitud" value="{{ old('longitud', $referencia->longitud) }}">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="d-flex gap-2">
                     <button class="btn btn-primary" type="submit">Actualizar</button>
                     <a href="{{ route('admin.referencias') }}" class="btn btn-secondary">Cancelar</a>
@@ -144,5 +160,88 @@
     // Estado Inicial
     sync();
 })();
+</script>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<!-- Leaflet JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<script>
+// Inicializar Mapa
+document.addEventListener('DOMContentLoaded', function() {
+    const defaultLat = -17.3895; // Cochabamba
+    const defaultLng = -66.1577;
+    const mapContainer = document.getElementById('mapContainerRef');
+    
+    if (!mapContainer) return;
+    
+    const map = L.map(mapContainer).setView([defaultLat, defaultLng], 13);
+    
+    // OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+    }).addTo(map);
+    
+    let marker = null;
+    
+    // Click en mapa para marcar ubicación
+    map.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        
+        // Actualizar inputs
+        document.getElementById('latitudInput').value = lat.toFixed(8);
+        document.getElementById('longitudInput').value = lng.toFixed(8);
+        
+        // Actualizar o crear marcador
+        if (marker) {
+            marker.setLatLng([lat, lng]);
+        } else {
+            marker = L.marker([lat, lng]).addTo(map);
+        }
+        
+        marker.bindPopup(`<b>Ubicación seleccionada</b><br>Lat: ${lat.toFixed(8)}<br>Lng: ${lng.toFixed(8)}`).openPopup();
+    });
+    
+    // Cargar marcador si hay valores previos
+    const latInput = document.getElementById('latitudInput');
+    const lngInput = document.getElementById('longitudInput');
+    
+    if (latInput.value && lngInput.value) {
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(lngInput.value);
+        marker = L.marker([lat, lng]).addTo(map);
+        map.setView([lat, lng], 15);
+    }
+    
+    // Actualizar mapa cuando cambien los inputs
+    latInput.addEventListener('change', function() {
+        const lat = parseFloat(this.value);
+        const lng = parseFloat(lngInput.value);
+        if (lat && lng) {
+            if (marker) {
+                marker.setLatLng([lat, lng]);
+            } else {
+                marker = L.marker([lat, lng]).addTo(map);
+            }
+            map.setView([lat, lng], 15);
+        }
+    });
+    
+    lngInput.addEventListener('change', function() {
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(this.value);
+        if (lat && lng) {
+            if (marker) {
+                marker.setLatLng([lat, lng]);
+            } else {
+                marker = L.marker([lat, lng]).addTo(map);
+            }
+            map.setView([lat, lng], 15);
+        }
+    });
+});
 </script>
 @endsection

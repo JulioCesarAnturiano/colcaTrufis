@@ -34,6 +34,8 @@ class ReferenciaAdminController extends Controller
             'referencia'         => ['required', 'string', 'max:255'],
             'referenciable_id'   => ['required', 'integer'],
             'referenciable_type' => ['required', 'string', 'max:255'],
+            'latitud'            => ['nullable', 'numeric', 'between:-90,90'],
+            'longitud'           => ['nullable', 'numeric', 'between:-180,180'],
         ]);
 
         Referencia::create($data);
@@ -63,6 +65,8 @@ class ReferenciaAdminController extends Controller
             'referencia'         => ['required', 'string', 'max:255'],
             'referenciable_id'   => ['required', 'integer'],
             'referenciable_type' => ['required', 'string', 'max:255'],
+            'latitud'            => ['nullable', 'numeric', 'between:-90,90'],
+            'longitud'           => ['nullable', 'numeric', 'between:-180,180'],
         ]);
 
         $referencia->update($data);

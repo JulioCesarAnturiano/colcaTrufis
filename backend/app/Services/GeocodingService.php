@@ -12,7 +12,7 @@ class GeocodingService
         // Cache Para No Llamar Mil Veces Al Mismo Punto.
         $key = 'revgeo:' . round($lat, 5) . ':' . round($lng, 5);
 
-        return Cache::remember($key, now()->addDays(7), function () use ($lat, $lng) {
+        return Cache::remember($key, now()->addHours(1), function () use ($lat, $lng) {
 
             $res = Http::timeout(10)
                 ->withHeaders([
@@ -34,31 +34,57 @@ class GeocodingService
 
             $addr = $data['address'] ?? [];
 
-            // “Road” Es Lo Más Común, Pero A Veces Viene Con Otros Campos.
+            // Buscar ubicación en orden de prioridad
+            // Incluye más opciones para ciudades pequeñas y zonas
             $road =
                 $addr['road'] ??
+                $addr['street'] ??
+                $addr['residential'] ??
                 $addr['pedestrian'] ??
                 $addr['footway'] ??
                 $addr['path'] ??
                 $addr['cycleway'] ??
-                $addr['street'] ??
+                $addr['highway'] ??
                 $addr['neighbourhood'] ??
+                $addr['suburb'] ??
+                $addr['quarter'] ??
                 null;
 
             if (!$road) return null;
 
+            // Buscar calle transversal (intersección)
+            $interseccion = null;
+            
+            // Intentar extraer una segunda calle de la dirección
+            $posiblesIntersecciones = [];
+            foreach ($addr as $key => $value) {
+                if (in_array($key, ['street', 'residential', 'highway', 'pedestrian', 'footway']) && $value !== $road) {
+                    $posiblesIntersecciones[] = $value;
+                    break;
+                }
+            }
+            
+            if (!empty($posiblesIntersecciones)) {
+                $interseccion = $posiblesIntersecciones[0];
+            } else if (isset($addr['house_number'])) {
+                // Si no hay intersección, usar el número de casa como referencia
+                $interseccion = 'N° ' . $addr['house_number'];
+            }
+
             return [
                 'nombre_via' => $road,
+                'interseccion' => $interseccion,
                 'tipo_via' => null,
+                'latitud' => (float) ($data['lat'] ?? $lat),
+                'longitud' => (float) ($data['lon'] ?? $lng),
                 'meta' => $data,
             ];
         });
     }
 
-    public function buildUbicacionesFromCoords(array $coords, int $sampleEvery = 10): array
+    public function buildUbicacionesFromCoords(array $coords, int $sampleEvery = 2): array
     {
         $ubicaciones = [];
-        $lastNombre = null;
 
         $total = count($coords);
         if ($total === 0) return [];
@@ -77,16 +103,11 @@ class GeocodingService
             $nombre = trim((string) $info['nombre_via']);
             if ($nombre === '') continue;
 
-            // Quitar Repetidos Consecutivos.
-            if ($lastNombre && mb_strtolower($lastNombre) === mb_strtolower($nombre)) {
-                continue;
-            }
-
+            // Agregar todas las ubicaciones sin filtrado de duplicados
             $ubicaciones[] = $info;
-            $lastNombre = $nombre;
 
             // Pequeña Pausa Para Evitar Rate Limit En Rutas Largas.
-            usleep(250000); // 0.25s
+            usleep(50000); // 50ms
         }
 
         return $ubicaciones;

@@ -86,6 +86,10 @@ Route::prefix('admin')->middleware(['auth', 'role:admin|encargado'])->group(func
     ->middleware('permission:admin.rutas.editar')
     ->name('admin.rutas.actualizar');
 
+    Route::get('/rutas/{idtrufi}/ubicaciones', [RutaAdminController::class, 'verUbicaciones'])
+    ->middleware('permission:admin.rutas.ver')
+    ->name('admin.rutas.ver_ubicaciones');
+
     Route::delete('/rutas/{idtrufi}', [RutaAdminController::class, 'eliminarRuta'])
     ->middleware('permission:admin.rutas.eliminar')
     ->name('admin.rutas.eliminar');

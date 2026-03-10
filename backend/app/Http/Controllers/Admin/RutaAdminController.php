@@ -119,7 +119,7 @@ public function listarRutas(Request $request)
         // 2) Generar Ubicaciones (Calles) Y Guardarlas.
         Trufirutaubicacion::where('idtrufi', $idtrufi)->delete();
 
-        $ubicaciones = $geoService->buildUbicacionesFromCoords($coords, 10);
+        $ubicaciones = $geoService->buildUbicacionesFromCoords($coords, 2);
 
         $ordenU = 1;
         foreach ($ubicaciones as $u) {
@@ -127,7 +127,10 @@ public function listarRutas(Request $request)
                 'idtrufi' => $idtrufi,
                 'orden' => $ordenU,
                 'nombre_via' => $u['nombre_via'],
+                'interseccion' => $u['interseccion'] ?? null,
                 'tipo_via' => $u['tipo_via'] ?? null,
+                'latitud' => $u['latitud'] ?? null,
+                'longitud' => $u['longitud'] ?? null,
                 'meta' => $u['meta'] ?? null,
                 'estado' => 1,
             ]);
@@ -227,7 +230,7 @@ public function actualizarRuta(Request $request, $idtrufi, \App\Services\Geocodi
         // 3) Reemplazar ubicaciones (calles) de la ruta.
         \App\Models\Trufirutaubicacion::where('idtrufi', (int) $idtrufi)->delete();
 
-        $ubicaciones = $geoService->buildUbicacionesFromCoords($coords, 10); // Cada 10 puntos (ajustable)
+        $ubicaciones = $geoService->buildUbicacionesFromCoords($coords, 2); // Cada 2 puntos (captura calles menores)
 
         $ordenU = 1;
         foreach ($ubicaciones as $u) {
@@ -235,7 +238,10 @@ public function actualizarRuta(Request $request, $idtrufi, \App\Services\Geocodi
                 'idtrufi' => (int) $idtrufi,
                 'orden' => $ordenU,
                 'nombre_via' => $u['nombre_via'],
+                'interseccion' => $u['interseccion'] ?? null,
                 'tipo_via' => $u['tipo_via'] ?? null,
+                'latitud' => $u['latitud'] ?? null,
+                'longitud' => $u['longitud'] ?? null,
                 'meta' => $u['meta'] ?? null,
                 'estado' => 1,
             ]);
@@ -251,6 +257,30 @@ public function actualizarRuta(Request $request, $idtrufi, \App\Services\Geocodi
 
         return back()->with('error', 'Error al reemplazar la ruta y sus ubicaciones.')->withInput();
     }
+}
+
+public function verUbicaciones($idtrufi)
+{
+    $usuario = request()->user();
+    if (!$usuario) return redirect()->route('login');
+
+    $trufi = Trufi::where('idtrufi', (int) $idtrufi)->first();
+    if (!$trufi) return abort(404);
+
+    // Obtener los puntos de la ruta
+    $puntos = DB::table('trufi_rutas')
+        ->where('idtrufi', (int) $idtrufi)
+        ->orderBy('orden')
+        ->get(['latitud', 'longitud'])
+        ->map(fn($p) => [(float)$p->longitud, (float)$p->latitud])
+        ->toArray();
+
+    // Obtener las ubicaciones (calles)
+    $ubicaciones = Trufirutaubicacion::where('idtrufi', (int) $idtrufi)
+        ->orderBy('orden')
+        ->get();
+
+    return view('admin.rutas.ver_ubicaciones', compact('trufi', 'puntos', 'ubicaciones', 'idtrufi'));
 }
 
 public function eliminarRuta($idtrufi)

@@ -137,7 +137,7 @@ public function ubicacionesPorTrufi($idtrufi)
     $ubicaciones = Trufirutaubicacion::where('idtrufi', (int) $idtrufi)
         ->where('estado', 1)
         ->orderBy('orden', 'asc')
-        ->get(['idtrufi', 'orden', 'nombre_via', 'tipo_via']);
+        ->get(['idtrufi', 'orden', 'nombre_via', 'interseccion', 'tipo_via', 'latitud', 'longitud']);
 
     return response()->json($ubicaciones);
 }
@@ -145,10 +145,10 @@ public function ubicacionesPorTrufi($idtrufi)
 // GET /api/ubicaciones
 public function ubicacionesTodas()
 {
-    $data =Trufirutaubicacion::where('estado', 1)
+    $data = Trufirutaubicacion::where('estado', 1)
         ->orderBy('idtrufi', 'asc')
         ->orderBy('orden', 'asc')
-        ->get(['idtrufi', 'orden', 'nombre_via', 'tipo_via']);
+        ->get(['idtrufi', 'orden', 'nombre_via', 'interseccion', 'tipo_via', 'latitud', 'longitud']);
 
     return response()->json($data);
 }

@@ -53,6 +53,16 @@
                                     <td>
                                         <div class="d-flex gap-1">
 
+                                            @can('admin.rutas.ver')
+                                                <a
+                                                    href="{{ route('admin.rutas.ver_ubicaciones', ['idtrufi' => $r->idtrufi]) }}"
+                                                    class="btn ct-btn ct-btn-success btn-sm"
+                                                    title="Ver ubicaciones y ruta en el mapa"
+                                                >
+                                                    Ver Rutas
+                                                </a>
+                                            @endcan
+
                                             @can('admin.rutas.editar')
                                                 <a
                                                     href="{{ route('admin.rutas.editar', ['idtrufi' => $r->idtrufi]) }}"
