@@ -40,4 +40,16 @@ class TrufiController extends Controller
         $trufi->delete();
         return response()->json(['message' => 'Trufi eliminado']);
     }
+
+    // GET /api/trufis/{id}/horario
+    public function horario($id)
+    {
+        $trufi = Trufi::with('detalle')->where('idtrufi', $id)->firstOrFail();
+        return response()->json([
+            'idtrufi'      => $trufi->idtrufi,
+            'nom_linea'    => $trufi->nom_linea,
+            'hora_entrada' => $trufi->detalle?->hora_entrada,
+            'hora_salida'  => $trufi->detalle?->hora_salida,
+        ]);
+    }
 }

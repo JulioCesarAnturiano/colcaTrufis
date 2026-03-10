@@ -78,4 +78,77 @@ class ApiService {
     throw Exception('Formato inesperado para GeoJSON Todas Rutas');
   }
 
+  // Referencias
+  Future<List<dynamic>> getReferencias() async {
+    final data = await _get('/referencias');
+    print("🔍 getReferencias() retornó: $data (tipo: ${data.runtimeType})");
+    if (data is List) return data;
+    print("⚠️ Esperaba List, recibí ${data.runtimeType}");
+    return [];
+  }
+
+  Future<List<dynamic>> getReferenciasDestrufi(int idTrufi) async {
+    final data = await _get('/trufis/$idTrufi/referencias');
+    print("🔍 getReferenciasDestrufi($idTrufi) retornó: $data (tipo: ${data.runtimeType})");
+    
+    // Si es paginación Laravel con 'data' adentro
+    if (data is Map && data['data'] is List) {
+      final referencias = data['data'] as List;
+      print("✅ Referencias extraídas del JSON paginado: ${referencias.length}");
+      return referencias;
+    }
+    
+    // Si es directo List
+    if (data is List) return data;
+    
+    print("⚠️ Esperaba List o Map con 'data', recibí ${data.runtimeType}");
+    return [];
+  }
+
+  Future<List<dynamic>> getReferenciasDeRadiotaxi(int idRadiotaxi) async {
+    final data = await _get('/radiotaxis/$idRadiotaxi/referencias');
+    print("🔍 getReferenciasDeRadiotaxi($idRadiotaxi) retornó: $data (tipo: ${data.runtimeType})");
+    
+    // Si es paginación Laravel con 'data' adentro
+    if (data is Map && data['data'] is List) {
+      final referencias = data['data'] as List;
+      print("✅ Referencias extraídas del JSON paginado: ${referencias.length}");
+      return referencias;
+    }
+    
+    // Si es directo List
+    if (data is List) return data;
+    
+    print("⚠️ Esperaba List o Map con 'data', recibí ${data.runtimeType}");
+    return [];
+  }
+
+  // Ubicaciones
+  Future<List<dynamic>> getUbicacionesPorTrufi(int idTrufi) async {
+    final data = await _get('/trufis/$idTrufi/ubicaciones');
+    print("🔍 getUbicacionesPorTrufi($idTrufi) retornó: $data (tipo: ${data.runtimeType})");
+    if (data is List) return data;
+    print("⚠️ Esperaba List, recibí ${data.runtimeType}");
+    return [];
+  }
+
+  Future<List<dynamic>> getUbicacionesTodas() async {
+    final data = await _get('/ubicaciones');
+    print("🔍 getUbicacionesTodas() retornó: $data (tipo: ${data.runtimeType})");
+    if (data is List) return data;
+    print("⚠️ Esperaba List, recibí ${data.runtimeType}");
+    return [];
+  }
+
+  // Horario del trufi (hora_entrada, hora_salida)
+  Future<Map<String, dynamic>> getTrufiHorario(int idtrufi) async {
+    try {
+      final data = await _get('/trufis/$idtrufi/horario');
+      if (data is Map) return Map<String, dynamic>.from(data);
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
 }
