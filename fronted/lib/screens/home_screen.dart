@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../config.dart';
 
 const Color kPrimary = Color(0xFF09596E);
 const Color kPrimaryDark = Color(0xFF064656);
@@ -71,9 +72,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isTrufiSelected = true;
   final MapController _mapController = MapController();
 
-  final ApiService _apiService = ApiService(baseUrl: "http://127.0.0.1:8000/api");
+  final ApiService _apiService = ApiService(baseUrl: kApiBaseUrl);
 
-  static const String _apiBase = "http://127.0.0.1:8000/api";
+  static const String _apiBase = kApiBaseUrl;
 
   Position? _currentPosition;
 
@@ -141,6 +142,9 @@ class _HomeScreenState extends State<HomeScreen> {
   static const String _kHistorialTrufisKey = 'historial_trufis_v1';
   static const String _kHistorialRadiotaxisKey = 'historial_radiotaxis_v1';
   static const int _kMaxHistorial = 20;
+
+  // Temporary named location marker shown when navigating to a reference/stop
+  Marker? _tempLocationMarker;
 
   List<Map<String, dynamic>> _reclamos = [];
   bool _isLoadingReclamos = false;
@@ -1287,9 +1291,11 @@ Future<void> _fetchTrufis() async {
           width: w,
           height: 34,
           alignment: Alignment.bottomCenter,
-          child: Transform.translate(
-            offset: const Offset(0, 22),
-            child: _paradaNamePill(name),
+          child: IgnorePointer(
+            child: Transform.translate(
+              offset: const Offset(0, 22),
+              child: _paradaNamePill(name),
+            ),
           ),
         ),
       );
@@ -1528,53 +1534,7 @@ Future<void> _fetchTrufis() async {
                           ],
                         ),
                       )
-                    : items.length == 1
-                        ? Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: GestureDetector(
-                              onTap: () {
-                                final lat = double.tryParse((items[0]['latitud'] ?? '').toString());
-                                final lng = double.tryParse((items[0]['longitud'] ?? '').toString());
-                                if (lat != null && lng != null) {
-                                  Navigator.pop(context);
-                                  _mapController.move(LatLng(lat, lng), 17.0);
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: cardBg,
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(color: kPrimary.withOpacity(0.15), width: 1.5),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 52,
-                                      height: 52,
-                                      decoration: BoxDecoration(
-                                        color: kPrimary.withOpacity(0.12),
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      child: const Icon(Icons.place_rounded, color: kPrimary, size: 28),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Text(
-                                        (items[0]['referencia'] ?? items[0]['nombre'] ?? items[0]['name'] ?? '').toString(),
-                                        style: TextStyle(
-                                          color: textColor,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
+                    : ListView.builder(
                             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                             itemCount: items.length,
                             itemBuilder: (context, index) {
@@ -1593,6 +1553,7 @@ Future<void> _fetchTrufis() async {
                                         ? () {
                                             Navigator.pop(context);
                                             _mapController.move(LatLng(lat, lng), 17.0);
+                                            _showTempLocationMarker(LatLng(lat, lng), nombre);
                                           }
                                         : null,
                                     child: Container(
@@ -2429,6 +2390,7 @@ Future<void> _fetchTrufis() async {
                                     ? () {
                                         Navigator.pop(context);
                                         _mapController.move(LatLng(lat, lng), 17.0);
+                                        _showTempLocationMarker(LatLng(lat, lng), nombreVia);
                                       }
                                     : null,
                                 child: Container(
@@ -2620,6 +2582,7 @@ Future<void> _fetchTrufis() async {
                                         Navigator.pop(sheetCtx2);
                                         Navigator.pop(context);
                                         _mapController.move(LatLng(lat, lng), 17.0);
+                                        _showTempLocationMarker(LatLng(lat, lng), nombre);
                                       }
                                     : null,
                                 child: Container(
@@ -2692,6 +2655,7 @@ Future<void> _fetchTrufis() async {
           LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
           15,
         );
+        _mapController.rotate(0);
       } else {
         // No GPS yet — request it
         await _getCurrentLocation();
@@ -2700,12 +2664,73 @@ Future<void> _fetchTrufis() async {
             LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
             15,
           );
+          _mapController.rotate(0);
         }
       }
       return;
     }
 
     _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
+    _mapController.rotate(0);
+  }
+
+  /// Shows a temporary named marker on the map at [point] with [name].
+  /// The marker is cleared when the user taps the map.
+  void _showTempLocationMarker(LatLng point, String name) {
+    if (!mounted) return;
+    final estimatedWidth = (name.length * 8.0 + 60.0).clamp(100.0, 260.0);
+    setState(() {
+      _tempLocationMarker = Marker(
+        point: point,
+        width: estimatedWidth,
+        height: 64,
+        alignment: Alignment.bottomCenter,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [kPrimaryDark, kPrimary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: kPrimary.withOpacity(0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.place_rounded, color: Colors.white, size: 15),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_drop_down, color: kPrimary, size: 18),
+          ],
+        ),
+      );
+    });
   }
 
   /// Asks for CALL_PHONE permission if needed. Returns true if the call can proceed.
@@ -3501,6 +3526,11 @@ Future<void> _fetchTrufis() async {
                       options: MapOptions(
                         initialCenter: const LatLng(-17.3939, -66.2386),
                         initialZoom: 13,
+                        onTap: (_, __) {
+                          if (_tempLocationMarker != null) {
+                            setState(() => _tempLocationMarker = null);
+                          }
+                        },
                         onPositionChanged: (pos, hasGesture) {
                           final z = pos.zoom;
                           if (z == null) return;
@@ -3560,6 +3590,10 @@ Future<void> _fetchTrufis() async {
                               ),
                             ],
                           ),
+
+                        // Temporary named location marker (clears on map tap)
+                        if (_tempLocationMarker != null)
+                          MarkerLayer(markers: [_tempLocationMarker!]),
                       ],
                     ),
 
@@ -3865,6 +3899,8 @@ Future<void> _fetchTrufis() async {
                                 isTrufiSelected = false;
                               });
                               _aplicarFiltroParadas();
+                              _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
+                              _mapController.rotate(0);
                               _showFullWidthBottomSheet(context, t("radiotaxi"));
                             },
                           ),
@@ -4721,11 +4757,10 @@ Future<void> _fetchTrufis() async {
 
     return Drawer(
       width: drawerWidth,
-      child: SafeArea(
-        child: ValueListenableBuilder<bool>(
-          valueListenable: AppSettings.darkMode,
-          builder: (context, isDarkMode, _) {
-            final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+      child: ValueListenableBuilder<bool>(
+        valueListenable: AppSettings.darkMode,
+        builder: (context, isDarkMode, _) {
+          final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
             final textColor = isDarkMode ? Colors.white : Colors.black87;
             final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
             final sectionHeaderColor = isDarkMode ? Colors.white38 : Colors.black38;
@@ -4817,7 +4852,7 @@ Future<void> _fetchTrufis() async {
                   ClipRect(
                     child: Container(
                       width: double.infinity,
-                      height: 148,
+                      height: 148 + MediaQuery.of(context).padding.top,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [Color(0xFF032D38), Color(0xFF064656), Color(0xFF09596E)],
@@ -4861,10 +4896,10 @@ Future<void> _fetchTrufis() async {
                               ),
                             ),
                           ),
-                          // Logo — left, vertically centered, slightly larger
+                          // Logo — left, vertically centered below status bar
                           Positioned(
                             left: 20,
-                            top: 0,
+                            top: MediaQuery.of(context).padding.top,
                             bottom: 0,
                             child: Center(
                               child: Image.asset(
@@ -5414,7 +5449,6 @@ Future<void> _fetchTrufis() async {
             );
           },
         ),
-      ),
     );
   }
 
