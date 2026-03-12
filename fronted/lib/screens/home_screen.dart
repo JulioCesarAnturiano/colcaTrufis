@@ -71,9 +71,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isTrufiSelected = true;
   final MapController _mapController = MapController();
 
-  final ApiService _apiService = ApiService(baseUrl: "https://moviruta.colcapirhua.gob.bo/api");
+  final ApiService _apiService = ApiService(baseUrl: "http://127.0.0.1:8000/api");
 
-  static const String _apiBase = "https://moviruta.colcapirhua.gob.bo/api";
+  static const String _apiBase = "http://127.0.0.1:8000/api";
 
   Position? _currentPosition;
 
@@ -1531,36 +1531,46 @@ Future<void> _fetchTrufis() async {
                     : items.length == 1
                         ? Padding(
                             padding: const EdgeInsets.all(20),
-                            child: Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(color: kPrimary.withOpacity(0.15), width: 1.5),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 52,
-                                    height: 52,
-                                    decoration: BoxDecoration(
-                                      color: kPrimary.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(14),
+                            child: GestureDetector(
+                              onTap: () {
+                                final lat = double.tryParse((items[0]['latitud'] ?? '').toString());
+                                final lng = double.tryParse((items[0]['longitud'] ?? '').toString());
+                                if (lat != null && lng != null) {
+                                  Navigator.pop(context);
+                                  _mapController.move(LatLng(lat, lng), 17.0);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: cardBg,
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(color: kPrimary.withOpacity(0.15), width: 1.5),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 52,
+                                      height: 52,
+                                      decoration: BoxDecoration(
+                                        color: kPrimary.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: const Icon(Icons.place_rounded, color: kPrimary, size: 28),
                                     ),
-                                    child: const Icon(Icons.place_rounded, color: kPrimary, size: 28),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Text(
-                                      (items[0]['referencia'] ?? items[0]['nombre'] ?? items[0]['name'] ?? '').toString(),
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 16,
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        (items[0]['referencia'] ?? items[0]['nombre'] ?? items[0]['name'] ?? '').toString(),
+                                        style: TextStyle(
+                                          color: textColor,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 16,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           )
@@ -1568,42 +1578,59 @@ Future<void> _fetchTrufis() async {
                             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                             itemCount: items.length,
                             itemBuilder: (context, index) {
-                              final nombre = (items[index]['referencia'] ?? items[index]['nombre'] ?? items[index]['name'] ?? '').toString();
+                              final rtItem = items[index];
+                              final nombre = (rtItem['referencia'] ?? rtItem['nombre'] ?? rtItem['name'] ?? '').toString();
+                              final lat = double.tryParse((rtItem['latitud'] ?? '').toString());
+                              final lng = double.tryParse((rtItem['longitud'] ?? '').toString());
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: cardBg,
+                                child: Material(
+                                  color: cardBg,
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: InkWell(
                                     borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: kPrimary.withOpacity(0.10), width: 1),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: kPrimary.withOpacity(0.12),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            '${index + 1}',
-                                            style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w800, fontSize: 13),
+                                    onTap: (lat != null && lng != null)
+                                        ? () {
+                                            Navigator.pop(context);
+                                            _mapController.move(LatLng(lat, lng), 17.0);
+                                          }
+                                        : null,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: kPrimary.withOpacity(0.10), width: 1),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: BoxDecoration(
+                                              color: kPrimary.withOpacity(0.12),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                '${index + 1}',
+                                                style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w800, fontSize: 13),
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                          const SizedBox(width: 12),
+                                          const Icon(Icons.place_rounded, color: kAqua, size: 18),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              nombre,
+                                              style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14.5),
+                                            ),
+                                          ),
+                                          if (lat != null && lng != null)
+                                            Icon(Icons.my_location_rounded, color: kPrimary.withOpacity(0.45), size: 16),
+                                        ],
                                       ),
-                                      const SizedBox(width: 12),
-                                      const Icon(Icons.place_rounded, color: kAqua, size: 18),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          nombre,
-                                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14.5),
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               );
@@ -2388,53 +2415,69 @@ Future<void> _fetchTrufis() async {
                           final nombreVia = (via['nombre_via'] ?? t("no_data")).toString();
                           final isDark = AppSettings.darkMode.value;
                           final cardBg = isDark ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
+                          final lat = double.tryParse((via['latitud'] ?? '').toString());
+                          final lng = double.tryParse((via['longitud'] ?? '').toString());
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: cardBg,
+                            child: Material(
+                              color: cardBg,
+                              borderRadius: BorderRadius.circular(12),
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: kPrimary.withOpacity(0.10),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 30,
-                                    height: 30,
-                                    decoration: BoxDecoration(
-                                      color: kPrimary.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(8),
+                                onTap: (lat != null && lng != null)
+                                    ? () {
+                                        Navigator.pop(context);
+                                        _mapController.move(LatLng(lat, lng), 17.0);
+                                      }
+                                    : null,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: kPrimary.withOpacity(0.10),
+                                      width: 1,
                                     ),
-                                    child: Center(
-                                      child: Text(
-                                        '$orden',
-                                        style: const TextStyle(
-                                          color: kPrimary,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 12,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: BoxDecoration(
+                                          color: kPrimary.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '$orden',
+                                            style: const TextStyle(
+                                              color: kPrimary,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 12,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  const Icon(Icons.turn_right_rounded, color: kAqua, size: 16),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      nombreVia,
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
+                                      const SizedBox(width: 10),
+                                      const Icon(Icons.turn_right_rounded, color: kAqua, size: 16),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          nombreVia,
+                                          style: TextStyle(
+                                            color: textColor,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      if (lat != null && lng != null)
+                                        Icon(Icons.my_location_rounded, color: kPrimary.withOpacity(0.45), size: 16),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           );
@@ -2561,53 +2604,71 @@ Future<void> _fetchTrufis() async {
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                         itemCount: items.length,
                         itemBuilder: (context, index) {
-                          final nombre = (items[index]['referencia'] ?? items[index]['nombre'] ?? items[index]['name'] ?? '').toString();
+                          final refItem = items[index];
+                          final nombre = (refItem['referencia'] ?? refItem['nombre'] ?? refItem['name'] ?? '').toString();
+                          final lat = double.tryParse((refItem['latitud'] ?? '').toString());
+                          final lng = double.tryParse((refItem['longitud'] ?? '').toString());
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: cardBg,
+                            child: Material(
+                              color: cardBg,
+                              borderRadius: BorderRadius.circular(14),
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: kPrimary.withOpacity(0.10),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: kPrimary.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(8),
+                                onTap: (lat != null && lng != null)
+                                    ? () {
+                                        Navigator.pop(sheetCtx2);
+                                        Navigator.pop(context);
+                                        _mapController.move(LatLng(lat, lng), 17.0);
+                                      }
+                                    : null,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: kPrimary.withOpacity(0.10),
+                                      width: 1,
                                     ),
-                                    child: Center(
-                                      child: Text(
-                                        '${index + 1}',
-                                        style: const TextStyle(
-                                          color: kPrimary,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 13,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          color: kPrimary.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '${index + 1}',
+                                            style: const TextStyle(
+                                              color: kPrimary,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Icon(Icons.place_rounded, color: kAqua, size: 18),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      nombre,
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14.5,
+                                      const SizedBox(width: 12),
+                                      const Icon(Icons.place_rounded, color: kAqua, size: 18),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          nombre,
+                                          style: TextStyle(
+                                            color: textColor,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14.5,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      if (lat != null && lng != null)
+                                        Icon(Icons.my_location_rounded, color: kPrimary.withOpacity(0.45), size: 16),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           );
@@ -3505,7 +3566,7 @@ Future<void> _fetchTrufis() async {
                     if (_isLoadingRutaTrufi)
                       Positioned(
                         left: 16,
-                        top: 90,
+                        top: MediaQuery.of(context).padding.top + 70 + 8,
                         child: _loadingChip(t("loading_route"), Icons.route),
                       ),
 
@@ -3596,7 +3657,7 @@ Future<void> _fetchTrufis() async {
                     if (_selectedTrufiName != null && _selectedTrufiName!.trim().isNotEmpty && isTrufiSelected)
                       Positioned(
                         left: 16,
-                        top: (_isLoadingGeoJSON || _isLoadingRutaTrufi) ? 148 : 90,
+                        top: MediaQuery.of(context).padding.top + 70 + 8 + ((_isLoadingGeoJSON || _isLoadingRutaTrufi) ? 58 : 0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
