@@ -1,0 +1,1004 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="UTF-8">
+<meta name="ProgId" content="Word.Document">
+<meta name="Generator" content="Microsoft Word 15">
+<meta name="Originator" content="Microsoft Word 15">
+<style>
+  body { font-family: 'Calibri', sans-serif; font-size: 12pt; margin: 2cm 2.5cm; line-height: 1.6; color: #333; }
+  h1 { font-size: 26pt; color: #1a5276; text-align: center; border-bottom: 3px solid #1a5276; padding-bottom: 10px; margin-top: 40px; page-break-before: always; }
+  h1:first-of-type { page-break-before: avoid; }
+  h2 { font-size: 18pt; color: #2471a3; margin-top: 30px; border-bottom: 1px solid #d5d8dc; padding-bottom: 5px; }
+  h3 { font-size: 14pt; color: #2e86c1; margin-top: 20px; }
+  h4 { font-size: 12pt; color: #3498db; margin-top: 15px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0 20px 0; font-size: 10pt; }
+  th { background-color: #2471a3; color: white; padding: 8px 10px; text-align: left; border: 1px solid #1a5276; }
+  td { padding: 6px 10px; border: 1px solid #bdc3c7; vertical-align: top; }
+  tr:nth-child(even) { background-color: #f2f4f4; }
+  code { background-color: #f4f6f6; padding: 2px 6px; font-family: 'Consolas', monospace; font-size: 10pt; color: #c0392b; border-radius: 3px; }
+  pre { background-color: #f4f6f6; padding: 12px; font-family: 'Consolas', monospace; font-size: 9pt; border-left: 4px solid #2471a3; overflow-x: auto; }
+  .cover { text-align: center; margin-top: 180px; }
+  .cover h1 { font-size: 36pt; border: none; color: #1a5276; }
+  .cover h2 { font-size: 20pt; color: #5d6d7e; border: none; text-align: center; }
+  .cover p { font-size: 14pt; color: #7f8c8d; }
+  .toc { page-break-before: always; }
+  .toc h1 { text-align: left; }
+  .toc ul { list-style-type: none; padding-left: 0; }
+  .toc li { padding: 4px 0; font-size: 11pt; }
+  .toc li.l2 { padding-left: 25px; }
+  .toc li.l3 { padding-left: 50px; }
+  ul { margin: 5px 0 10px 20px; }
+  li { margin-bottom: 4px; }
+  .note { background-color: #eaf2f8; border-left: 4px solid #2471a3; padding: 10px 15px; margin: 10px 0; }
+  .warning { background-color: #fef9e7; border-left: 4px solid #f39c12; padding: 10px 15px; margin: 10px 0; }
+</style>
+</head>
+<body>
+
+<!-- PORTADA -->
+<div class="cover">
+  <br/><br/><br/>
+  <h1>MANUAL TÉCNICO</h1>
+  <h2>Sistema ColcaTrufis - MoViRuta</h2>
+  <br/>
+  <p>Aplicación de Gestión de Transporte Público</p>
+  <p>Municipio de Colcapirhua - Cochabamba, Bolivia</p>
+  <br/><br/><br/>
+  <p><b>Versión:</b> 1.0.0</p>
+  <p><b>Fecha:</b> Marzo 2026</p>
+  <p><b>URL de Producción:</b> moviruta.colcapirhua.gob.bo</p>
+</div>
+
+<!-- TABLA DE CONTENIDOS -->
+<div class="toc">
+  <h1>TABLA DE CONTENIDOS</h1>
+  <ul>
+    <li><b>1.</b> Introducción</li>
+    <li class="l2">1.1. Propósito del Documento</li>
+    <li class="l2">1.2. Alcance del Sistema</li>
+    <li class="l2">1.3. Definiciones y Acrónimos</li>
+    <li><b>2.</b> Arquitectura del Sistema</li>
+    <li class="l2">2.1. Visión General</li>
+    <li class="l2">2.2. Stack Tecnológico</li>
+    <li class="l2">2.3. Diagrama de Arquitectura</li>
+    <li><b>3.</b> Backend - Laravel</li>
+    <li class="l2">3.1. Estructura de Directorios</li>
+    <li class="l2">3.2. Configuración del Entorno</li>
+    <li class="l2">3.3. Base de Datos</li>
+    <li class="l2">3.4. Modelos y Relaciones</li>
+    <li class="l2">3.5. Controladores</li>
+    <li class="l2">3.6. Rutas Web (Panel Admin)</li>
+    <li class="l2">3.7. Rutas API (REST)</li>
+    <li class="l2">3.8. Servicios</li>
+    <li class="l2">3.9. Sistema de Autenticación y Roles</li>
+    <li class="l2">3.10. Vistas Blade</li>
+    <li><b>4.</b> Frontend Móvil - Flutter</li>
+    <li class="l2">4.1. Estructura del Proyecto</li>
+    <li class="l2">4.2. Dependencias</li>
+    <li class="l2">4.3. Pantallas</li>
+    <li class="l2">4.4. Servicios</li>
+    <li class="l2">4.5. Modelos de Datos</li>
+    <li><b>5.</b> Base de Datos</li>
+    <li class="l2">5.1. Diagrama Entidad-Relación</li>
+    <li class="l2">5.2. Diccionario de Datos</li>
+    <li><b>6.</b> API REST - Documentación</li>
+    <li class="l2">6.1. Endpoints Públicos</li>
+    <li class="l2">6.2. Formatos de Respuesta</li>
+    <li><b>7.</b> Despliegue e Instalación</li>
+    <li class="l2">7.1. Requisitos del Servidor</li>
+    <li class="l2">7.2. Instalación del Backend</li>
+    <li class="l2">7.3. Compilación del Frontend</li>
+    <li><b>8.</b> Seguridad</li>
+    <li><b>9.</b> Mantenimiento</li>
+  </ul>
+</div>
+
+<!-- CAPÍTULO 1 -->
+<h1>1. INTRODUCCIÓN</h1>
+
+<h2>1.1. Propósito del Documento</h2>
+<p>Este manual técnico documenta la arquitectura, diseño, implementación y configuración del sistema <b>ColcaTrufis (MoViRuta)</b>. Está dirigido a desarrolladores, administradores de sistemas y personal técnico encargado del mantenimiento, evolución y despliegue de la aplicación.</p>
+
+<h2>1.2. Alcance del Sistema</h2>
+<p>ColcaTrufis es una plataforma integral de gestión de transporte público para el Municipio de Colcapirhua, Cochabamba, Bolivia. El sistema comprende:</p>
+<ul>
+  <li><b>Panel de Administración Web:</b> Aplicación Laravel para la gestión de líneas de trufis, rutas, sindicatos, radiotaxis, normativas, reportes y configuraciones.</li>
+  <li><b>API REST:</b> Interfaz de programación para consumo de datos por la aplicación móvil.</li>
+  <li><b>Aplicación Móvil:</b> App Flutter multiplataforma (Android/iOS) que permite a los ciudadanos visualizar rutas de trufis, ubicar paradas de radiotaxi, consultar normativas y realizar reclamos.</li>
+</ul>
+
+<h2>1.3. Definiciones y Acrónimos</h2>
+<table>
+  <tr><th>Término</th><th>Definición</th></tr>
+  <tr><td>Trufi</td><td>Vehículo de transporte público compartido (minibús) que opera rutas fijas en el municipio</td></tr>
+  <tr><td>Sindicato</td><td>Organización de transportistas que agrupa líneas de trufis</td></tr>
+  <tr><td>Radiotaxi</td><td>Servicio de taxi con despacho por radio, operado por sindicatos de radiotaxistas</td></tr>
+  <tr><td>Parada</td><td>Punto geográfico donde se ubica un sindicato de radiotaxis</td></tr>
+  <tr><td>Ruta</td><td>Trayectoria geográfica compuesta por coordenadas (latitud/longitud) que sigue un trufi</td></tr>
+  <tr><td>Normativa</td><td>Documento regulatorio (PDF) emitido por el municipio referente al transporte</td></tr>
+  <tr><td>GeoJSON</td><td>Formato estándar para representar entidades geográficas basado en JSON</td></tr>
+  <tr><td>API REST</td><td>Interfaz de programación basada en el protocolo HTTP con formato JSON</td></tr>
+  <tr><td>Ubicación</td><td>Nombre de calle o intersección a lo largo de una ruta de trufi</td></tr>
+  <tr><td>Referencia</td><td>Punto de referencia con nombre y coordenadas asociado a un trufi o radiotaxi</td></tr>
+</table>
+
+<!-- CAPÍTULO 2 -->
+<h1>2. ARQUITECTURA DEL SISTEMA</h1>
+
+<h2>2.1. Visión General</h2>
+<p>El sistema sigue una arquitectura cliente-servidor con dos componentes principales:</p>
+<ul>
+  <li><b>Servidor (Backend):</b> Aplicación Laravel 11 que provee tanto el panel de administración (renderizado server-side con Blade) como la API REST para la app móvil.</li>
+  <li><b>Cliente Móvil (Frontend):</b> Aplicación Flutter que consume la API REST y presenta la información al ciudadano con mapas interactivos.</li>
+</ul>
+
+<h2>2.2. Stack Tecnológico</h2>
+
+<h3>2.2.1. Backend</h3>
+<table>
+  <tr><th>Componente</th><th>Tecnología</th><th>Versión</th></tr>
+  <tr><td>Lenguaje</td><td>PHP</td><td>≥ 8.2</td></tr>
+  <tr><td>Framework</td><td>Laravel</td><td>11.x</td></tr>
+  <tr><td>Base de Datos</td><td>MySQL</td><td>8.x</td></tr>
+  <tr><td>Autenticación API</td><td>Laravel Sanctum</td><td>4.0</td></tr>
+  <tr><td>Roles y Permisos</td><td>Spatie Laravel Permission</td><td>6.24</td></tr>
+  <tr><td>Bundler</td><td>Vite</td><td>6.x</td></tr>
+  <tr><td>CSS Framework</td><td>Tailwind CSS</td><td>3.x</td></tr>
+  <tr><td>JS Framework</td><td>Alpine.js</td><td>3.x</td></tr>
+  <tr><td>HTTP Client</td><td>Axios</td><td>1.x</td></tr>
+  <tr><td>Servidor Web</td><td>Apache (XAMPP) / Nginx</td><td>-</td></tr>
+</table>
+
+<h3>2.2.2. Frontend Móvil</h3>
+<table>
+  <tr><th>Componente</th><th>Tecnología</th><th>Versión</th></tr>
+  <tr><td>Framework</td><td>Flutter</td><td>3.x</td></tr>
+  <tr><td>Lenguaje</td><td>Dart</td><td>≥ 3.0.0, &lt; 4.0.0</td></tr>
+  <tr><td>Mapas</td><td>flutter_map</td><td>7.0.2</td></tr>
+  <tr><td>Geolocalización</td><td>geolocator</td><td>11.0.1</td></tr>
+  <tr><td>Permisos</td><td>permission_handler</td><td>11.3.1</td></tr>
+  <tr><td>Estado</td><td>Provider</td><td>6.1.1</td></tr>
+  <tr><td>GeoJSON</td><td>flutter_map_geojson</td><td>1.0.8</td></tr>
+  <tr><td>HTTP</td><td>http</td><td>1.6.0</td></tr>
+  <tr><td>Almacenamiento Local</td><td>shared_preferences</td><td>2.2.3</td></tr>
+  <tr><td>URLs</td><td>url_launcher</td><td>6.3.0</td></tr>
+</table>
+
+<h2>2.3. Diagrama de Arquitectura</h2>
+<pre>
+┌─────────────────────────────────────────────────────────────┐
+│                    USUARIO FINAL (Ciudadano)                │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │           APP MÓVIL FLUTTER (Android/iOS)           │    │
+│  │  ┌──────────┐  ┌──────────┐  ┌────────────────┐    │    │
+│  │  │  Mapas   │  │  Listas  │  │  Traducciones  │    │    │
+│  │  │(flutter_ │  │ (Trufis, │  │  (MyMemory API)│    │    │
+│  │  │  map)    │  │ RadioTaxi│  │                │    │    │
+│  │  └──────────┘  │ Normativ)│  └────────────────┘    │    │
+│  │                └──────────┘                         │    │
+│  └───────────────────────┬─────────────────────────────┘    │
+│                          │ HTTP/JSON                        │
+└──────────────────────────┼──────────────────────────────────┘
+                           │
+                    ┌──────▼──────┐
+                    │   API REST  │
+                    │  (Laravel)  │
+                    └──────┬──────┘
+                           │
+┌──────────────────────────┼──────────────────────────────────┐
+│              SERVIDOR (moviruta.colcapirhua.gob.bo)         │
+│                          │                                  │
+│  ┌───────────────────────▼─────────────────────────────┐    │
+│  │              LARAVEL 11 (Backend)                   │    │
+│  │                                                     │    │
+│  │  ┌──────────────┐   ┌──────────────────────────┐    │    │
+│  │  │ Controladores│   │  Panel de Administración │    │    │
+│  │  │   API REST   │   │   (Blade + Tailwind +    │    │    │
+│  │  │              │   │    Alpine.js)             │    │    │
+│  │  └──────┬───────┘   └────────────┬─────────────┘    │    │
+│  │         │                        │                  │    │
+│  │  ┌──────▼────────────────────────▼──────────────┐   │    │
+│  │  │          Modelos Eloquent (ORM)              │   │    │
+│  │  │  ┌──────────────────────────────────────┐    │   │    │
+│  │  │  │ Spatie Roles/Permisos + Sanctum Auth │    │   │    │
+│  │  │  └──────────────────────────────────────┘    │   │    │
+│  │  └──────────────────────┬───────────────────────┘   │    │
+│  │                         │                           │    │
+│  │  ┌──────────────────────▼───────────────────────┐   │    │
+│  │  │   GeocodingService (Nominatim / OSM)         │   │    │
+│  │  └──────────────────────────────────────────────┘   │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                          │                                  │
+│                   ┌──────▼──────┐                           │
+│                   │   MySQL     │                           │
+│                   │ colcatrufis │                           │
+│                   └─────────────┘                           │
+└─────────────────────────────────────────────────────────────┘
+</pre>
+
+<!-- CAPÍTULO 3 -->
+<h1>3. BACKEND - LARAVEL</h1>
+
+<h2>3.1. Estructura de Directorios</h2>
+<pre>
+backend/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Admin/              # Controladores del panel admin
+│   │   │   │   ├── DashboardController.php
+│   │   │   │   ├── TrufiAdminController.php
+│   │   │   │   ├── RutaAdminController.php
+│   │   │   │   ├── SindicatoAdminController.php
+│   │   │   │   ├── RadioTaxiAdminController.php
+│   │   │   │   ├── UsuarioAdminController.php
+│   │   │   │   ├── NormativaAdminController.php
+│   │   │   │   ├── ReporteAdminController.php
+│   │   │   │   ├── ReferenciaAdminController.php
+│   │   │   │   ├── AppSettingsAdminController.php
+│   │   │   │   ├── FilePondController.php
+│   │   │   │   └── LoginController.php
+│   │   │   ├── TrufiController.php         # API
+│   │   │   ├── TrufiRutaController.php     # API
+│   │   │   ├── SindicatoController.php     # API
+│   │   │   ├── SindicatoRadioTaxisController.php  # API
+│   │   │   ├── NormativaController.php     # API
+│   │   │   ├── TrufiSeleccionController.php # API
+│   │   │   ├── AppSettingsController.php   # API
+│   │   │   └── ReferenciaController.php    # API
+│   │   └── Middleware/
+│   ├── Models/
+│   │   ├── User.php
+│   │   ├── Trufi.php
+│   │   ├── Trufiruta.php
+│   │   ├── Trufidetalle.php
+│   │   ├── Trufiseleccion.php
+│   │   ├── Trufirutaubicacion.php
+│   │   ├── Sindicato.php
+│   │   ├── Sindicatoradiotaxi.php
+│   │   ├── Sindicatoradiotaxiparada.php
+│   │   ├── Normativa.php
+│   │   ├── Appsetting.php
+│   │   └── Referencia.php
+│   └── Services/
+│       └── GeocodingService.php
+├── database/
+│   ├── migrations/          # 22+ migraciones
+│   └── seeders/
+│       ├── DatabaseSeeder.php
+│       ├── RolesSeeder.php
+│       └── UserSeeder.php
+├── resources/views/
+│   ├── admin/               # Vistas del panel admin
+│   ├── auth/                # Vistas de autenticación
+│   ├── components/          # Componentes Blade reutilizables
+│   ├── layouts/             # Layouts principales
+│   └── profile/             # Vistas de perfil
+├── routes/
+│   ├── web.php              # Rutas del panel admin
+│   ├── api.php              # Rutas de la API REST
+│   └── auth.php             # Rutas de autenticación
+├── storage/app/public/      # Archivos subidos (normativas PDF)
+├── composer.json
+├── package.json
+└── .env
+</pre>
+
+<h2>3.2. Configuración del Entorno</h2>
+<p>Archivo <code>.env</code> - Variables principales:</p>
+<table>
+  <tr><th>Variable</th><th>Valor por Defecto</th><th>Descripción</th></tr>
+  <tr><td>APP_NAME</td><td>ColcaTrufis</td><td>Nombre de la aplicación</td></tr>
+  <tr><td>APP_ENV</td><td>local</td><td>Entorno de ejecución (local/production)</td></tr>
+  <tr><td>APP_URL</td><td>http://localhost</td><td>URL base de la aplicación</td></tr>
+  <tr><td>DB_CONNECTION</td><td>mysql</td><td>Motor de base de datos</td></tr>
+  <tr><td>DB_HOST</td><td>127.0.0.1</td><td>Host de la base de datos</td></tr>
+  <tr><td>DB_PORT</td><td>3306</td><td>Puerto de MySQL</td></tr>
+  <tr><td>DB_DATABASE</td><td>colcatrufis</td><td>Nombre de la base de datos</td></tr>
+  <tr><td>DB_USERNAME</td><td>root</td><td>Usuario de la base de datos</td></tr>
+  <tr><td>DB_PASSWORD</td><td>(vacío)</td><td>Contraseña de la base de datos</td></tr>
+  <tr><td>SESSION_DRIVER</td><td>database</td><td>Driver de sesiones</td></tr>
+  <tr><td>QUEUE_CONNECTION</td><td>database</td><td>Driver de colas</td></tr>
+  <tr><td>CACHE_STORE</td><td>database</td><td>Driver de caché</td></tr>
+</table>
+
+<h2>3.3. Base de Datos</h2>
+<p>La base de datos <code>colcatrufis</code> utiliza MySQL y contiene 17 tablas principales más 5 tablas auxiliares del sistema de permisos Spatie. Las migraciones se ejecutan con <code>php artisan migrate</code>.</p>
+
+<h3>3.3.1. Tablas Principales</h3>
+<table>
+  <tr><th>Tabla</th><th>Descripción</th><th>Registros Clave</th></tr>
+  <tr><td>users</td><td>Usuarios del panel administrativo</td><td>Administradores y encargados</td></tr>
+  <tr><td>trufis</td><td>Líneas de trufis (PK: idtrufi)</td><td>Nombre, costo, frecuencia, tipo</td></tr>
+  <tr><td>trufi_rutas</td><td>Puntos de ruta (PK compuesta: idtrufi, orden)</td><td>Coordenadas lat/lng de la ruta</td></tr>
+  <tr><td>trufi_detalles</td><td>Información adicional del trufi (1:1)</td><td>Hora entrada/salida</td></tr>
+  <tr><td>trufi_ruta_ubicaciones</td><td>Calles a lo largo de la ruta</td><td>Nombre de vía, intersección, tipo</td></tr>
+  <tr><td>trufi_selecciones</td><td>Analítica de selecciones</td><td>device_id, source, timestamp</td></tr>
+  <tr><td>sindicatos</td><td>Sindicatos de transporte</td><td>Nombre, descripción</td></tr>
+  <tr><td>sindicato_radiotaxis</td><td>Sindicatos de radiotaxi</td><td>Nombre comercial, teléfono base</td></tr>
+  <tr><td>sindicato_radiotaxi_paradas</td><td>Ubicación de paradas (1:1)</td><td>Coordenadas lat/lng</td></tr>
+  <tr><td>normativas</td><td>Documentos normativos (PDF)</td><td>Título, archivo, categoría</td></tr>
+  <tr><td>referencias</td><td>Referencias geográficas (polimórfica)</td><td>Texto, lat/lng, pertenece a Trufi o RadioTaxi</td></tr>
+  <tr><td>app_settings</td><td>Configuraciones de la app</td><td>Teléfonos de reclamo</td></tr>
+</table>
+
+<h2>3.4. Modelos y Relaciones</h2>
+
+<h3>3.4.1. Diagrama de Relaciones</h3>
+<pre>
+Sindicato (1) ─────────── (*) Trufi
+                               │
+          ┌────────┬───────────┼───────────┬──────────────┐
+          │        │           │           │              │
+          ▼        ▼           ▼           ▼              ▼
+     (*) Trufiruta (1) Trufidetalle (*) Trufiseleccion (*) Trufirutaubicacion
+          │
+          ▼ (FK opcional)
+     Sindicatoradiotaxi
+          │
+          ├──── (1) Sindicatoradiotaxiparada
+          │
+          └──── (*) Referencia (polimórfica, también desde Trufi)
+</pre>
+
+<h3>3.4.2. Detalle de Modelos</h3>
+
+<h4>Modelo: Trufi</h4>
+<table>
+  <tr><th>Propiedad</th><th>Valor</th></tr>
+  <tr><td>Tabla</td><td><code>trufis</code></td></tr>
+  <tr><td>Clave Primaria</td><td><code>idtrufi</code> (personalizado)</td></tr>
+  <tr><td>Fillable</td><td>nom_linea, costo, frecuencia, tipo, descripcion, estado, sindicato_id</td></tr>
+  <tr><td>Relaciones</td><td><code>rutas()</code> → hasMany(Trufiruta), <code>sindicato()</code> → belongsTo(Sindicato), <code>detalle()</code> → hasOne(Trufidetalle), <code>referencias()</code> → morphMany(Referencia), <code>rutaUbicaciones()</code> → hasMany(Trufirutaubicacion)</td></tr>
+</table>
+
+<h4>Modelo: Trufiruta</h4>
+<table>
+  <tr><th>Propiedad</th><th>Valor</th></tr>
+  <tr><td>Tabla</td><td><code>trufi_rutas</code></td></tr>
+  <tr><td>Fillable</td><td>idtrufi, sindicato_radiotaxi_id, latitud, longitud, orden, puntos, es_parada, estado</td></tr>
+  <tr><td>Relaciones</td><td><code>trufi()</code> → belongsTo(Trufi), <code>sindicatoRadiotaxi()</code> → belongsTo(Sindicatoradiotaxi)</td></tr>
+</table>
+
+<h4>Modelo: Sindicatoradiotaxi</h4>
+<table>
+  <tr><th>Propiedad</th><th>Valor</th></tr>
+  <tr><td>Tabla</td><td><code>sindicato_radiotaxis</code></td></tr>
+  <tr><td>Fillable</td><td>nombre_comercial, telefono_base</td></tr>
+  <tr><td>Relaciones</td><td><code>parada()</code> → hasOne(Sindicatoradiotaxiparada), <code>referencias()</code> → morphMany(Referencia)</td></tr>
+</table>
+
+<h4>Modelo: Referencia (Polimórfico)</h4>
+<table>
+  <tr><th>Propiedad</th><th>Valor</th></tr>
+  <tr><td>Tabla</td><td><code>referencias</code></td></tr>
+  <tr><td>Fillable</td><td>referencia, referenciable_id, referenciable_type, latitud, longitud</td></tr>
+  <tr><td>Relaciones</td><td><code>referenciable()</code> → morphTo() (puede pertenecer a Trufi o Sindicatoradiotaxi)</td></tr>
+</table>
+
+<h4>Modelo: Normativa</h4>
+<table>
+  <tr><th>Propiedad</th><th>Valor</th></tr>
+  <tr><td>Tabla</td><td><code>normativas</code></td></tr>
+  <tr><td>Fillable</td><td>titulo, descripcion, categoria, version, fecha_publicacion, file_path, original_name, mime, size_bytes, activo, created_by</td></tr>
+  <tr><td>Características</td><td>Usa SoftDeletes para eliminación lógica</td></tr>
+</table>
+
+<h4>Modelo: User</h4>
+<table>
+  <tr><th>Propiedad</th><th>Valor</th></tr>
+  <tr><td>Tabla</td><td><code>users</code></td></tr>
+  <tr><td>Fillable</td><td>name, email, password, activo</td></tr>
+  <tr><td>Traits</td><td>HasFactory, Notifiable, HasRoles (Spatie), HasApiTokens (Sanctum)</td></tr>
+  <tr><td>Métodos</td><td><code>esAdmin()</code>, <code>esEncargado()</code>, <code>getRolAttribute()</code></td></tr>
+</table>
+
+<h2>3.5. Controladores</h2>
+
+<h3>3.5.1. Controladores API</h3>
+<table>
+  <tr><th>Controlador</th><th>Métodos</th><th>Función</th></tr>
+  <tr><td>TrufiController</td><td>index(), show(), horario()</td><td>Listar trufis, ver detalle, obtener horario</td></tr>
+  <tr><td>TrufiRutaController</td><td>index(), geojsonPorTrufi(), geojsonTodas(), ubicacionesPorTrufi(), ubicacionesTodas()</td><td>Rutas en formato GeoJSON y ubicaciones de calles</td></tr>
+  <tr><td>SindicatoController</td><td>index(), show()</td><td>Listar sindicatos con trufis</td></tr>
+  <tr><td>SindicatoRadioTaxisController</td><td>index(), show(), paradas(), paradaPorRadiotaxi(), paradasGeojson(), paradaGeojsonPorRadiotaxi()</td><td>Radiotaxis, paradas y datos GeoJSON</td></tr>
+  <tr><td>NormativaController</td><td>index(), download()</td><td>Listar normativas y descargar PDFs</td></tr>
+  <tr><td>TrufiSeleccionController</td><td>registrar()</td><td>Registrar selección de trufi (analítica)</td></tr>
+  <tr><td>AppSettingsController</td><td>reclamos()</td><td>Obtener teléfonos de reclamo</td></tr>
+  <tr><td>ReferenciaController</td><td>index(), show(), byTrufi(), byRadiotaxi()</td><td>Consultar referencias geográficas</td></tr>
+</table>
+
+<h3>3.5.2. Controladores Admin</h3>
+<table>
+  <tr><th>Controlador</th><th>Operaciones</th><th>Función</th></tr>
+  <tr><td>DashboardController</td><td>mostrarDashboard()</td><td>Estadísticas generales del sistema</td></tr>
+  <tr><td>TrufiAdminController</td><td>CRUD completo</td><td>Gestión de líneas de trufis y detalles</td></tr>
+  <tr><td>RutaAdminController</td><td>CRUD + verUbicaciones()</td><td>Gestión de rutas con geocodificación automática</td></tr>
+  <tr><td>SindicatoAdminController</td><td>CRUD completo</td><td>Gestión de sindicatos de transporte</td></tr>
+  <tr><td>RadioTaxiAdminController</td><td>CRUD completo</td><td>Gestión de radiotaxis y paradas</td></tr>
+  <tr><td>UsuarioAdminController</td><td>CRUD completo</td><td>Gestión de usuarios con roles Spatie</td></tr>
+  <tr><td>NormativaAdminController</td><td>CRUD + verPdf()</td><td>Gestión de documentos normativos PDF</td></tr>
+  <tr><td>ReporteAdminController</td><td>trufisMasSeleccionados()</td><td>Reportes de trufis más consultados</td></tr>
+  <tr><td>AppSettingsAdminController</td><td>editReclamos(), updateReclamos()</td><td>Configuración de teléfonos de reclamo</td></tr>
+  <tr><td>ReferenciaAdminController</td><td>CRUD completo</td><td>Gestión de puntos de referencia</td></tr>
+  <tr><td>FilePondController</td><td>subirArchivo(), eliminarArchivo()</td><td>Carga temporal de archivos (FilePond)</td></tr>
+  <tr><td>LoginController</td><td>mostrarFormulario(), autenticar(), cerrarSesion()</td><td>Autenticación administrativa</td></tr>
+</table>
+
+<h2>3.6. Rutas Web (Panel Administrativo)</h2>
+<p>Todas las rutas del panel están protegidas por el middleware <code>auth</code> y <code>role:admin|encargado</code>, además de permisos específicos por módulo.</p>
+
+<h3>3.6.1. Módulo Trufis</h3>
+<table>
+  <tr><th>Método</th><th>URI</th><th>Acción</th><th>Permiso</th></tr>
+  <tr><td>GET</td><td>/admin/trufis</td><td>Listar trufis</td><td>admin.trufis.ver</td></tr>
+  <tr><td>GET</td><td>/admin/trufis/crear</td><td>Formulario de creación</td><td>admin.trufis.crear</td></tr>
+  <tr><td>POST</td><td>/admin/trufis</td><td>Guardar nuevo trufi</td><td>admin.trufis.crear</td></tr>
+  <tr><td>GET</td><td>/admin/trufis/{id}/editar</td><td>Formulario de edición</td><td>admin.trufis.editar</td></tr>
+  <tr><td>PUT</td><td>/admin/trufis/{id}</td><td>Actualizar trufi</td><td>admin.trufis.editar</td></tr>
+  <tr><td>DELETE</td><td>/admin/trufis/{id}</td><td>Eliminar trufi</td><td>admin.trufis.eliminar</td></tr>
+</table>
+
+<h3>3.6.2. Módulo Rutas</h3>
+<table>
+  <tr><th>Método</th><th>URI</th><th>Acción</th><th>Permiso</th></tr>
+  <tr><td>GET</td><td>/admin/rutas</td><td>Listar rutas</td><td>admin.rutas.ver</td></tr>
+  <tr><td>GET</td><td>/admin/rutas/crear</td><td>Formulario de creación con mapa</td><td>admin.rutas.crear</td></tr>
+  <tr><td>POST</td><td>/admin/rutas</td><td>Guardar ruta (GeoJSON)</td><td>admin.rutas.crear</td></tr>
+  <tr><td>GET</td><td>/admin/rutas/{id}/editar</td><td>Editar ruta en mapa</td><td>admin.rutas.editar</td></tr>
+  <tr><td>PUT</td><td>/admin/rutas/{id}</td><td>Actualizar ruta</td><td>admin.rutas.editar</td></tr>
+  <tr><td>GET</td><td>/admin/rutas/{id}/ubicaciones</td><td>Ver calles de la ruta</td><td>admin.rutas.ver</td></tr>
+  <tr><td>DELETE</td><td>/admin/rutas/{id}</td><td>Eliminar ruta</td><td>admin.rutas.eliminar</td></tr>
+</table>
+
+<h3>3.6.3. Otros Módulos</h3>
+<p>Los módulos de <b>Sindicatos</b>, <b>Radiotaxis</b>, <b>Usuarios</b>, <b>Normativas</b> y <b>Referencias</b> siguen el mismo patrón CRUD con sus respectivos permisos (<code>admin.[módulo].{crear,ver,editar,eliminar}</code>).</p>
+
+<h2>3.7. Rutas API (REST)</h2>
+<p>Todas las rutas API son públicas (sin autenticación requerida) y se acceden con prefijo <code>/api</code>.</p>
+
+<table>
+  <tr><th>Método</th><th>Endpoint</th><th>Descripción</th><th>Respuesta</th></tr>
+  <tr><td>GET</td><td>/api/trufis</td><td>Listar todos los trufis con rutas</td><td>JSON Array</td></tr>
+  <tr><td>GET</td><td>/api/trufis/{id}</td><td>Detalle de un trufi</td><td>JSON Object</td></tr>
+  <tr><td>GET</td><td>/api/trufis/{id}/horario</td><td>Horario de un trufi</td><td>JSON {hora_entrada, hora_salida}</td></tr>
+  <tr><td>GET</td><td>/api/trufis/{id}/rutas/geojson</td><td>Ruta en GeoJSON</td><td>GeoJSON FeatureCollection</td></tr>
+  <tr><td>GET</td><td>/api/trufis/rutas/geojson</td><td>Todas las rutas en GeoJSON</td><td>GeoJSON FeatureCollection</td></tr>
+  <tr><td>GET</td><td>/api/trufis/{id}/ubicaciones</td><td>Calles de una ruta</td><td>JSON Array</td></tr>
+  <tr><td>GET</td><td>/api/ubicaciones</td><td>Todas las calles</td><td>JSON Array</td></tr>
+  <tr><td>GET</td><td>/api/sindicatos</td><td>Listar sindicatos</td><td>JSON Array</td></tr>
+  <tr><td>GET</td><td>/api/sindicatos/{id}</td><td>Detalle de sindicato</td><td>JSON Object</td></tr>
+  <tr><td>GET</td><td>/api/sindicato-radiotaxis</td><td>Listar radiotaxis</td><td>JSON Array</td></tr>
+  <tr><td>GET</td><td>/api/radiotaxis/paradas</td><td>Paradas activas</td><td>JSON Array</td></tr>
+  <tr><td>GET</td><td>/api/radiotaxis/paradas/geojson</td><td>Paradas en GeoJSON</td><td>GeoJSON FeatureCollection</td></tr>
+  <tr><td>GET</td><td>/api/normativas</td><td>Listar normativas activas</td><td>JSON Array</td></tr>
+  <tr><td>GET</td><td>/api/normativas/{id}/download</td><td>Descargar PDF</td><td>Archivo PDF</td></tr>
+  <tr><td>POST</td><td>/api/trufis/{id}/seleccion</td><td>Registrar selección</td><td>JSON {message}</td></tr>
+  <tr><td>GET</td><td>/api/public/settings/reclamos</td><td>Teléfonos de reclamo</td><td>JSON Object</td></tr>
+  <tr><td>GET</td><td>/api/referencias</td><td>Listar referencias (paginado)</td><td>JSON Paginated</td></tr>
+  <tr><td>GET</td><td>/api/trufis/{id}/referencias</td><td>Referencias de un trufi</td><td>JSON Array</td></tr>
+  <tr><td>GET</td><td>/api/radiotaxis/{id}/referencias</td><td>Referencias de un radiotaxi</td><td>JSON Array</td></tr>
+</table>
+
+<h2>3.8. Servicios</h2>
+
+<h3>3.8.1. GeocodingService</h3>
+<p>Servicio que integra con la API de Nominatim (OpenStreetMap) para geocodificación inversa.</p>
+<table>
+  <tr><th>Método</th><th>Descripción</th></tr>
+  <tr><td><code>reverse(float $lat, float $lng)</code></td><td>Convierte coordenadas lat/lng en nombre de calle, intersección y metadatos. Los resultados se cachean por 1 hora.</td></tr>
+  <tr><td><code>buildUbicacionesFromCoords(array $coords, int $sampleEvery = 2)</code></td><td>Itera sobre coordenadas GeoJSON, muestreando cada N puntos y geocodificando cada uno. Incluye delay de 50ms entre llamadas para respetar rate limits.</td></tr>
+</table>
+
+<h2>3.9. Sistema de Autenticación y Roles</h2>
+
+<h3>3.9.1. Roles</h3>
+<table>
+  <tr><th>Rol</th><th>Descripción</th><th>Permisos</th></tr>
+  <tr><td><b>admin</b></td><td>Administrador con acceso total</td><td>Los 27 permisos del sistema</td></tr>
+  <tr><td><b>encargado</b></td><td>Usuario con acceso limitado</td><td>Trufis (crear, ver), Rutas (crear, ver), Normativas (CRUD completo), Settings (ver, editar)</td></tr>
+</table>
+
+<h3>3.9.2. Tabla de Permisos (27 permisos)</h3>
+<table>
+  <tr><th>Módulo</th><th>Permisos</th></tr>
+  <tr><td>Trufis</td><td>admin.trufis.crear, admin.trufis.ver, admin.trufis.editar, admin.trufis.eliminar</td></tr>
+  <tr><td>Rutas</td><td>admin.rutas.crear, admin.rutas.ver, admin.rutas.editar, admin.rutas.eliminar</td></tr>
+  <tr><td>Usuarios</td><td>admin.usuarios.crear, admin.usuarios.ver, admin.usuarios.editar, admin.usuarios.eliminar</td></tr>
+  <tr><td>Sindicatos</td><td>admin.sindicatos.crear, admin.sindicatos.ver, admin.sindicatos.editar, admin.sindicatos.eliminar</td></tr>
+  <tr><td>Radiotaxis</td><td>admin.radiotaxis.crear, admin.radiotaxis.ver, admin.radiotaxis.editar, admin.radiotaxis.eliminar</td></tr>
+  <tr><td>Normativas</td><td>admin.normativas.crear, admin.normativas.ver, admin.normativas.editar, admin.normativas.eliminar</td></tr>
+  <tr><td>Reportes</td><td>admin.reportes.ver</td></tr>
+  <tr><td>Settings</td><td>admin.settings.ver, admin.settings.editar</td></tr>
+  <tr><td>Referencias</td><td>admin.referencias.ver, admin.referencias.crear, admin.referencias.editar, admin.referencias.eliminar</td></tr>
+</table>
+
+<h3>3.9.3. Usuarios Predeterminados</h3>
+<table>
+  <tr><th>Email</th><th>Contraseña</th><th>Rol</th></tr>
+  <tr><td>admin@admin.com</td><td>password</td><td>admin</td></tr>
+  <tr><td>encargado@admin.com</td><td>password</td><td>encargado</td></tr>
+</table>
+<div class="warning"><b>Importante:</b> Cambiar las contraseñas predeterminadas inmediatamente en producción.</div>
+
+<h2>3.10. Vistas Blade</h2>
+<p>El panel administrativo utiliza el motor de plantillas Blade de Laravel con Tailwind CSS para estilos y Alpine.js para interactividad del lado del cliente.</p>
+<table>
+  <tr><th>Directorio</th><th>Archivos</th><th>Descripción</th></tr>
+  <tr><td>admin/</td><td>layout.blade.php, dashboard.blade.php</td><td>Layout principal y dashboard</td></tr>
+  <tr><td>admin/trufis/</td><td>index, create, edit</td><td>CRUD de trufis</td></tr>
+  <tr><td>admin/rutas/</td><td>index, create, edit, ver_ubicaciones</td><td>CRUD de rutas con mapa interactivo</td></tr>
+  <tr><td>admin/sindicatos/</td><td>index, create, edit</td><td>CRUD de sindicatos</td></tr>
+  <tr><td>admin/radiotaxis/</td><td>index, create, edit</td><td>CRUD de radiotaxis</td></tr>
+  <tr><td>admin/usuarios/</td><td>index, create, edit</td><td>CRUD de usuarios</td></tr>
+  <tr><td>admin/normativas/</td><td>index, create, edit</td><td>CRUD de normativas</td></tr>
+  <tr><td>admin/referencias/</td><td>index, create, edit</td><td>CRUD de referencias</td></tr>
+  <tr><td>admin/reportes/</td><td>trufis_mas_seleccionados</td><td>Reportes analíticos</td></tr>
+  <tr><td>admin/settings/</td><td>reclamos</td><td>Configuración de reclamos</td></tr>
+</table>
+
+<!-- CAPÍTULO 4 -->
+<h1>4. FRONTEND MÓVIL - FLUTTER</h1>
+
+<h2>4.1. Estructura del Proyecto</h2>
+<pre>
+fronted/
+├── lib/
+│   ├── main.dart                    # Punto de entrada
+│   ├── screens/
+│   │   ├── splash_screen.dart       # Pantalla de inicio animada
+│   │   └── home_screen.dart         # Pantalla principal con mapa
+│   ├── services/
+│   │   ├── api_service.dart         # Cliente HTTP para la API
+│   │   └── translation_service.dart # Servicio de traducción
+│   └── models/
+│       ├── trufi.dart               # Modelo de trufi
+│       ├── trufi_ruta.dart          # Modelo de punto de ruta
+│       ├── sindicato.dart           # Modelo de sindicato
+│       └── sindicato_radiotaxi.dart # Modelo de radiotaxi
+├── assets/
+│   ├── images/                      # Logos e iconos
+│   └── geojson/
+│       └── colcapirhua.geojson      # Polígonos del municipio
+├── pubspec.yaml
+├── android/
+├── ios/
+└── macos/
+</pre>
+
+<h2>4.2. Dependencias Principales</h2>
+<table>
+  <tr><th>Paquete</th><th>Versión</th><th>Uso</th></tr>
+  <tr><td>flutter_map</td><td>7.0.2</td><td>Renderizado de mapas con tiles de OpenStreetMap</td></tr>
+  <tr><td>latlong2</td><td>0.9.0</td><td>Manejo de coordenadas geográficas</td></tr>
+  <tr><td>geolocator</td><td>11.0.1</td><td>Obtención de ubicación GPS del usuario</td></tr>
+  <tr><td>permission_handler</td><td>11.3.1</td><td>Solicitud de permisos del sistema</td></tr>
+  <tr><td>http</td><td>1.6.0</td><td>Peticiones HTTP a la API REST</td></tr>
+  <tr><td>provider</td><td>6.1.1</td><td>Gestión de estado reactivo</td></tr>
+  <tr><td>flutter_map_geojson</td><td>1.0.8</td><td>Renderizado de GeoJSON sobre el mapa</td></tr>
+  <tr><td>url_launcher</td><td>6.3.0</td><td>Apertura de URLs y llamadas telefónicas</td></tr>
+  <tr><td>shared_preferences</td><td>2.2.3</td><td>Almacenamiento de preferencias locales</td></tr>
+</table>
+
+<h2>4.3. Pantallas</h2>
+
+<h3>4.3.1. SplashScreen</h3>
+<p>Pantalla de inicio animada con:</p>
+<ul>
+  <li>Fondo degradado teal con patrón de puntos</li>
+  <li>Logo de la app con animación de fade-in y escala (1.4 segundos)</li>
+  <li>Texto de versión "v 1.0.0"</li>
+  <li>Redirección automática a HomeScreen después de 2.8 segundos</li>
+</ul>
+
+<h3>4.3.2. HomeScreen</h3>
+<p>Pantalla principal que contiene toda la funcionalidad:</p>
+<ul>
+  <li><b>Mapa interactivo:</b> Mapa de OpenStreetMap centrado en Colcapirhua con polígonos del límite municipal</li>
+  <li><b>Modo Trufi:</b> Visualización de rutas como polilíneas con marcadores de inicio/fin</li>
+  <li><b>Modo RadioTaxi:</b> Visualización de paradas como marcadores puntuales</li>
+  <li><b>Geolocalización:</b> Ubicación del usuario en tiempo real</li>
+  <li><b>Filtrado:</b> Rutas cercanas vs. todas las rutas</li>
+  <li><b>Configuración:</b> Idioma (ES/EN/QU), modo oscuro, modo centrado, radio de búsqueda</li>
+  <li><b>Historial:</b> Registro de trufis consultados (almacenamiento local)</li>
+</ul>
+
+<h2>4.4. Servicios</h2>
+
+<h3>4.4.1. ApiService</h3>
+<p>Cliente HTTP con URL base configurable (<code>https://moviruta.colcapirhua.gob.bo/api</code>). Timeout de 12 segundos.</p>
+<table>
+  <tr><th>Método</th><th>Endpoint</th><th>Retorno</th></tr>
+  <tr><td>getSindicatos()</td><td>GET /sindicatos</td><td>Lista de sindicatos</td></tr>
+  <tr><td>getRadioTaxis()</td><td>GET /sindicato-radiotaxis</td><td>Lista de radiotaxis</td></tr>
+  <tr><td>getTrufis()</td><td>GET /trufis</td><td>Lista de trufis</td></tr>
+  <tr><td>getGeoJsonPorTrufi(id)</td><td>GET /trufis/{id}/rutas/geojson</td><td>GeoJSON de ruta</td></tr>
+  <tr><td>getGeoJsonTodasRutas()</td><td>GET /trufis/rutas/geojson</td><td>GeoJSON de todas las rutas</td></tr>
+  <tr><td>getReferencias()</td><td>GET /referencias</td><td>Lista de referencias</td></tr>
+  <tr><td>getUbicacionesPorTrufi(id)</td><td>GET /trufis/{id}/ubicaciones</td><td>Calles de la ruta</td></tr>
+  <tr><td>getTrufiHorario(id)</td><td>GET /trufis/{id}/horario</td><td>Horario del trufi</td></tr>
+</table>
+
+<h3>4.4.2. TranslationService</h3>
+<p>Servicio de traducción usando la API gratuita de MyMemory. Soporta español, inglés y quechua. Cachea traducciones en SharedPreferences para uso offline.</p>
+
+<h2>4.5. Modelos de Datos (Dart)</h2>
+<table>
+  <tr><th>Modelo</th><th>Campos</th></tr>
+  <tr><td>Trufi</td><td>idtrufi, nomLinea, costo, frecuencia, descripcion, estado, sindicatoId</td></tr>
+  <tr><td>TrufiRuta</td><td>idtrufi, sindicatoRadiotaxiId, latitud, longitud, orden, puntos, esParada, estado</td></tr>
+  <tr><td>Sindicato</td><td>id, nombre, descripcion</td></tr>
+  <tr><td>SindicatoRadiotaxi</td><td>id, nombreComercial, telefonoBase</td></tr>
+</table>
+
+<!-- CAPÍTULO 5 -->
+<h1>5. BASE DE DATOS</h1>
+
+<h2>5.1. Diagrama Entidad-Relación</h2>
+<pre>
+┌──────────────┐       ┌──────────────────┐
+│   sindicatos │       │      users       │
+├──────────────┤       ├──────────────────┤
+│ id       (PK)│       │ id          (PK) │
+│ nombre       │       │ name             │
+│ descripcion  │       │ email       (UQ) │
+│ created_at   │       │ password         │
+│ updated_at   │       │ rol (enum)       │
+└──────┬───────┘       │ activo           │
+       │               └──────────────────┘
+       │ 1:N                                    ┌──────────────────────┐
+       │                                        │   app_settings       │
+       ▼                                        ├──────────────────────┤
+┌──────────────────┐                            │ id              (PK) │
+│     trufis       │                            │ key             (UQ) │
+├──────────────────┤                            │ value                │
+│ idtrufi     (PK) │◄──────────┐               │ group                │
+│ nom_linea        │           │               │ activo               │
+│ costo            │           │               └──────────────────────┘
+│ frecuencia       │           │
+│ tipo             │           │               ┌─────────────────────────┐
+│ descripcion      │           │               │     normativas          │
+│ estado           │           │               ├─────────────────────────┤
+│ sindicato_id (FK)│           │               │ id                 (PK) │
+└──┬───┬───┬───┬───┘           │               │ titulo                  │
+   │   │   │   │               │               │ descripcion             │
+   │   │   │   │               │               │ categoria               │
+   │   │   │   │               │               │ file_path               │
+   │   │   │   │               │               │ activo                  │
+   │   │   │   └──────────┐    │               │ deleted_at (SoftDelete) │
+   │   │   │              │    │               └─────────────────────────┘
+   │   │   │              ▼    │
+   │   │   │    ┌───────────────────────┐
+   │   │   │    │  trufi_selecciones    │
+   │   │   │    ├───────────────────────┤
+   │   │   │    │ id               (PK) │
+   │   │   │    │ idtrufi          (FK) │
+   │   │   │    │ device_id             │
+   │   │   │    │ source                │
+   │   │   │    └───────────────────────┘
+   │   │   │
+   │   │   └──────────────┐
+   │   │                  ▼
+   │   │    ┌────────────────────────────┐
+   │   │    │  trufi_ruta_ubicaciones    │
+   │   │    ├────────────────────────────┤
+   │   │    │ id                    (PK) │
+   │   │    │ idtrufi               (FK) │
+   │   │    │ orden                      │
+   │   │    │ nombre_via                 │
+   │   │    │ interseccion               │
+   │   │    │ latitud / longitud         │
+   │   │    │ tipo_via                   │
+   │   │    │ meta (JSON)                │
+   │   │    └────────────────────────────┘
+   │   │
+   │   └──────┐
+   │          ▼
+   │   ┌──────────────────┐
+   │   │  trufi_detalles   │
+   │   ├──────────────────┤
+   │   │ id          (PK) │
+   │   │ trufi_id    (FK) │  ◄── 1:1
+   │   │ hora_entrada     │
+   │   │ hora_salida      │
+   │   └──────────────────┘
+   │
+   ▼
+┌──────────────────┐           ┌───────────────────────────────┐
+│   trufi_rutas    │           │     sindicato_radiotaxis      │
+├──────────────────┤           ├───────────────────────────────┤
+│ idtrufi  (PK,FK) │ N:1 ─────►│ id                      (PK) │
+│ orden       (PK) │           │ nombre_comercial              │
+│ latitud          │           │ telefono_base                 │
+│ longitud         │           └──────┬────────────────────────┘
+│ puntos           │                  │
+│ es_parada        │                  │ 1:1
+│ sindicato_radio  │                  ▼
+│   taxi_id   (FK) │           ┌───────────────────────────────────┐
+└──────────────────┘           │  sindicato_radiotaxi_paradas     │
+                               ├───────────────────────────────────┤
+                               │ id                           (PK) │
+┌────────────────────┐         │ sindicato_radiotaxi_id   (FK,UQ) │
+│   referencias      │         │ latitud                          │
+├────────────────────┤         │ longitud                         │
+│ id            (PK) │         │ descripcion                      │
+│ referenciable_id   │ ◄──────│ estado                           │
+│ referenciable_type │ morphTo └───────────────────────────────────┘
+│ referencia         │
+│ latitud            │   Puede pertenecer a:
+│ longitud           │   - App\Models\Trufi
+└────────────────────┘   - App\Models\Sindicatoradiotaxi
+</pre>
+
+<h2>5.2. Diccionario de Datos Completo</h2>
+
+<h3>Tabla: trufis</h3>
+<table>
+  <tr><th>Columna</th><th>Tipo</th><th>Nulo</th><th>Descripción</th></tr>
+  <tr><td>idtrufi</td><td>BIGINT UNSIGNED AI</td><td>No</td><td>Clave primaria</td></tr>
+  <tr><td>nom_linea</td><td>VARCHAR(255)</td><td>No</td><td>Nombre de la línea (ej: "Línea 10")</td></tr>
+  <tr><td>costo</td><td>DECIMAL(8,2)</td><td>No</td><td>Costo del pasaje en Bolivianos</td></tr>
+  <tr><td>frecuencia</td><td>INTEGER</td><td>No</td><td>Frecuencia en minutos entre salidas</td></tr>
+  <tr><td>tipo</td><td>VARCHAR(255)</td><td>No</td><td>Tipo de transporte (trufi, micro, etc.)</td></tr>
+  <tr><td>descripcion</td><td>TEXT</td><td>Sí</td><td>Descripción del recorrido</td></tr>
+  <tr><td>estado</td><td>BOOLEAN</td><td>No</td><td>Activo (true) o inactivo (false)</td></tr>
+  <tr><td>sindicato_id</td><td>BIGINT UNSIGNED</td><td>Sí</td><td>FK a sindicatos. SET NULL al eliminar</td></tr>
+</table>
+
+<h3>Tabla: trufi_rutas</h3>
+<table>
+  <tr><th>Columna</th><th>Tipo</th><th>Nulo</th><th>Descripción</th></tr>
+  <tr><td>idtrufi</td><td>BIGINT UNSIGNED</td><td>Sí</td><td>PK compuesta + FK a trufis.idtrufi</td></tr>
+  <tr><td>orden</td><td>INTEGER</td><td>No</td><td>PK compuesta. Orden del punto en la ruta</td></tr>
+  <tr><td>latitud</td><td>DECIMAL(10,7)</td><td>No</td><td>Latitud del punto</td></tr>
+  <tr><td>longitud</td><td>DECIMAL(10,7)</td><td>No</td><td>Longitud del punto</td></tr>
+  <tr><td>puntos</td><td>BOOLEAN</td><td>No</td><td>Indicador de punto especial</td></tr>
+  <tr><td>es_parada</td><td>BOOLEAN</td><td>No</td><td>Si el punto es una parada</td></tr>
+  <tr><td>sindicato_radiotaxi_id</td><td>BIGINT UNSIGNED</td><td>Sí</td><td>FK opcional a sindicato_radiotaxis</td></tr>
+  <tr><td>estado</td><td>BOOLEAN</td><td>No</td><td>Estado activo/inactivo</td></tr>
+</table>
+
+<h3>Tabla: trufi_ruta_ubicaciones</h3>
+<table>
+  <tr><th>Columna</th><th>Tipo</th><th>Nulo</th><th>Descripción</th></tr>
+  <tr><td>id</td><td>BIGINT UNSIGNED AI</td><td>No</td><td>Clave primaria</td></tr>
+  <tr><td>idtrufi</td><td>BIGINT UNSIGNED</td><td>No</td><td>FK a trufis.idtrufi</td></tr>
+  <tr><td>orden</td><td>UNSIGNED INT</td><td>No</td><td>Orden de la ubicación en la ruta</td></tr>
+  <tr><td>nombre_via</td><td>VARCHAR(255)</td><td>No</td><td>Nombre de la calle o avenida</td></tr>
+  <tr><td>interseccion</td><td>VARCHAR(255)</td><td>Sí</td><td>Nombre de la intersección</td></tr>
+  <tr><td>latitud</td><td>DECIMAL(10,8)</td><td>Sí</td><td>Latitud del punto</td></tr>
+  <tr><td>longitud</td><td>DECIMAL(11,8)</td><td>Sí</td><td>Longitud del punto</td></tr>
+  <tr><td>tipo_via</td><td>VARCHAR(80)</td><td>Sí</td><td>Tipo de vía (avenida, calle, etc.)</td></tr>
+  <tr><td>meta</td><td>JSON</td><td>Sí</td><td>Datos crudos del geocodificador</td></tr>
+  <tr><td>estado</td><td>BOOLEAN</td><td>No</td><td>Estado activo/inactivo</td></tr>
+</table>
+
+<h3>Tabla: referencias (polimórfica)</h3>
+<table>
+  <tr><th>Columna</th><th>Tipo</th><th>Nulo</th><th>Descripción</th></tr>
+  <tr><td>id</td><td>BIGINT UNSIGNED AI</td><td>No</td><td>Clave primaria</td></tr>
+  <tr><td>referenciable_id</td><td>BIGINT UNSIGNED</td><td>No</td><td>ID del modelo relacionado</td></tr>
+  <tr><td>referenciable_type</td><td>VARCHAR(255)</td><td>No</td><td>Clase del modelo (App\Models\Trufi o App\Models\Sindicatoradiotaxi)</td></tr>
+  <tr><td>referencia</td><td>VARCHAR(255)</td><td>No</td><td>Texto descriptivo del punto de referencia</td></tr>
+  <tr><td>latitud</td><td>DECIMAL(10,8)</td><td>Sí</td><td>Latitud del punto de referencia</td></tr>
+  <tr><td>longitud</td><td>DECIMAL(11,8)</td><td>Sí</td><td>Longitud del punto de referencia</td></tr>
+</table>
+
+<h3>Tabla: normativas</h3>
+<table>
+  <tr><th>Columna</th><th>Tipo</th><th>Nulo</th><th>Descripción</th></tr>
+  <tr><td>id</td><td>BIGINT UNSIGNED AI</td><td>No</td><td>Clave primaria</td></tr>
+  <tr><td>titulo</td><td>VARCHAR(255)</td><td>No</td><td>Título del documento</td></tr>
+  <tr><td>descripcion</td><td>TEXT</td><td>Sí</td><td>Descripción del documento</td></tr>
+  <tr><td>categoria</td><td>VARCHAR(100)</td><td>Sí</td><td>Categoría clasificatoria</td></tr>
+  <tr><td>version</td><td>VARCHAR(50)</td><td>Sí</td><td>Versión del documento</td></tr>
+  <tr><td>fecha_publicacion</td><td>DATE</td><td>Sí</td><td>Fecha de publicación</td></tr>
+  <tr><td>file_path</td><td>VARCHAR(255)</td><td>No</td><td>Ruta al archivo en storage</td></tr>
+  <tr><td>original_name</td><td>VARCHAR(255)</td><td>Sí</td><td>Nombre original del archivo</td></tr>
+  <tr><td>mime</td><td>VARCHAR(100)</td><td>No</td><td>Tipo MIME (default: application/pdf)</td></tr>
+  <tr><td>size_bytes</td><td>BIGINT UNSIGNED</td><td>Sí</td><td>Tamaño del archivo en bytes</td></tr>
+  <tr><td>activo</td><td>BOOLEAN</td><td>No</td><td>Si está visible para los usuarios</td></tr>
+  <tr><td>created_by</td><td>BIGINT UNSIGNED</td><td>Sí</td><td>ID del usuario que lo creó</td></tr>
+  <tr><td>deleted_at</td><td>TIMESTAMP</td><td>Sí</td><td>Soft delete timestamp</td></tr>
+</table>
+
+<!-- CAPÍTULO 6 -->
+<h1>6. API REST - DOCUMENTACIÓN</h1>
+
+<h2>6.1. Información General</h2>
+<table>
+  <tr><th>Propiedad</th><th>Valor</th></tr>
+  <tr><td>URL Base (Producción)</td><td>https://moviruta.colcapirhua.gob.bo/api</td></tr>
+  <tr><td>URL Base (Local)</td><td>http://localhost:8000/api</td></tr>
+  <tr><td>Formato</td><td>JSON</td></tr>
+  <tr><td>Autenticación</td><td>No requerida (endpoints públicos)</td></tr>
+  <tr><td>Timeout recomendado</td><td>12 segundos</td></tr>
+</table>
+
+<h2>6.2. Ejemplo de Respuesta - Listar Trufis</h2>
+<pre>
+GET /api/trufis
+
+Respuesta:
+[
+  {
+    "idtrufi": 1,
+    "nom_linea": "Línea 10",
+    "costo": "2.00",
+    "frecuencia": 15,
+    "tipo": "trufi",
+    "descripcion": "Ruta centro - zona sur",
+    "estado": true,
+    "sindicato_id": 1,
+    "rutas": [
+      {
+        "idtrufi": 1,
+        "orden": 1,
+        "latitud": "-17.3937821",
+        "longitud": "-66.2261147",
+        "puntos": false,
+        "es_parada": false,
+        "estado": true
+      }
+    ]
+  }
+]
+</pre>
+
+<h2>6.3. Ejemplo de Respuesta - GeoJSON</h2>
+<pre>
+GET /api/trufis/1/rutas/geojson
+
+Respuesta:
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "idtrufi": 1,
+        "nom_linea": "Línea 10"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-66.2261147, -17.3937821],
+          [-66.2265432, -17.3940123]
+        ]
+      }
+    }
+  ]
+}
+</pre>
+
+<!-- CAPÍTULO 7 -->
+<h1>7. DESPLIEGUE E INSTALACIÓN</h1>
+
+<h2>7.1. Requisitos del Servidor</h2>
+<table>
+  <tr><th>Componente</th><th>Requisito Mínimo</th></tr>
+  <tr><td>PHP</td><td>≥ 8.2 con extensiones: BCMath, Ctype, cURL, DOM, Fileinfo, JSON, Mbstring, OpenSSL, PDO, Tokenizer, XML</td></tr>
+  <tr><td>MySQL</td><td>≥ 8.0</td></tr>
+  <tr><td>Composer</td><td>≥ 2.x</td></tr>
+  <tr><td>Node.js</td><td>≥ 18.x (para compilar assets)</td></tr>
+  <tr><td>NPM</td><td>≥ 9.x</td></tr>
+  <tr><td>Servidor Web</td><td>Apache con mod_rewrite o Nginx</td></tr>
+  <tr><td>Almacenamiento</td><td>Mínimo 1GB para PDFs y archivos</td></tr>
+</table>
+
+<h2>7.2. Instalación del Backend</h2>
+<pre>
+# 1. Clonar el repositorio
+git clone [url-repositorio] colcaTrufis
+cd colcaTrufis/backend
+
+# 2. Instalar dependencias PHP
+composer install
+
+# 3. Configurar entorno
+cp .env.example .env
+php artisan key:generate
+
+# 4. Editar .env con datos de la BD
+# DB_DATABASE=colcatrufis
+# DB_USERNAME=root
+# DB_PASSWORD=tu_contraseña
+
+# 5. Crear base de datos
+mysql -u root -p -e "CREATE DATABASE colcatrufis"
+
+# 6. Ejecutar migraciones y seeders
+php artisan migrate
+php artisan db:seed
+
+# 7. Crear enlace simbólico al storage
+php artisan storage:link
+
+# 8. Instalar dependencias JS y compilar assets
+npm install
+npm run build
+
+# 9. Iniciar el servidor de desarrollo
+php artisan serve
+</pre>
+
+<h2>7.3. Compilación del Frontend Flutter</h2>
+<pre>
+# 1. Ir al directorio del frontend
+cd colcaTrufis/fronted
+
+# 2. Instalar dependencias Dart
+flutter pub get
+
+# 3. Compilar APK para Android
+flutter build apk --release
+
+# 4. Compilar para iOS (requiere macOS)
+flutter build ios --release
+
+# 5. Para desarrollo
+flutter run
+</pre>
+
+<div class="note"><b>Nota:</b> Antes de compilar, actualizar la URL base de la API en <code>lib/services/api_service.dart</code> si el servidor cambia.</div>
+
+<!-- CAPÍTULO 8 -->
+<h1>8. SEGURIDAD</h1>
+
+<h2>8.1. Medidas Implementadas</h2>
+<ul>
+  <li><b>Autenticación:</b> Laravel Breeze con hashing bcrypt para contraseñas</li>
+  <li><b>Autorización:</b> Sistema de roles y permisos granulares con Spatie Laravel Permission</li>
+  <li><b>CSRF:</b> Protección automática de Laravel para formularios web</li>
+  <li><b>Validación:</b> Validación de datos de entrada en controladores admin</li>
+  <li><b>Soft Deletes:</b> Eliminación lógica en normativas para recuperación de datos</li>
+  <li><b>Transacciones:</b> Uso de transacciones de base de datos para operaciones críticas</li>
+  <li><b>Sanctum:</b> Tokens API disponibles para autenticación de API (actualmente no usado por endpoints públicos)</li>
+  <li><b>Auto-eliminación prevenida:</b> Los usuarios no pueden eliminar su propia cuenta desde el panel admin</li>
+</ul>
+
+<h2>8.2. Recomendaciones</h2>
+<ul>
+  <li>Cambiar las contraseñas de los usuarios seed inmediatamente en producción</li>
+  <li>Configurar HTTPS obligatorio en producción</li>
+  <li>Configurar CORS apropiadamente en <code>config/cors.php</code></li>
+  <li>Considerar agregar rate limiting a los endpoints de la API</li>
+  <li>Configurar backups automáticos de la base de datos</li>
+  <li>Implementar logging y monitoreo de la API</li>
+</ul>
+
+<!-- CAPÍTULO 9 -->
+<h1>9. MANTENIMIENTO</h1>
+
+<h2>9.1. Tareas Periódicas</h2>
+<table>
+  <tr><th>Tarea</th><th>Frecuencia</th><th>Comando</th></tr>
+  <tr><td>Limpiar caché</td><td>Según necesidad</td><td><code>php artisan cache:clear</code></td></tr>
+  <tr><td>Limpiar vistas compiladas</td><td>Tras actualizaciones</td><td><code>php artisan view:clear</code></td></tr>
+  <tr><td>Optimizar para producción</td><td>Tras deploy</td><td><code>php artisan optimize</code></td></tr>
+  <tr><td>Ejecutar migraciones</td><td>Tras actualizaciones</td><td><code>php artisan migrate</code></td></tr>
+  <tr><td>Backup de BD</td><td>Diariamente</td><td><code>mysqldump -u root colcatrufis > backup.sql</code></td></tr>
+  <tr><td>Limpiar archivos temporales</td><td>Semanalmente</td><td>Eliminar archivos en <code>storage/app/public/temp/</code></td></tr>
+  <tr><td>Actualizar dependencias</td><td>Mensualmente</td><td><code>composer update</code> y <code>npm update</code></td></tr>
+</table>
+
+<h2>9.2. Logs</h2>
+<p>Los logs de Laravel se encuentran en <code>storage/logs/laravel.log</code>. Para monitorear en tiempo real:</p>
+<pre>tail -f storage/logs/laravel.log</pre>
+
+<h2>9.3. Estructura de Archivos Importantes</h2>
+<table>
+  <tr><th>Archivo/Directorio</th><th>Propósito</th></tr>
+  <tr><td>.env</td><td>Configuración del entorno (NO versionar)</td></tr>
+  <tr><td>storage/app/public/</td><td>Archivos subidos (normativas PDF)</td></tr>
+  <tr><td>storage/logs/</td><td>Logs de la aplicación</td></tr>
+  <tr><td>database/migrations/</td><td>Definición de estructura de BD</td></tr>
+  <tr><td>routes/api.php</td><td>Definición de endpoints API</td></tr>
+  <tr><td>routes/web.php</td><td>Definición de rutas del panel admin</td></tr>
+</table>
+
+</body>
+</html>
