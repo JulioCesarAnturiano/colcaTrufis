@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../config.dart';
 
 const Color kPrimary = Color(0xFF09596E);
 const Color kPrimaryDark = Color(0xFF064656);
@@ -71,9 +72,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isTrufiSelected = true;
   final MapController _mapController = MapController();
 
-  final ApiService _apiService = ApiService(baseUrl: "https://moviruta.colcapirhua.gob.bo/api");
+  final ApiService _apiService = ApiService(baseUrl: kApiBaseUrl);
 
-  static const String _apiBase = "https://moviruta.colcapirhua.gob.bo/api";
+  static const String _apiBase = kApiBaseUrl;
 
   Position? _currentPosition;
 
@@ -141,6 +142,13 @@ class _HomeScreenState extends State<HomeScreen> {
   static const String _kHistorialTrufisKey = 'historial_trufis_v1';
   static const String _kHistorialRadiotaxisKey = 'historial_radiotaxis_v1';
   static const int _kMaxHistorial = 20;
+
+  // Temporary named location marker shown when navigating to a reference/stop
+  Marker? _tempLocationMarker;
+
+  // Datos del radiotaxi seleccionado (para permitir navegación de vuelta desde modal referencias)
+  Map<String, dynamic>? _selectedRadiotaxiParadaData;
+  String _selectedRadiotaxiNombreModal = '';
 
   List<Map<String, dynamic>> _reclamos = [];
   bool _isLoadingReclamos = false;
@@ -1287,9 +1295,11 @@ Future<void> _fetchTrufis() async {
           width: w,
           height: 34,
           alignment: Alignment.bottomCenter,
-          child: Transform.translate(
-            offset: const Offset(0, 22),
-            child: _paradaNamePill(name),
+          child: IgnorePointer(
+            child: Transform.translate(
+              offset: const Offset(0, 22),
+              child: _paradaNamePill(name),
+            ),
           ),
         ),
       );
@@ -1358,78 +1368,182 @@ Future<void> _fetchTrufis() async {
         if (e is Map<String, dynamic>) return e;
         return <String, dynamic>{};
       }).toList();
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         _referenciasSelectedRadiotaxi = referencias;
       });
-      
-      // Mostrar modal con referencias
-      _mostrarReferenciasRadiotaxiModal(name, referencias);
+
+      _mostrarInfoRadiotaxiModal(name, parada, referencias);
     } catch (e) {
       print("Error cargando referencias de radiotaxi: $e");
-      // Si falla, mostrar solo la dirección de la parada
-      final isDarkMode = AppSettings.darkMode.value;
-      final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
-      final textColor = isDarkMode ? Colors.white : Colors.black87;
-
-      final direccion = await _getAddressFromLatLng(LatLng(lat, lng));
-
       if (!mounted) return;
+      _mostrarInfoRadiotaxiModal(name, parada, []);
+    }
+  }
 
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        builder: (_) {
-          return Container(
-            decoration: BoxDecoration(
-              color: sheetColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 50,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+  void _mostrarInfoRadiotaxiModal(
+    String radiotaxiName,
+    Map<String, dynamic> parada,
+    List<Map<String, dynamic>> referencias,
+  ) {
+    setState(() {
+      _selectedRadiotaxiParadaData = parada;
+      _selectedRadiotaxiNombreModal = radiotaxiName;
+    });
+
+    final isDarkMode = AppSettings.darkMode.value;
+    final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final cardBg = isDarkMode ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
+
+    final ubicacion = (parada["ubicacion"] ?? parada["descripcion"] ?? "").toString().trim();
+    final lat = double.tryParse((parada["latitud"] ?? parada["lat"] ?? "").toString());
+    final lng = double.tryParse((parada["longitud"] ?? parada["lng"] ?? "").toString());
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.4,
+          decoration: BoxDecoration(
+            color: sheetColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 15),
-                Text(
-                  t("stop_address"),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: kPrimary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ListTile(
-                  leading: const Icon(Icons.local_taxi, color: kPrimary, size: 32),
-                  title: Text(
-                    name,
-                    style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.w800,
+              ),
+              const SizedBox(height: 15),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        t("stop_address"),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: kPrimary,
+                        ),
+                      ),
                     ),
                   ),
-                  subtitle: Text(
-                    direccion,
-                    style: TextStyle(color: textColor),
+                  if (referencias.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kAqua,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () => _mostrarReferenciasRadiotaxiModal(radiotaxiName, referencias),
+                        icon: const Icon(Icons.location_city, size: 18),
+                        label: Text(
+                          "${t("references_location")} (${referencias.length})",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Text(
+                  radiotaxiName,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
                   ),
                 ),
-                const SizedBox(height: 10),
-              ],
-            ),
-          );
-        },
-      );
-    }
+              ),
+              const Divider(),
+              Expanded(
+                child: (ubicacion.isEmpty && lat == null)
+                    ? Center(
+                        child: Text(
+                          t("no_data"),
+                          style: TextStyle(color: subTextColor, fontSize: 15),
+                        ),
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                        children: [
+                          Material(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(12),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: (lat != null && lng != null)
+                                  ? () {
+                                      Navigator.pop(context);
+                                      _mapController.move(LatLng(lat, lng), 17.0);
+                                    }
+                                  : null,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: kPrimary.withOpacity(0.10), width: 1),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: kPrimary.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Center(
+                                        child: Icon(Icons.local_taxi, color: kPrimary, size: 16),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Icon(Icons.place_rounded, color: kAqua, size: 16),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        ubicacion.isNotEmpty ? ubicacion : radiotaxiName,
+                                        style: TextStyle(
+                                          color: textColor,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    if (lat != null && lng != null)
+                                      Icon(Icons.my_location_rounded, color: kPrimary.withOpacity(0.45), size: 16),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _mostrarReferenciasRadiotaxiModal(String radiotaxiName, List<Map<String, dynamic>> referencias) {
@@ -1448,7 +1562,7 @@ Future<void> _fetchTrufis() async {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) {
+      builder: (sheetCtxRt) {
         return Container(
           height: MediaQuery.of(context).size.height * 0.6,
           decoration: BoxDecoration(
@@ -1471,6 +1585,28 @@ Future<void> _fetchTrufis() async {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(sheetCtxRt);
+                        if (_selectedRadiotaxiParadaData != null) {
+                          _mostrarInfoRadiotaxiModal(
+                            _selectedRadiotaxiNombreModal,
+                            _selectedRadiotaxiParadaData!,
+                            _referenciasSelectedRadiotaxi,
+                          );
+                        }
+                      },
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: kPrimary.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded, color: kPrimary, size: 18),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Container(
                       width: 44,
                       height: 44,
@@ -1498,7 +1634,7 @@ Future<void> _fetchTrufis() async {
                             ),
                           ),
                           Text(
-                            t("ubicacion"),
+                            t("references_location"),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -1528,82 +1664,65 @@ Future<void> _fetchTrufis() async {
                           ],
                         ),
                       )
-                    : items.length == 1
-                        ? Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(color: kPrimary.withOpacity(0.15), width: 1.5),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 52,
-                                    height: 52,
-                                    decoration: BoxDecoration(
-                                      color: kPrimary.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    child: const Icon(Icons.place_rounded, color: kPrimary, size: 28),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Text(
-                                      (items[0]['referencia'] ?? items[0]['nombre'] ?? items[0]['name'] ?? '').toString(),
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
+                    : ListView.builder(
                             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                             itemCount: items.length,
                             itemBuilder: (context, index) {
-                              final nombre = (items[index]['referencia'] ?? items[index]['nombre'] ?? items[index]['name'] ?? '').toString();
+                              final rtItem = items[index];
+                              final nombre = (rtItem['referencia'] ?? rtItem['nombre'] ?? rtItem['name'] ?? '').toString();
+                              final lat = double.tryParse((rtItem['latitud'] ?? '').toString());
+                              final lng = double.tryParse((rtItem['longitud'] ?? '').toString());
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: cardBg,
+                                child: Material(
+                                  color: cardBg,
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: InkWell(
                                     borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: kPrimary.withOpacity(0.10), width: 1),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: kPrimary.withOpacity(0.12),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            '${index + 1}',
-                                            style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w800, fontSize: 13),
+                                    onTap: (lat != null && lng != null)
+                                        ? () {
+                                            Navigator.pop(sheetCtxRt);
+                                            Navigator.pop(context);
+                                            _mapController.move(LatLng(lat, lng), 17.0);
+                                            _showTempLocationMarker(LatLng(lat, lng), nombre);
+                                          }
+                                        : null,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: kPrimary.withOpacity(0.10), width: 1),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: BoxDecoration(
+                                              color: kPrimary.withOpacity(0.12),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                '${index + 1}',
+                                                style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w800, fontSize: 13),
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                          const SizedBox(width: 12),
+                                          const Icon(Icons.place_rounded, color: kAqua, size: 18),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              nombre,
+                                              style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14.5),
+                                            ),
+                                          ),
+                                          if (lat != null && lng != null)
+                                            Icon(Icons.my_location_rounded, color: kPrimary.withOpacity(0.45), size: 16),
+                                        ],
                                       ),
-                                      const SizedBox(width: 12),
-                                      const Icon(Icons.place_rounded, color: kAqua, size: 18),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          nombre,
-                                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14.5),
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               );
@@ -2388,53 +2507,70 @@ Future<void> _fetchTrufis() async {
                           final nombreVia = (via['nombre_via'] ?? t("no_data")).toString();
                           final isDark = AppSettings.darkMode.value;
                           final cardBg = isDark ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
+                          final lat = double.tryParse((via['latitud'] ?? '').toString());
+                          final lng = double.tryParse((via['longitud'] ?? '').toString());
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: cardBg,
+                            child: Material(
+                              color: cardBg,
+                              borderRadius: BorderRadius.circular(12),
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: kPrimary.withOpacity(0.10),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 30,
-                                    height: 30,
-                                    decoration: BoxDecoration(
-                                      color: kPrimary.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(8),
+                                onTap: (lat != null && lng != null)
+                                    ? () {
+                                        Navigator.pop(context);
+                                        _mapController.move(LatLng(lat, lng), 17.0);
+                                        _showTempLocationMarker(LatLng(lat, lng), nombreVia);
+                                      }
+                                    : null,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: kPrimary.withOpacity(0.10),
+                                      width: 1,
                                     ),
-                                    child: Center(
-                                      child: Text(
-                                        '$orden',
-                                        style: const TextStyle(
-                                          color: kPrimary,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 12,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: BoxDecoration(
+                                          color: kPrimary.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '$orden',
+                                            style: const TextStyle(
+                                              color: kPrimary,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 12,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  const Icon(Icons.turn_right_rounded, color: kAqua, size: 16),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      nombreVia,
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
+                                      const SizedBox(width: 10),
+                                      const Icon(Icons.turn_right_rounded, color: kAqua, size: 16),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          nombreVia,
+                                          style: TextStyle(
+                                            color: textColor,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      if (lat != null && lng != null)
+                                        Icon(Icons.my_location_rounded, color: kPrimary.withOpacity(0.45), size: 16),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           );
@@ -2561,53 +2697,72 @@ Future<void> _fetchTrufis() async {
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                         itemCount: items.length,
                         itemBuilder: (context, index) {
-                          final nombre = (items[index]['referencia'] ?? items[index]['nombre'] ?? items[index]['name'] ?? '').toString();
+                          final refItem = items[index];
+                          final nombre = (refItem['referencia'] ?? refItem['nombre'] ?? refItem['name'] ?? '').toString();
+                          final lat = double.tryParse((refItem['latitud'] ?? '').toString());
+                          final lng = double.tryParse((refItem['longitud'] ?? '').toString());
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: cardBg,
+                            child: Material(
+                              color: cardBg,
+                              borderRadius: BorderRadius.circular(14),
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: kPrimary.withOpacity(0.10),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: kPrimary.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(8),
+                                onTap: (lat != null && lng != null)
+                                    ? () {
+                                        Navigator.pop(sheetCtx2);
+                                        Navigator.pop(context);
+                                        _mapController.move(LatLng(lat, lng), 17.0);
+                                        _showTempLocationMarker(LatLng(lat, lng), nombre);
+                                      }
+                                    : null,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: kPrimary.withOpacity(0.10),
+                                      width: 1,
                                     ),
-                                    child: Center(
-                                      child: Text(
-                                        '${index + 1}',
-                                        style: const TextStyle(
-                                          color: kPrimary,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 13,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          color: kPrimary.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '${index + 1}',
+                                            style: const TextStyle(
+                                              color: kPrimary,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Icon(Icons.place_rounded, color: kAqua, size: 18),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      nombre,
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14.5,
+                                      const SizedBox(width: 12),
+                                      const Icon(Icons.place_rounded, color: kAqua, size: 18),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          nombre,
+                                          style: TextStyle(
+                                            color: textColor,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14.5,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      if (lat != null && lng != null)
+                                        Icon(Icons.my_location_rounded, color: kPrimary.withOpacity(0.45), size: 16),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           );
@@ -2631,6 +2786,7 @@ Future<void> _fetchTrufis() async {
           LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
           15,
         );
+        _mapController.rotate(0);
       } else {
         // No GPS yet — request it
         await _getCurrentLocation();
@@ -2639,12 +2795,73 @@ Future<void> _fetchTrufis() async {
             LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
             15,
           );
+          _mapController.rotate(0);
         }
       }
       return;
     }
 
     _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
+    _mapController.rotate(0);
+  }
+
+  /// Shows a temporary named marker on the map at [point] with [name].
+  /// The marker is cleared when the user taps the map.
+  void _showTempLocationMarker(LatLng point, String name) {
+    if (!mounted) return;
+    final estimatedWidth = (name.length * 8.0 + 60.0).clamp(100.0, 260.0);
+    setState(() {
+      _tempLocationMarker = Marker(
+        point: point,
+        width: estimatedWidth,
+        height: 64,
+        alignment: Alignment.bottomCenter,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [kPrimaryDark, kPrimary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: kPrimary.withOpacity(0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.place_rounded, color: Colors.white, size: 15),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_drop_down, color: kPrimary, size: 18),
+          ],
+        ),
+      );
+    });
   }
 
   /// Asks for CALL_PHONE permission if needed. Returns true if the call can proceed.
@@ -3440,10 +3657,18 @@ Future<void> _fetchTrufis() async {
                       options: MapOptions(
                         initialCenter: const LatLng(-17.3939, -66.2386),
                         initialZoom: 13,
+                        onTap: (_, __) {
+                          if (_tempLocationMarker != null) {
+                            setState(() => _tempLocationMarker = null);
+                          }
+                        },
                         onPositionChanged: (pos, hasGesture) {
                           final z = pos.zoom;
                           if (z == null) return;
                           _recalcCircleRadiusPx(z);
+                          if (hasGesture && _tempLocationMarker != null) {
+                            setState(() => _tempLocationMarker = null);
+                          }
                         },
                       ),
                       children: [
@@ -3499,13 +3724,17 @@ Future<void> _fetchTrufis() async {
                               ),
                             ],
                           ),
+
+                        // Temporary named location marker (clears on map tap)
+                        if (_tempLocationMarker != null)
+                          MarkerLayer(markers: [_tempLocationMarker!]),
                       ],
                     ),
 
                     if (_isLoadingRutaTrufi)
                       Positioned(
                         left: 16,
-                        top: 90,
+                        top: MediaQuery.of(context).padding.top + 70 + 8,
                         child: _loadingChip(t("loading_route"), Icons.route),
                       ),
 
@@ -3596,7 +3825,7 @@ Future<void> _fetchTrufis() async {
                     if (_selectedTrufiName != null && _selectedTrufiName!.trim().isNotEmpty && isTrufiSelected)
                       Positioned(
                         left: 16,
-                        top: (_isLoadingGeoJSON || _isLoadingRutaTrufi) ? 148 : 90,
+                        top: MediaQuery.of(context).padding.top + 70 + 8 + ((_isLoadingGeoJSON || _isLoadingRutaTrufi) ? 58 : 0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
@@ -3804,6 +4033,8 @@ Future<void> _fetchTrufis() async {
                                 isTrufiSelected = false;
                               });
                               _aplicarFiltroParadas();
+                              _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
+                              _mapController.rotate(0);
                               _showFullWidthBottomSheet(context, t("radiotaxi"));
                             },
                           ),
@@ -4660,11 +4891,10 @@ Future<void> _fetchTrufis() async {
 
     return Drawer(
       width: drawerWidth,
-      child: SafeArea(
-        child: ValueListenableBuilder<bool>(
-          valueListenable: AppSettings.darkMode,
-          builder: (context, isDarkMode, _) {
-            final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+      child: ValueListenableBuilder<bool>(
+        valueListenable: AppSettings.darkMode,
+        builder: (context, isDarkMode, _) {
+          final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
             final textColor = isDarkMode ? Colors.white : Colors.black87;
             final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
             final sectionHeaderColor = isDarkMode ? Colors.white38 : Colors.black38;
@@ -4756,7 +4986,7 @@ Future<void> _fetchTrufis() async {
                   ClipRect(
                     child: Container(
                       width: double.infinity,
-                      height: 148,
+                      height: 148 + MediaQuery.of(context).padding.top,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [Color(0xFF032D38), Color(0xFF064656), Color(0xFF09596E)],
@@ -4800,10 +5030,10 @@ Future<void> _fetchTrufis() async {
                               ),
                             ),
                           ),
-                          // Logo — left, vertically centered, slightly larger
+                          // Logo — left, vertically centered below status bar
                           Positioned(
                             left: 20,
-                            top: 0,
+                            top: MediaQuery.of(context).padding.top,
                             bottom: 0,
                             child: Center(
                               child: Image.asset(
@@ -5353,7 +5583,6 @@ Future<void> _fetchTrufis() async {
             );
           },
         ),
-      ),
     );
   }
 

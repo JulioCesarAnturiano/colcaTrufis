@@ -32,6 +32,7 @@
                                 <th>ID</th>
                                 <th>Nombre Comercial</th>
                                 <th>Teléfono Base</th>
+                                <th>Ubicación</th>
                                 <th style="width: 200px;">Acciones</th>
                             </tr>
                         </thead>
@@ -42,6 +43,7 @@
                                     <td>{{ $r->id }}</td>
                                     <td class="fw-semibold">{{ $r->nombre_comercial }}</td>
                                     <td>{{ $r->telefono_base }}</td>
+                                    <td>{{ optional($r->parada)->ubicacion ?? '—' }}</td>
                                     <td>
                                         <div class="d-flex gap-1">
 
