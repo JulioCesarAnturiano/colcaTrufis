@@ -6,5 +6,5 @@
 /// For physical devices on the same Wi-Fi network use your machine's LAN IP instead.
 const String kApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:8000/api',
+  defaultValue: 'https://moviruta.colcapirhua.gob.bo/api',
 );

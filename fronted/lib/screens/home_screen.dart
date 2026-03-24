@@ -146,6 +146,10 @@ class _HomeScreenState extends State<HomeScreen> {
   // Temporary named location marker shown when navigating to a reference/stop
   Marker? _tempLocationMarker;
 
+  // Datos del radiotaxi seleccionado (para permitir navegación de vuelta desde modal referencias)
+  Map<String, dynamic>? _selectedRadiotaxiParadaData;
+  String _selectedRadiotaxiNombreModal = '';
+
   List<Map<String, dynamic>> _reclamos = [];
   bool _isLoadingReclamos = false;
 
@@ -1364,78 +1368,182 @@ Future<void> _fetchTrufis() async {
         if (e is Map<String, dynamic>) return e;
         return <String, dynamic>{};
       }).toList();
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         _referenciasSelectedRadiotaxi = referencias;
       });
-      
-      // Mostrar modal con referencias
-      _mostrarReferenciasRadiotaxiModal(name, referencias);
+
+      _mostrarInfoRadiotaxiModal(name, parada, referencias);
     } catch (e) {
       print("Error cargando referencias de radiotaxi: $e");
-      // Si falla, mostrar solo la dirección de la parada
-      final isDarkMode = AppSettings.darkMode.value;
-      final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
-      final textColor = isDarkMode ? Colors.white : Colors.black87;
-
-      final direccion = await _getAddressFromLatLng(LatLng(lat, lng));
-
       if (!mounted) return;
+      _mostrarInfoRadiotaxiModal(name, parada, []);
+    }
+  }
 
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        builder: (_) {
-          return Container(
-            decoration: BoxDecoration(
-              color: sheetColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 50,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+  void _mostrarInfoRadiotaxiModal(
+    String radiotaxiName,
+    Map<String, dynamic> parada,
+    List<Map<String, dynamic>> referencias,
+  ) {
+    setState(() {
+      _selectedRadiotaxiParadaData = parada;
+      _selectedRadiotaxiNombreModal = radiotaxiName;
+    });
+
+    final isDarkMode = AppSettings.darkMode.value;
+    final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final cardBg = isDarkMode ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
+
+    final ubicacion = (parada["ubicacion"] ?? parada["descripcion"] ?? "").toString().trim();
+    final lat = double.tryParse((parada["latitud"] ?? parada["lat"] ?? "").toString());
+    final lng = double.tryParse((parada["longitud"] ?? parada["lng"] ?? "").toString());
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.4,
+          decoration: BoxDecoration(
+            color: sheetColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 15),
-                Text(
-                  t("stop_address"),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: kPrimary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ListTile(
-                  leading: const Icon(Icons.local_taxi, color: kPrimary, size: 32),
-                  title: Text(
-                    name,
-                    style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.w800,
+              ),
+              const SizedBox(height: 15),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        t("stop_address"),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: kPrimary,
+                        ),
+                      ),
                     ),
                   ),
-                  subtitle: Text(
-                    direccion,
-                    style: TextStyle(color: textColor),
+                  if (referencias.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kAqua,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () => _mostrarReferenciasRadiotaxiModal(radiotaxiName, referencias),
+                        icon: const Icon(Icons.location_city, size: 18),
+                        label: Text(
+                          "${t("references_location")} (${referencias.length})",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Text(
+                  radiotaxiName,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
                   ),
                 ),
-                const SizedBox(height: 10),
-              ],
-            ),
-          );
-        },
-      );
-    }
+              ),
+              const Divider(),
+              Expanded(
+                child: (ubicacion.isEmpty && lat == null)
+                    ? Center(
+                        child: Text(
+                          t("no_data"),
+                          style: TextStyle(color: subTextColor, fontSize: 15),
+                        ),
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                        children: [
+                          Material(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(12),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: (lat != null && lng != null)
+                                  ? () {
+                                      Navigator.pop(context);
+                                      _mapController.move(LatLng(lat, lng), 17.0);
+                                    }
+                                  : null,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: kPrimary.withOpacity(0.10), width: 1),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: kPrimary.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Center(
+                                        child: Icon(Icons.local_taxi, color: kPrimary, size: 16),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Icon(Icons.place_rounded, color: kAqua, size: 16),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        ubicacion.isNotEmpty ? ubicacion : radiotaxiName,
+                                        style: TextStyle(
+                                          color: textColor,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    if (lat != null && lng != null)
+                                      Icon(Icons.my_location_rounded, color: kPrimary.withOpacity(0.45), size: 16),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _mostrarReferenciasRadiotaxiModal(String radiotaxiName, List<Map<String, dynamic>> referencias) {
@@ -1454,7 +1562,7 @@ Future<void> _fetchTrufis() async {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) {
+      builder: (sheetCtxRt) {
         return Container(
           height: MediaQuery.of(context).size.height * 0.6,
           decoration: BoxDecoration(
@@ -1477,6 +1585,28 @@ Future<void> _fetchTrufis() async {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(sheetCtxRt);
+                        if (_selectedRadiotaxiParadaData != null) {
+                          _mostrarInfoRadiotaxiModal(
+                            _selectedRadiotaxiNombreModal,
+                            _selectedRadiotaxiParadaData!,
+                            _referenciasSelectedRadiotaxi,
+                          );
+                        }
+                      },
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: kPrimary.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded, color: kPrimary, size: 18),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Container(
                       width: 44,
                       height: 44,
@@ -1504,7 +1634,7 @@ Future<void> _fetchTrufis() async {
                             ),
                           ),
                           Text(
-                            t("ubicacion"),
+                            t("references_location"),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -1551,6 +1681,7 @@ Future<void> _fetchTrufis() async {
                                     borderRadius: BorderRadius.circular(14),
                                     onTap: (lat != null && lng != null)
                                         ? () {
+                                            Navigator.pop(sheetCtxRt);
                                             Navigator.pop(context);
                                             _mapController.move(LatLng(lat, lng), 17.0);
                                             _showTempLocationMarker(LatLng(lat, lng), nombre);
@@ -3535,6 +3666,9 @@ Future<void> _fetchTrufis() async {
                           final z = pos.zoom;
                           if (z == null) return;
                           _recalcCircleRadiusPx(z);
+                          if (hasGesture && _tempLocationMarker != null) {
+                            setState(() => _tempLocationMarker = null);
+                          }
                         },
                       ),
                       children: [

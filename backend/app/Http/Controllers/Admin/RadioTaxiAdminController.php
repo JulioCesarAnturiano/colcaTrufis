@@ -40,6 +40,7 @@ public function store(Request $request)
         'telefono_base' => ['required','string','max:255'],
         'latitud' => ['required','numeric'],
         'longitud' => ['required','numeric'],
+        'ubicacion' => ['nullable','string','max:255'],
     ]);
 
     DB::beginTransaction();
@@ -55,6 +56,7 @@ public function store(Request $request)
             [
                 'latitud' => $data['latitud'],
                 'longitud' => $data['longitud'],
+                'ubicacion' => $data['ubicacion'] ?? null,
                 'estado' => 1,
             ]
         );
@@ -96,6 +98,7 @@ public function edit(Request $request, $id)
         'telefono_base' => ['required','string','max:255'],
         'latitud' => ['required','numeric'],
         'longitud' => ['required','numeric'],
+        'ubicacion' => ['nullable','string','max:255'],
     ]);
 
     $radiotaxi = Sindicatoradiotaxi::findOrFail($id);
@@ -110,6 +113,7 @@ public function edit(Request $request, $id)
         [
             'latitud' => $request->latitud,
             'longitud' => $request->longitud,
+            'ubicacion' => $request->ubicacion,
             'estado' => true,
         ]
     );

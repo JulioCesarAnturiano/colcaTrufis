@@ -66,5 +66,5 @@ Route::get('/radiotaxis/{id}/referencias', [ReferenciaController::class, 'byRadi
 // Horario del trufi
 Route::get('/trufis/{id}/horario', [TrufiController::class, 'horario']);
 // Ubicaciones (Calles)
-Route::get('/trufis/{idtrufi}/ubicaciones', [TrufirutaController::class, 'ubicacionesPorTrufi']);
-Route::get('/ubicaciones', [TrufirutaController::class, 'ubicacionesTodas']);
+Route::get('/trufis/{idtrufi}/ubicaciones', [TrufiRutaController::class, 'ubicacionesPorTrufi']);
+Route::get('/ubicaciones', [TrufiRutaController::class, 'ubicacionesTodas']);

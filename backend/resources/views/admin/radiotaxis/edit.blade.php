@@ -39,6 +39,15 @@
                            value="{{ old('telefono_base', $radiotaxi->telefono_base) }}">
                 </div>
 
+                <div class="col-md-12 mb-3">
+                    <label class="form-label fw-semibold">Ubicación (nombre del punto de parada)</label>
+                    <input type="text"
+                           name="ubicacion"
+                           class="form-control"
+                           placeholder="Ej: Plaza Principal, Terminal, etc."
+                           value="{{ old('ubicacion', optional($radiotaxi->parada)->ubicacion) }}">
+                </div>
+
             </div>
 
             <div class="alert alert-info">
