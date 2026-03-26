@@ -1,0 +1,937 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="UTF-8">
+<meta name="ProgId" content="Word.Document">
+<meta name="Generator" content="Microsoft Word 15">
+<meta name="Originator" content="Microsoft Word 15">
+<style>
+  body { font-family: 'Calibri', sans-serif; font-size: 10pt; margin: 1cm; line-height: 1.2; color: #333; }
+  h1 { font-size: 16pt; color: #1a5276; text-align: center; border-bottom: 2px solid #1a5276; padding-bottom: 5px; margin: 12px 0 8px 0; }
+  h2 { font-size: 13pt; color: #2471a3; margin: 10px 0 6px 0; border-bottom: 1px solid #d5d8dc; padding-bottom: 2px; }
+  h3 { font-size: 11pt; color: #2e86c1; margin: 8px 0 5px 0; }
+  h4 { font-size: 10pt; color: #3498db; margin: 6px 0 3px 0; }
+  p { margin: 3px 0; }
+  code { background-color: #f4f6f6; padding: 1px 4px; font-family: 'Consolas', monospace; font-size: 9pt; color: #c0392b; border-radius: 2px; }
+  pre { background-color: #f4f6f6; padding: 8px; font-family: 'Consolas', monospace; font-size: 8pt; border-left: 3px solid #2471a3; overflow-x: auto; margin: 5px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0; font-size: 8pt; }
+  th { background-color: #2471a3; color: white; padding: 4px 6px; text-align: left; border: 1px solid #1a5276; }
+  td { padding: 3px 6px; border: 1px solid #bdc3c7; vertical-align: top; }
+  tr:nth-child(even) { background-color: #f2f4f4; }
+  .cover { text-align: center; margin: 8px 0; }
+  .cover h1 { font-size: 18pt; border: none; color: #1a5276; margin: 4px 0; }
+  .cover h2 { font-size: 14pt; color: #5d6d7e; border: none; margin: 4px 0; }
+  .cover p { font-size: 10pt; color: #7f8c8d; margin: 2px 0; }
+  .toc h1 { text-align: left; font-size: 14pt; margin: 8px 0 6px 0; }
+  .toc ul { list-style-type: none; padding-left: 0; margin: 4px 0; }
+  .toc li { padding: 1px 0; font-size: 9pt; }
+  .toc li.l2 { padding-left: 15px; }
+  .toc li.l3 { padding-left: 30px; }
+  ul { margin: 3px 0 6px 12px; }
+  ol { margin: 3px 0 6px 12px; }
+  li { margin-bottom: 1px; }
+  .note { background-color: #eaf2f8; border-left: 3px solid #2471a3; padding: 6px 10px; margin: 4px 0; font-size: 9pt; }
+  .warning { background-color: #fef9e7; border-left: 3px solid #f39c12; padding: 6px 10px; margin: 4px 0; font-size: 9pt; }
+  hr { margin: 10px 0; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>MANUAL TÉCNICO</h1>
+  <h2>Sistema ColcaTrufis - MoViRuta</h2>
+  <p>Aplicación de Gestión de Transporte Público</p>
+  <p>Municipio de Colcapirhua - Cochabamba, Bolivia</p>
+  <p><b>Versión:</b> 1.0.0 | <b>Fecha:</b> Marzo 2026 | <b>URL:</b> moviruta.colcapirhua.gob.bo</p>
+</div>
+
+<div class="toc">
+  <h1>TABLA DE CONTENIDOS</h1>
+  <ul>
+    <li><b>1.</b> Introducción</li>
+    <li class="l2">1.1. Propósito del Documento</li>
+    <li class="l2">1.2. Alcance del Sistema</li>
+    <li class="l2">1.3. Definiciones y Acrónimos</li>
+    <li><b>2.</b> Arquitectura del Sistema</li>
+    <li class="l2">2.1. Visión General</li>
+    <li class="l2">2.2. Stack Tecnológico</li>
+    <li class="l2">2.3. Diagrama de Arquitectura</li>
+    <li><b>3.</b> Backend - Laravel</li>
+    <li class="l2">3.1. Estructura de Directorios</li>
+    <li class="l2">3.2. Configuración del Entorno</li>
+    <li class="l2">3.3. Base de Datos</li>
+    <li class="l2">3.4. Modelos y Relaciones</li>
+    <li class="l2">3.5. Controladores</li>
+    <li class="l2">3.6. Rutas Web y API</li>
+    <li class="l2">3.7. Servicios y Autenticación</li>
+    <li><b>4.</b> Frontend Móvil - Flutter</li>
+    <li class="l2">4.1. Estructura del Proyecto</li>
+    <li class="l2">4.2. Dependencias y Pantallas</li>
+    <li class="l2">4.3. Servicios y Modelos</li>
+    <li><b>5.</b> Base de Datos</li>
+    <li class="l2">5.1. Diagrama Entidad-Relación</li>
+    <li class="l2">5.2. Diccionario de Datos</li>
+    <li><b>6.</b> API REST - Documentación</li>
+    <li class="l2">6.1. Endpoints y Formatos</li>
+    <li><b>7.</b> Despliegue e Instalación</li>
+    <li class="l2">7.1. Requisitos y Backend</li>
+    <li class="l2">7.2. Frontend Flutter</li>
+    <li><b>8.</b> Seguridad y Mantenimiento</li>
+  </ul>
+</div>
+
+<hr/>
+<h1>1. INTRODUCCIÓN</h1>
+
+<h2>1.1. Propósito del Documento</h2>
+<p>Este manual técnico documenta la arquitectura, implementación y mantenimiento del Sistema ColcaTrufis (MoViRuta), aplicación de gestión de transporte público del Municipio de Colcapirhua.</p>
+
+<div class="note">
+  <p><b>Audiencia objetivo:</b> Desarrolladores, administradores de sistema y personal técnico encargado del mantenimiento y evolución de la aplicación.</p>
+</div>
+
+<h2>1.2. Alcance del Sistema</h2>
+<p>El sistema ColcaTrufis comprende:</p>
+<ul>
+  <li><b>Aplicación Móvil (Flutter):</b> App nativa para Android que permite a los ciudadanos consultar rutas, radiotaxis y realizar reclamos</li>
+  <li><b>Panel de Administración Web (Laravel):</b> Sistema para gestionar rutas, vehículos, sindicatos, usuarios y reclamos</li>
+  <li><b>API REST (Laravel):</b> Backend que proporciona datos a la aplicación móvil</li>
+  <li><b>Base de Datos (MySQL):</b> Almacenamiento persistente de toda la información del sistema</li>
+</ul>
+
+<h2>1.3. Definiciones y Acrónimos</h2>
+<table>
+  <tr><th>Término</th><th>Definición</th></tr>
+  <tr><td>Trufi</td><td>Vehículo de transporte público colectivo, típico de Bolivia</td></tr>
+  <tr><td>Radiotaxi</td><td>Servicio de taxi con central de radio para coordinación</td></tr>
+  <tr><td>Sindicato</td><td>Organización de transportistas que opera una o más rutas</td></tr>
+  <tr><td>API</td><td>Application Programming Interface - Interfaz de programación</td></tr>
+  <tr><td>REST</td><td>Representational State Transfer - Estilo arquitectónico</td></tr>
+  <tr><td>CRUD</td><td>Create, Read, Update, Delete - Operaciones básicas de datos</td></tr>
+</table>
+
+<h1>2. ARQUITECTURA DEL SISTEMA</h1>
+
+<h2>2.1. Visión General</h2>
+<p>ColcaTrufis implementa una arquitectura cliente-servidor con los siguientes componentes:</p>
+<ul>
+  <li><b>Cliente Móvil:</b> Aplicación Flutter que consume la API REST</li>
+  <li><b>Panel Web:</b> Interfaz de administración desarrollada en Laravel con Blade</li>
+  <li><b>Servidor Backend:</b> Laravel actuando como API REST y servidor web</li>
+  <li><b>Base de Datos:</b> MySQL para persistencia de datos</li>
+  <li><b>Servidor Web:</b> Apache/Nginx para servir la aplicación</li>
+</ul>
+
+<h2>2.2. Stack Tecnológico</h2>
+<table>
+  <tr><th>Capa</th><th>Tecnología</th><th>Versión</th><th>Propósito</th></tr>
+  <tr><td>Frontend Móvil</td><td>Flutter</td><td>3.16.x</td><td>Aplicación multiplataforma</td></tr>
+  <tr><td>Frontend Web</td><td>Laravel Blade + Bootstrap</td><td>10.x / 5.3</td><td>Panel de administración</td></tr>
+  <tr><td>Backend</td><td>Laravel</td><td>10.x</td><td>Framework PHP para API y web</td></tr>
+  <tr><td>Base de Datos</td><td>MySQL</td><td>8.0+</td><td>Almacenamiento relacional</td></tr>
+  <tr><td>Servidor Web</td><td>Apache</td><td>2.4+</td><td>Servidor HTTP</td></tr>
+  <tr><td>Lenguaje</td><td>PHP</td><td>8.1+</td><td>Desarrollo backend</td></tr>
+  <tr><td>Lenguaje Móvil</td><td>Dart</td><td>3.2.x</td><td>Desarrollo Flutter</td></tr>
+</table>
+
+<h2>2.3. Diagrama de Arquitectura</h2>
+<div class="note">
+  <pre>
+┌─────────────┐ HTTP/HTTPS ┌──────────────┐
+│ App Móvil   │◄──────────►│ Servidor Web │
+│ (Flutter)   │ API        │ (Apache)     │
+└─────────────┘            └──────────────┘
+                                   │
+┌─────────────┐                    │
+│ Panel Web   │◄───────────────────┤
+│ (Blade/HTML)│ Admin              │
+└─────────────┘                    ▼
+                            ┌──────────────┐
+                            │ Laravel App  │
+                            │ (Backend)    │
+                            └──────────────┘
+                                   │
+                                   ▼
+                            ┌──────────────┐
+                            │ Base de Datos│
+                            │ (MySQL)      │
+                            └──────────────┘
+  </pre>
+</div>
+
+<h1>3. BACKEND - LARAVEL</h1>
+
+<h2>3.1. Estructura de Directorios</h2>
+<pre>
+colcaTrufis/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Api/           # Controladores para API REST
+│   │   │   └── Web/           # Controladores para panel web
+│   │   ├── Middleware/        # Middleware personalizado
+│   │   └── Requests/          # Form requests de validación
+│   ├── Models/                # Modelos Eloquent
+│   ├── Services/              # Lógica de negocio
+│   └── Providers/             # Service providers
+├── config/                    # Archivos de configuración
+├── database/
+│   ├── migrations/            # Migraciones de bases de datos
+│   ├── seeders/               # Datos de prueba
+│   └── factories/             # Factories para testing
+├── resources/
+│   ├── views/                 # Vistas Blade
+│   └── js/css/                # Assets frontend
+├── routes/
+│   ├── api.php                # Rutas API REST
+│   └── web.php                # Rutas panel web
+├── storage/                   # Archivos subidos, logs, cache
+└── public/                    # Punto de entrada web
+</pre>
+
+<h2>3.2. Configuración del Entorno</h2>
+<p>Archivo <code>.env</code> con configuraciones principales:</p>
+<pre>
+APP_NAME="ColcaTrufis"
+APP_ENV=production
+APP_KEY=base64:...
+APP_DEBUG=false
+APP_URL=https://moviruta.colcapirhua.gob.bo
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=colcatrufis_db
+DB_USERNAME=colcatrufis_user
+DB_PASSWORD=***
+
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=...
+MAIL_PASSWORD=...
+</pre>
+
+<h2>3.3. Base de Datos</h2>
+
+<h3>3.3.1. Migraciones Principales</h3>
+<table>
+  <tr><th>Migración</th><th>Tabla</th><th>Propósito</th></tr>
+  <tr><td>2024_01_01_000000_create_users_table</td><td>users</td><td>Usuarios del panel admin</td></tr>
+  <tr><td>2024_01_02_000000_create_sindicatos_table</td><td>sindicatos</td><td>Organizaciones de transportistas</td></tr>
+  <tr><td>2024_01_03_000000_create_rutas_table</td><td>rutas</td><td>Rutas de transporte público</td></tr>
+  <tr><td>2024_01_04_000000_create_trufis_table</td><td>trufis</td><td>Vehículos registrados</td></tr>
+  <tr><td>2024_01_05_000000_create_paradas_table</td><td>paradas</td><td>Paradas de cada ruta</td></tr>
+  <tr><td>2024_01_06_000000_create_radiotaxis_table</td><td>radiotaxis</td><td>Empresas de radiotaxis</td></tr>
+  <tr><td>2024_01_07_000000_create_referencias_table</td><td>referencias</td><td>Referencias geográficas</td></tr>
+  <tr><td>2024_01_08_000000_create_reclamos_table</td><td>reclamos</td><td>Quejas y sugerencias</td></tr>
+  <tr><td>2024_01_09_000000_create_normativas_table</td><td>normativas</td><td>Documentos normativos</td></tr>
+</table>
+
+<h2>3.4. Modelos y Relaciones</h2>
+
+<h3>3.4.1. Modelo Sindicato</h3>
+<pre>
+class Sindicato extends Model
+{
+    protected $fillable = ['nombre', 'sigla', 'representante_legal',
+                          'telefono', 'direccion', 'estado'];
+
+    public function rutas()
+    {
+        return $this->hasMany(Ruta::class);
+    }
+
+    public function trufis()
+    {
+        return $this->hasManyThrough(Trufi::class, Ruta::class);
+    }
+}
+</pre>
+
+<h3>3.4.2. Modelo Ruta</h3>
+<pre>
+class Ruta extends Model
+{
+    protected $fillable = ['numero', 'nombre', 'origen', 'destino',
+                          'distancia_km', 'tarifa', 'horario_inicio',
+                          'horario_fin', 'sindicato_id', 'estado'];
+
+    public function sindicato()
+    {
+        return $this->belongsTo(Sindicato::class);
+    }
+
+    public function paradas()
+    {
+        return $this->hasMany(Parada::class);
+    }
+
+    public function trufis()
+    {
+        return $this->hasMany(Trufi::class);
+    }
+}
+</pre>
+
+<h3>3.4.3. Modelo Trufi</h3>
+<pre>
+class Trufi extends Model
+{
+    protected $fillable = ['placa', 'propietario', 'conductor',
+                          'telefono_conductor', 'ruta_id', 'estado'];
+
+    public function ruta()
+    {
+        return $this->belongsTo(Ruta::class);
+    }
+}
+</pre>
+
+<h2>3.5. Controladores</h2>
+
+<h3>3.5.1. API Controllers (app/Http/Controllers/Api/)</h3>
+
+<h4>RutaController.php</h4>
+<pre>
+class RutaController extends Controller
+{
+    public function index()
+    {
+        $rutas = Ruta::with(['sindicato', 'paradas'])
+                     ->where('estado', 'activo')
+                     ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $rutas
+        ]);
+    }
+
+    public function show($id)
+    {
+        $ruta = Ruta::with(['sindicato', 'paradas', 'trufis'])
+                    ->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'data' => $ruta
+        ]);
+    }
+}
+</pre>
+
+<h3>3.5.2. Web Controllers (app/Http/Controllers/Web/)</h3>
+
+<h4>DashboardController.php</h4>
+<pre>
+class DashboardController extends Controller
+{
+    public function index()
+    {
+        $stats = [
+            'total_rutas' => Ruta::count(),
+            'total_trufis' => Trufi::count(),
+            'total_sindicatos' => Sindicato::count(),
+            'reclamos_pendientes' => Reclamo::where('estado', 'pendiente')->count()
+        ];
+
+        return view('dashboard', compact('stats'));
+    }
+}
+</pre>
+
+<h2>3.6. Rutas Web y API</h2>
+
+<h3>routes/web.php</h3>
+<pre>
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::resource('sindicatos', SindicatoController::class);
+    Route::resource('rutas', RutaController::class);
+    Route::resource('trufis', TrufiController::class);
+    Route::resource('radiotaxis', RadiotaxiController::class);
+    Route::resource('referencias', ReferenciaController::class);
+    Route::resource('normativas', NormativaController::class);
+    Route::resource('reclamos', ReclamoController::class);
+    Route::get('/reportes', [ReporteController::class, 'index']);
+    Route::get('/reportes/exportar', [ReporteController::class, 'exportar']);
+});
+</pre>
+
+<h3>routes/api.php</h3>
+<pre>
+Route::prefix('v1')->group(function () {
+    Route::get('rutas', [Api\RutaController::class, 'index']);
+    Route::get('rutas/{id}', [Api\RutaController::class, 'show']);
+    Route::get('radiotaxis', [Api\RadiotaxiController::class, 'index']);
+    Route::get('referencias', [Api\ReferenciaController::class, 'index']);
+    Route::get('normativas', [Api\NormativaController::class, 'index']);
+    Route::post('reclamos', [Api\ReclamoController::class, 'store']);
+    Route::get('reclamos/{codigo}', [Api\ReclamoController::class, 'show']);
+});
+</pre>
+
+<h2>3.7. Servicios y Autenticación</h2>
+<p>El sistema utiliza el sistema de autenticación integrado de Laravel con middleware <code>auth</code> para proteger rutas del panel administrativo. Los servicios encapsulan la lógica de negocio para operaciones complejas como generación de reportes y procesamiento de reclamos.</p>
+
+<h1>4. FRONTEND MÓVIL - FLUTTER</h1>
+
+<h2>4.1. Estructura del Proyecto</h2>
+<pre>
+lib/
+├── main.dart                  # Punto de entrada
+├── app.dart                   # Configuración de la app
+├── config/
+│   ├── theme.dart             # Tema y estilos
+│   └── constants.dart         # Constantes globales
+├── models/
+│   ├── ruta.dart              # Modelo de ruta
+│   ├── sindicato.dart         # Modelo de sindicato
+│   ├── radiotaxi.dart         # Modelo de radiotaxi
+│   └── reclamo.dart           # Modelo de reclamo
+├── services/
+│   ├── api_service.dart       # Cliente HTTP para API
+│   ├── location_service.dart  # Servicios de geolocalización
+│   └── storage_service.dart   # Almacenamiento local
+├── screens/
+│   ├── home_screen.dart       # Pantalla principal
+│   ├── maps_screen.dart       # Mapa interactivo
+│   ├── rutas_screen.dart      # Lista de rutas
+│   ├── radiotaxis_screen.dart # Lista de radiotaxis
+│   ├── normativas_screen.dart # Normativas
+│   └── reclamos_screen.dart   # Formulario de reclamos
+├── widgets/
+│   ├── custom_app_bar.dart    # AppBar personalizada
+│   ├── ruta_card.dart         # Tarjeta de ruta
+│   └── loading_widget.dart    # Indicador de carga
+└── utils/
+    ├── helpers.dart           # Funciones auxiliares
+    └── validators.dart        # Validaciones
+</pre>
+
+<h2>4.2. Dependencias y Pantallas</h2>
+
+<h3>pubspec.yaml</h3>
+<pre>
+dependencies:
+  flutter:
+    sdk: flutter
+  # HTTP y API
+  http: ^1.1.0
+  dio: ^5.3.2
+  # Mapas y localización
+  google_maps_flutter: ^2.5.0
+  location: ^5.0.3
+  geolocator: ^10.1.0
+  # Estado y arquitectura
+  provider: ^6.1.1
+  get_it: ^7.6.4
+  # Almacenamiento local
+  shared_preferences: ^2.2.2
+  hive: ^2.2.3
+  # UI y utilidades
+  cached_network_image: ^3.3.0
+  url_launcher: ^6.2.1
+  permission_handler: ^11.0.1
+</pre>
+
+<h3>HomeScreen</h3>
+<pre>
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = [
+    MapScreen(),
+    RutasScreen(),
+    RadiotaxisScreen(),
+    NormativasScreen(),
+    ReclamosScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _screens[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Mapa'),
+          BottomNavigationBarItem(icon: Icon(Icons.directions_bus), label: 'Rutas'),
+          BottomNavigationBarItem(icon: Icon(Icons.local_taxi), label: 'Radiotaxis'),
+          BottomNavigationBarItem(icon: Icon(Icons.article), label: 'Normativas'),
+          BottomNavigationBarItem(icon: Icon(Icons.feedback), label: 'Reclamos'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<h2>4.3. Servicios y Modelos</h2>
+
+<h3>ApiService</h3>
+<pre>
+class ApiService {
+  static const String baseUrl = 'https://moviruta.colcapirhua.gob.bo/api/v1';
+  final Dio _dio = Dio();
+
+  ApiService() {
+    _dio.options.baseUrl = baseUrl;
+    _dio.options.connectTimeout = const Duration(seconds: 30);
+    _dio.options.receiveTimeout = const Duration(seconds: 30);
+  }
+
+  Future<List<Ruta>> getRutas() async {
+    try {
+      final response = await _dio.get('/rutas');
+      if (response.data['success']) {
+        List<dynamic> data = response.data['data'];
+        return data.map((json) => Ruta.fromJson(json)).toList();
+      }
+      throw Exception('Error al cargar rutas');
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  Future<Ruta> getRuta(int id) async {
+    try {
+      final response = await _dio.get('/rutas/$id');
+      if (response.data['success']) {
+        return Ruta.fromJson(response.data['data']);
+      }
+      throw Exception('Ruta no encontrada');
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+}
+</pre>
+
+<h1>5. BASE DE DATOS</h1>
+
+<h2>5.1. Diagrama Entidad-Relación</h2>
+<div class="note">
+  <pre>
+┌─────────────┐1:N ┌──────────────┐1:N ┌─────────────┐
+│ SINDICATOS  │◄──►│    RUTAS     │◄──►│   TRUFIS    │
+├─────────────┤    ├──────────────┤    ├─────────────┤
+│ id (PK)     │    │ id (PK)      │    │ id (PK)     │
+│ nombre      │    │ numero       │    │ placa       │
+│ sigla       │    │ nombre       │    │ propietario │
+│ repres...   │    │ origen       │    │ conductor   │
+│ telefono    │    │ destino      │    │ telefono    │
+│ direccion   │    │ distancia_km │    │ ruta_id(FK) │
+│ estado      │    │ tarifa       │    │ estado      │
+└─────────────┘    │ horario_ini  │    └─────────────┘
+                   │ horario_fin  │
+┌─────────────┐    │ sindicato_id │
+│  PARADAS    │    │ estado       │
+├─────────────┤    └──────────────┘
+│ id (PK)     │           │1:N
+│ nombre      │           ▼
+│ latitud     │    ┌──────────────┐
+│ longitud    │    │   PARADAS    │
+│ orden       │    ├──────────────┤
+│ ruta_id(FK) │    │ id (PK)      │
+│             │    │ nombre       │
+└─────────────┘    │ latitud      │
+                   │ longitud     │
+┌─────────────┐    │ orden        │
+│ RADIOTAXIS  │    │ ruta_id (FK) │
+├─────────────┤    └──────────────┘
+│ id (PK)     │
+│ nombre_emp  │    ┌──────────────┐
+│ telefono    │    │ REFERENCIAS  │
+│ direccion   │    ├──────────────┤
+│ horario_ini │    │ id (PK)      │
+│ horario_fin │    │ nombre       │
+│ tarifa_base │    │ descripcion  │
+│ estado      │    │ latitud      │
+└─────────────┘    │ longitud     │
+                   │ tipo         │
+┌─────────────┐    │ estado       │
+│  RECLAMOS   │    └──────────────┘
+├─────────────┤
+│ id (PK)     │    ┌──────────────┐
+│ codigo      │    │ NORMATIVAS   │
+│ tipo_recl   │    ├──────────────┤
+│ descripcion │    │ id (PK)      │
+│ fecha_inc   │    │ titulo       │
+│ ruta_rel    │    │ descripcion  │
+│ nombre_usr  │    │ tipo         │
+│ telefono_usr│    │ archivo_url  │
+│ email_usr   │    │ fecha_vig    │
+│ estado      │    │ estado       │
+│ respuesta   │    └──────────────┘
+│ fecha_resp  │
+│ created_at  │    ┌──────────────┐
+│ updated_at  │    │   USUARIOS   │
+└─────────────┘    ├──────────────┤
+                   │ id (PK)      │
+                   │ name         │
+                   │ email        │
+                   │ password     │
+                   │ created_at   │
+                   │ updated_at   │
+                   └──────────────┘
+  </pre>
+</div>
+
+<h2>5.2. Diccionario de Datos</h2>
+
+<h3>5.2.1. Tabla: sindicatos</h3>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr>
+  <tr><td>id</td><td>BIGINT UNSIGNED</td><td>Clave primaria autoincremental</td></tr>
+  <tr><td>nombre</td><td>VARCHAR(255)</td><td>Nombre completo del sindicato</td></tr>
+  <tr><td>sigla</td><td>VARCHAR(20)</td><td>Sigla o abreviatura</td></tr>
+  <tr><td>representante_legal</td><td>VARCHAR(255)</td><td>Nombre del representante legal</td></tr>
+  <tr><td>telefono</td><td>VARCHAR(20)</td><td>Teléfono de contacto</td></tr>
+  <tr><td>direccion</td><td>TEXT</td><td>Dirección física del sindicato</td></tr>
+  <tr><td>estado</td><td>ENUM</td><td>'activo', 'inactivo', 'suspendido'</td></tr>
+</table>
+
+<h3>5.2.2. Tabla: rutas</h3>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr>
+  <tr><td>id</td><td>BIGINT UNSIGNED</td><td>Clave primaria autoincremental</td></tr>
+  <tr><td>numero</td><td>VARCHAR(10)</td><td>Número identificador de la ruta</td></tr>
+  <tr><td>nombre</td><td>VARCHAR(255)</td><td>Nombre descriptivo de la ruta</td></tr>
+  <tr><td>origen</td><td>VARCHAR(255)</td><td>Punto de inicio de la ruta</td></tr>
+  <tr><td>destino</td><td>VARCHAR(255)</td><td>Punto final de la ruta</td></tr>
+  <tr><td>distancia_km</td><td>DECIMAL(8,2)</td><td>Distancia total en kilómetros</td></tr>
+  <tr><td>tarifa</td><td>DECIMAL(5,2)</td><td>Tarifa del pasaje en bolivianos</td></tr>
+  <tr><td>horario_inicio</td><td>TIME</td><td>Hora de inicio del servicio</td></tr>
+  <tr><td>horario_fin</td><td>TIME</td><td>Hora de fin del servicio</td></tr>
+  <tr><td>sindicato_id</td><td>BIGINT UNSIGNED</td><td>FK: Sindicato que opera la ruta</td></tr>
+  <tr><td>estado</td><td>ENUM</td><td>'activo', 'mantenimiento', 'inactivo'</td></tr>
+</table>
+
+<h1>6. API REST - DOCUMENTACIÓN</h1>
+
+<h2>6.1. Endpoints y Formatos</h2>
+
+<h3>6.1.1. Rutas</h3>
+
+<h4>GET /api/v1/rutas</h4>
+<p><b>Descripción:</b> Obtiene todas las rutas activas</p>
+<p><b>Respuesta exitosa (200):</b></p>
+<pre>
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "numero": "A",
+      "nombre": "Plaza - Sacaba",
+      "origen": "Plaza 14 de Septiembre",
+      "destino": "Sacaba Centro",
+      "tarifa": "2.50",
+      "horario_inicio": "05:30:00",
+      "horario_fin": "22:00:00",
+      "sindicato": {
+        "id": 1,
+        "nombre": "Sindicato Mixto Plaza Sacaba",
+        "sigla": "SMPS"
+      },
+      "paradas": [
+        {
+          "id": 1,
+          "nombre": "Plaza 14 de Septiembre",
+          "latitud": -17.3935,
+          "longitud": -66.1570,
+          "orden": 1
+        }
+      ]
+    }
+  ]
+}
+</pre>
+
+<h4>GET /api/v1/rutas/{id}</h4>
+<p><b>Descripción:</b> Obtiene detalles de una ruta específica</p>
+
+<h3>6.1.2. Radiotaxis</h3>
+
+<h4>GET /api/v1/radiotaxis</h4>
+<p><b>Descripción:</b> Obtiene todas las empresas de radiotaxis activas</p>
+<p><b>Respuesta exitosa (200):</b></p>
+<pre>
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "nombre_empresa": "Radiotaxi Colcapirhua",
+      "telefono": "4-4251234",
+      "direccion": "Av. Principal #123",
+      "horario_inicio": "06:00:00",
+      "horario_fin": "23:00:00",
+      "tarifa_base": "3.00"
+    }
+  ]
+}
+</pre>
+
+<h3>6.1.3. Reclamos</h3>
+
+<h4>POST /api/v1/reclamos</h4>
+<p><b>Descripción:</b> Crea un nuevo reclamo</p>
+<p><b>Parámetros del body (JSON):</b></p>
+<pre>
+{
+  "tipo_reclamo": "mal_trato",
+  "descripcion": "El conductor fue grosero con los pasajeros",
+  "fecha_incidente": "2026-03-23",
+  "ruta_relacionada": "Ruta A",
+  "nombre_usuario": "Juan Pérez",
+  "telefono_usuario": "70123456",
+  "email_usuario": "juan@email.com"
+}
+</pre>
+<p><b>Respuesta exitosa (201):</b></p>
+<pre>
+{
+  "success": true,
+  "message": "Reclamo registrado exitosamente",
+  "data": {
+    "id": 15,
+    "codigo": "REC-2026-0015",
+    "estado": "pendiente"
+  }
+}
+</pre>
+
+<h3>6.1.4. Formatos de Respuesta</h3>
+
+<h4>Respuesta Exitosa</h4>
+<pre>
+{
+  "success": true,
+  "data": { ... },
+  "message": "Operación exitosa"  // Opcional
+}
+</pre>
+
+<h4>Respuesta de Error</h4>
+<pre>
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Los datos proporcionados son inválidos",
+    "details": {
+      "telefono": ["El campo teléfono es obligatorio"]
+    }
+  }
+}
+</pre>
+
+<h1>7. DESPLIEGUE E INSTALACIÓN</h1>
+
+<h2>7.1. Requisitos y Backend</h2>
+
+<h3>7.1.1. Servidor de Producción</h3>
+<ul>
+  <li><b>Sistema Operativo:</b> Ubuntu 22.04 LTS o superior / CentOS 8+</li>
+  <li><b>PHP:</b> 8.1+ con extensiones: OpenSSL, PDO, Mbstring, Tokenizer, XML, Ctype, JSON, BCMath</li>
+  <li><b>Servidor Web:</b> Apache 2.4+ o Nginx 1.18+</li>
+  <li><b>Base de Datos:</b> MySQL 8.0+ o MariaDB 10.6+</li>
+  <li><b>Memoria RAM:</b> Mínimo 2GB, recomendado 4GB+</li>
+  <li><b>Espacio en Disco:</b> Mínimo 10GB libres</li>
+  <li><b>Composer:</b> 2.4+ | <b>Node.js:</b> 16+ (para compilar assets)</li>
+</ul>
+
+<h3>7.1.2. Proceso de Instalación del Backend</h3>
+<pre>
+# 1. Clonar el repositorio
+git clone https://github.com/municipio-colcapirhua/colcatrufis.git
+cd colcatrufis
+
+# 2. Instalar dependencias PHP
+composer install --optimize-autoloader --no-dev
+
+# 3. Configurar entorno
+cp .env.example .env
+php artisan key:generate
+
+# 4. Configurar base de datos (editar .env)
+nano .env
+
+# 5. Ejecutar migraciones
+php artisan migrate --force
+
+# 6. Crear usuario administrador
+php artisan db:seed --class=AdminUserSeeder
+
+# 7. Configurar permisos
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R 755 storage bootstrap/cache
+
+# 8. Configurar Apache/Nginx
+# Ver sección de configuración web
+</pre>
+
+<h3>7.1.3. Configuración de Apache</h3>
+<pre>
+&lt;VirtualHost *:80&gt;
+    ServerName moviruta.colcapirhua.gob.bo
+    DocumentRoot /var/www/colcatrufis/public
+
+    &lt;Directory /var/www/colcatrufis/public&gt;
+        AllowOverride All
+        Require all granted
+    &lt;/Directory&gt;
+
+    ErrorLog ${APACHE_LOG_DIR}/colcatrufis_error.log
+    CustomLog ${APACHE_LOG_DIR}/colcatrufis_access.log combined
+&lt;/VirtualHost&gt;
+</pre>
+
+<h2>7.2. Frontend Flutter</h2>
+
+<h3>7.2.1. Compilación de la Aplicación Flutter</h3>
+<pre>
+# 1. Instalar Flutter SDK
+# Ver: https://flutter.dev/docs/get-started/install
+
+# 2. Configurar proyecto
+cd mobile_app
+flutter pub get
+
+# 3. Configurar API URL
+# Editar lib/config/constants.dart
+
+# 4. Compilar para producción
+flutter build apk --release
+# o para App Bundle
+flutter build appbundle --release
+
+# 5. Los archivos compilados estarán en:
+# build/app/outputs/flutter-apk/app-release.apk
+# build/app/outputs/bundle/release/app-release.aab
+</pre>
+
+<h1>8. SEGURIDAD Y MANTENIMIENTO</h1>
+
+<h2>8.1. Medidas de Seguridad Implementadas</h2>
+<ul>
+  <li><b>Autenticación:</b> Sistema de login seguro para panel admin</li>
+  <li><b>CSRF Protection:</b> Protección contra Cross-Site Request Forgery</li>
+  <li><b>SQL Injection:</b> Uso de Eloquent ORM previene inyecciones SQL</li>
+  <li><b>XSS Protection:</b> Escape automático en vistas Blade</li>
+  <li><b>HTTPS:</b> Conexión encriptada en producción</li>
+  <li><b>Validación de Entrada:</b> Form Requests validan todos los datos</li>
+  <li><b>Rate Limiting:</b> Límite de peticiones por IP en API</li>
+</ul>
+
+<h2>8.2. Recomendaciones Adicionales</h2>
+<div class="warning">
+  <ul>
+    <li>Mantener Laravel y dependencias actualizadas</li>
+    <li>Usar contraseñas fuertes para usuarios admin</li>
+    <li>Configurar firewall del servidor</li>
+    <li>Realizar backups regulares de la base de datos</li>
+    <li>Monitorear logs de errores y accesos</li>
+    <li>Configurar SSL/TLS con certificado válido</li>
+  </ul>
+</div>
+
+<h2>8.3. Monitoreo del Sistema</h2>
+
+<h3>8.3.1. Logs Importantes</h3>
+<table>
+  <tr><th>Log</th><th>Ubicación</th><th>Propósito</th></tr>
+  <tr><td>Laravel</td><td>storage/logs/laravel.log</td><td>Errores de aplicación</td></tr>
+  <tr><td>Apache Access</td><td>/var/log/apache2/access.log</td><td>Peticiones HTTP</td></tr>
+  <tr><td>Apache Error</td><td>/var/log/apache2/error.log</td><td>Errores del servidor</td></tr>
+  <tr><td>MySQL</td><td>/var/log/mysql/error.log</td><td>Errores de base de datos</td></tr>
+</table>
+
+<h3>8.3.2. Comandos de Mantenimiento</h3>
+<pre>
+# Limpiar cache de configuración
+php artisan config:cache
+
+# Limpiar cache de rutas
+php artisan route:cache
+
+# Limpiar cache de vistas
+php artisan view:cache
+
+# Optimizar autoloader
+composer dump-autoload --optimize
+
+# Backup de base de datos
+mysqldump -u user -p colcatrufis_db > backup_$(date +%Y%m%d).sql
+
+# Monitorear espacio en disco
+df -h
+
+# Monitorear procesos
+htop
+</pre>
+
+<h2>8.4. Actualizaciones</h2>
+
+<h3>8.4.1. Proceso de Actualización</h3>
+<div class="note">
+  <ol>
+    <li>Realizar backup completo del sistema y base de datos</li>
+    <li>Habilitar modo de mantenimiento: <code>php artisan down</code></li>
+    <li>Actualizar código: <code>git pull origin main</code></li>
+    <li>Instalar dependencias: <code>composer install --no-dev</code></li>
+    <li>Ejecutar migraciones: <code>php artisan migrate --force</code></li>
+    <li>Limpiar caches: <code>php artisan optimize</code></li>
+    <li>Deshabilitar modo mantenimiento: <code>php artisan up</code></li>
+    <li>Verificar funcionamiento correcto</li>
+  </ol>
+</div>
+
+<h2>8.5. Resolución de Problemas</h2>
+
+<h3>8.5.1. Problemas Comunes</h3>
+
+<h4>Error 500 - Internal Server Error</h4>
+<ul>
+  <li>Verificar permisos de storage/ y bootstrap/cache/</li>
+  <li>Revisar logs en storage/logs/laravel.log</li>
+  <li>Verificar configuración de .env</li>
+  <li>Ejecutar: <code>php artisan config:clear</code></li>
+</ul>
+
+<h4>Base de Datos No Conecta</h4>
+<ul>
+  <li>Verificar credenciales en .env</li>
+  <li>Comprobar que MySQL esté ejecutándose</li>
+  <li>Verificar puertos y firewall</li>
+  <li>Probar conexión: <code>php artisan tinker</code> → <code>DB::connection()->getPdo();</code></li>
+</ul>
+
+<h4>API No Responde</h4>
+<ul>
+  <li>Verificar rutas: <code>php artisan route:list</code></li>
+  <li>Revisar middleware y CORS</li>
+  <li>Comprobar logs de Apache/Nginx</li>
+  <li>Verificar certificado SSL si usa HTTPS</li>
+</ul>
+
+<hr/>
+<div style="text-align: center; margin-top: 15px; font-size: 8pt; color: #7f8c8d;">
+  <p><i>Manual Técnico Sistema ColcaTrufis - MoViRuta v1.0.0</i></p>
+  <p>Municipio de Colcapirhua - Cochabamba, Bolivia - Marzo 2026</p>
+  <p><b>Documento Confidencial - Solo para Personal Autorizado</b></p>
+</div>
+
+</body>
+</html>

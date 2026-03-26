@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 
 class ApiService {
   final String baseUrl;
@@ -17,7 +18,7 @@ class ApiService {
               'Accept': 'application/json',
             },
           )
-          .timeout(const Duration(seconds: 12));
+          .timeout(const Duration(seconds: 30));
 
       if (res.statusCode < 200 || res.statusCode >= 300) {
         throw Exception('HTTP ${res.statusCode}: ${res.body}');
@@ -123,21 +124,71 @@ class ApiService {
     return [];
   }
 
-  // Ubicaciones
+  // Ubicaciones - Con mejor manejo de errores para APK
   Future<List<dynamic>> getUbicacionesPorTrufi(int idTrufi) async {
-    final data = await _get('/trufis/$idTrufi/ubicaciones');
-    print("🔍 getUbicacionesPorTrufi($idTrufi) retornó: $data (tipo: ${data.runtimeType})");
-    if (data is List) return data;
-    print("⚠️ Esperaba List, recibí ${data.runtimeType}");
-    return [];
+    try {
+      print("🌍 getUbicacionesPorTrufi($idTrufi) iniciando...");
+      print("🔗 URL: ${_u('/trufis/$idTrufi/ubicaciones')}");
+
+      final res = await http
+          .get(
+            _u('/trufis/$idTrufi/ubicaciones'),
+            headers: const {
+              'Accept': 'application/json',
+              'User-Agent': 'ColcaTrufisApp/1.0',
+            },
+          )
+          .timeout(Duration(seconds: AppConfig.heavyApiTimeoutSeconds));
+
+      print("📡 Respuesta HTTP ubicaciones: ${res.statusCode}");
+
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw Exception('HTTP ${res.statusCode}: ${res.body}');
+      }
+
+      final body = jsonDecode(res.body);
+      print("🔍 getUbicacionesPorTrufi($idTrufi) retornó: $body (tipo: ${body.runtimeType})");
+
+      if (body is List) return body;
+      print("⚠️ Esperaba List, recibí ${body.runtimeType}");
+      return [];
+    } catch (e) {
+      print("❌ Error en getUbicacionesPorTrufi($idTrufi): $e");
+      rethrow; // Re-lanzar el error para que el frontend lo pueda manejar
+    }
   }
 
   Future<List<dynamic>> getUbicacionesTodas() async {
-    final data = await _get('/ubicaciones');
-    print("🔍 getUbicacionesTodas() retornó: $data (tipo: ${data.runtimeType})");
-    if (data is List) return data;
-    print("⚠️ Esperaba List, recibí ${data.runtimeType}");
-    return [];
+    try {
+      print("🌍 getUbicacionesTodas() iniciando...");
+      print("🔗 URL: ${_u('/ubicaciones')}");
+
+      final res = await http
+          .get(
+            _u('/ubicaciones'),
+            headers: const {
+              'Accept': 'application/json',
+              'User-Agent': 'ColcaTrufisApp/1.0',
+            },
+          )
+          .timeout(Duration(seconds: AppConfig.heavyApiTimeoutSeconds));
+
+      print("📡 Respuesta HTTP todas ubicaciones: ${res.statusCode}");
+
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw Exception('HTTP ${res.statusCode}: ${res.body}');
+      }
+
+      final body = jsonDecode(res.body);
+      print("🔍 getUbicacionesTodas() retornó: $body (tipo: ${body.runtimeType})");
+
+      if (body is List) return body;
+      print("⚠️ Esperaba List, recibí ${body.runtimeType}");
+      return [];
+    } catch (e) {
+      print("❌ Error en getUbicacionesTodas(): $e");
+      rethrow; // Re-lanzar el error para que el frontend lo pueda manejar
+    }
   }
 
   // Horario del trufi (hora_entrada, hora_salida)

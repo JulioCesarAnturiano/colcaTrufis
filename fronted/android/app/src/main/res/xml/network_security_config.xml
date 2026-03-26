@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Para producción - permite HTTPS con certificados válidos -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">moviruta.colcapirhua.gob.bo</domain>
+    </domain-config>
+
+    <!-- Solo para desarrollo - permitir HTTP localhost -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain> <!-- Android emulator -->
+        <domain includeSubdomains="true">192.168.1.1</domain> <!-- Red local común -->
+    </domain-config>
+</network-security-config>

@@ -1,0 +1,300 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="UTF-8">
+<meta name="ProgId" content="Word.Document">
+<meta name="Generator" content="Microsoft Word 15">
+<meta name="Originator" content="Microsoft Word 15">
+<style>
+  body { font-family: 'Calibri', sans-serif; font-size: 11pt; margin: 1cm; line-height: 1.3; color: #333; }
+  h1 { font-size: 18pt; color: #0d6b53; text-align: center; border-bottom: 2px solid #0d6b53; padding-bottom: 5px; margin: 15px 0 10px 0; }
+  h2 { font-size: 14pt; color: #148f6e; margin: 12px 0 8px 0; border-bottom: 1px solid #d5d8dc; padding-bottom: 3px; }
+  h3 { font-size: 12pt; color: #1abc9c; margin: 10px 0 6px 0; }
+  h4 { font-size: 11pt; color: #16a085; margin: 8px 0 4px 0; }
+  p { margin: 4px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 9pt; }
+  th { background-color: #0d6b53; color: white; padding: 6px 8px; text-align: left; border: 1px solid #0a5a45; }
+  td { padding: 4px 8px; border: 1px solid #bdc3c7; vertical-align: top; }
+  tr:nth-child(even) { background-color: #f0faf7; }
+  .cover { text-align: center; margin: 10px 0; }
+  .cover h1 { font-size: 20pt; border: none; color: #0d6b53; margin: 5px 0; }
+  .cover h2 { font-size: 16pt; color: #5d6d7e; border: none; margin: 5px 0; }
+  .cover p { font-size: 11pt; color: #7f8c8d; margin: 3px 0; }
+  .toc h1 { text-align: left; font-size: 16pt; margin: 10px 0 8px 0; }
+  .toc ul { list-style-type: none; padding-left: 0; margin: 5px 0; }
+  .toc li { padding: 2px 0; font-size: 10pt; }
+  .toc li.l2 { padding-left: 20px; }
+  ul { margin: 4px 0 8px 16px; }
+  ol { margin: 4px 0 8px 16px; }
+  li { margin-bottom: 2px; }
+  .tip { background-color: #e8f8f5; border-left: 3px solid #1abc9c; padding: 8px 12px; margin: 6px 0; font-size: 10pt; }
+  .warning { background-color: #fef9e7; border-left: 3px solid #f39c12; padding: 8px 12px; margin: 6px 0; font-size: 10pt; }
+  .important { background-color: #fdedec; border-left: 3px solid #e74c3c; padding: 8px 12px; margin: 6px 0; font-size: 10pt; }
+  .step { background-color: #f4f6f6; border-left: 3px solid #0d6b53; padding: 8px 12px; margin: 6px 0; font-size: 10pt; }
+  ol.steps { counter-reset: step-counter; list-style: none; padding-left: 0; margin: 8px 0; }
+  ol.steps li { margin-bottom: 8px; padding: 8px 12px; background-color: #f9fafb; border-left: 2px solid #0d6b53; font-size: 10pt; }
+  ol.steps li::before { counter-increment: step-counter; content: counter(step-counter); background-color: #0d6b53; color: white; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 20px; border-radius: 50%; margin-right: 8px; font-weight: bold; font-size: 9pt; }
+  hr { margin: 15px 0; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>MANUAL DE USUARIO</h1>
+  <h2>MoViRuta - ColcaTrufis</h2>
+  <p>Aplicación de Transporte Público</p>
+  <p>Municipio de Colcapirhua - Cochabamba, Bolivia</p>
+  <p><b>Versión:</b> 1.0.0 | <b>Fecha:</b> Marzo 2026</p>
+  <p><i>Guía completa para usuarios de la Aplicación Móvil y el Panel de Administración</i></p>
+</div>
+
+<div class="toc">
+  <h1>TABLA DE CONTENIDOS</h1>
+  <ul>
+    <li><b>PARTE I - APLICACIÓN MÓVIL</b></li>
+    <li class="l2">1. Introducción</li>
+    <li class="l2">2. Instalación</li>
+    <li class="l2">3. Pantalla de Inicio</li>
+    <li class="l2">4. Pantalla Principal - Mapa</li>
+    <li class="l2">5. Consultar Rutas de Trufis</li>
+    <li class="l2">6. Consultar Radiotaxis</li>
+    <li class="l2">7. Consultar Normativas</li>
+    <li class="l2">8. Realizar Reclamos</li>
+    <li class="l2">9. Configuración</li>
+    <li class="l2">10. Preguntas Frecuentes</li>
+    <li><b>PARTE II - PANEL DE ADMINISTRACIÓN</b></li>
+    <li class="l2">11. Acceso al Panel</li>
+    <li class="l2">12. Dashboard</li>
+    <li class="l2">13. Gestión de Trufis</li>
+    <li class="l2">14. Gestión de Rutas</li>
+    <li class="l2">15. Gestión de Sindicatos</li>
+    <li class="l2">16. Gestión de Radiotaxis</li>
+    <li class="l2">17. Gestión de Normativas</li>
+    <li class="l2">18. Gestión de Referencias</li>
+    <li class="l2">19. Gestión de Usuarios</li>
+    <li class="l2">20. Reportes</li>
+    <li class="l2">21. Configuración de Reclamos</li>
+  </ul>
+</div>
+
+<hr/>
+<h1>PARTE I - APLICACIÓN MÓVIL</h1>
+
+<h1>1. INTRODUCCIÓN</h1>
+
+<h2>1.1. ¿Qué es MoViRuta?</h2>
+<p><b>MoViRuta</b> (ColcaTrufis) es la aplicación oficial de transporte público del Municipio de Colcapirhua, Cochabamba, Bolivia. Permite a los ciudadanos:</p>
+<ul>
+  <li>Consultar rutas de trufis y microbuses</li>
+  <li>Localizar paraderos y paradas</li>
+  <li>Obtener información sobre horarios de servicio</li>
+  <li>Consultar servicios de radiotaxis</li>
+  <li>Acceder a normativas de transporte</li>
+  <li>Realizar reclamos sobre el servicio</li>
+</ul>
+
+<h2>1.2. Requisitos del Sistema</h2>
+<div class="tip">
+  <p><b>Aplicación Móvil:</b> Android 5.0+ | Conexión a Internet | GPS activado | 50 MB de espacio</p>
+  <p><b>Panel Web:</b> Navegador moderno | Resolución 1024x768+ | JavaScript habilitado</p>
+</div>
+
+<h1>2. INSTALACIÓN</h1>
+
+<h2>2.1. Descarga de la Aplicación</h2>
+<ol class="steps">
+  <li>Abra Google Play Store en su dispositivo Android</li>
+  <li>Busque "MoViRuta ColcaTrufis"</li>
+  <li>Seleccione la aplicación oficial del Municipio de Colcapirhua</li>
+  <li>Presione "Instalar" y espere a que termine la descarga</li>
+</ol>
+
+<h2>2.2. Permisos Necesarios</h2>
+<table>
+  <tr><th>Permiso</th><th>Propósito</th><th>¿Obligatorio?</th></tr>
+  <tr><td>Ubicación</td><td>Mostrar su posición en el mapa</td><td>Sí</td></tr>
+  <tr><td>Internet</td><td>Descargar mapas y datos</td><td>Sí</td></tr>
+  <tr><td>Almacenamiento</td><td>Guardar mapas offline</td><td>No</td></tr>
+</table>
+
+<h1>3. PANTALLA DE INICIO</h1>
+
+<h2>3.1. Primera Apertura</h2>
+<p>Al abrir la aplicación por primera vez: <b>Pantalla de Bienvenida</b> → <b>Solicitud de Permisos</b> → <b>Tutorial Básico</b> → <b>Página Principal</b></p>
+
+<h2>3.2. Elementos de la Interfaz</h2>
+<ul>
+  <li><b>Mapa Principal:</b> Vista del municipio con rutas de transporte</li>
+  <li><b>Barra Superior:</b> Título y opciones de configuración</li>
+  <li><b>Menú de Navegación:</b> Acceso a las diferentes secciones</li>
+  <li><b>Botón de Ubicación:</b> Centrar mapa en su posición actual</li>
+</ul>
+
+<h1>4. PANTALLA PRINCIPAL - MAPA</h1>
+
+<h2>4.1. Navegación del Mapa</h2>
+<div class="step">
+  <p><b>Gestos:</b> Desplazar (arrastrar) | Acercar (pellizcar/doble toque) | Alejar (pellizcar) | Rotar (dos dedos)</p>
+</div>
+
+<h2>4.2. Elementos Visuales</h2>
+<table>
+  <tr><th>Símbolo</th><th>Descripción</th><th>Color</th></tr>
+  <tr><td>🚌</td><td>Paradas de trufis</td><td>Verde</td></tr>
+  <tr><td>🚖</td><td>Bases de radiotaxis</td><td>Amarillo</td></tr>
+  <tr><td>📍</td><td>Referencias importantes</td><td>Azul</td></tr>
+  <tr><td>─────</td><td>Rutas de transporte</td><td>Varios</td></tr>
+</table>
+
+<h1>5. CONSULTAR RUTAS DE TRUFIS</h1>
+
+<h2>5.1. Búsqueda de Rutas</h2>
+<ol class="steps">
+  <li>En el menú principal, seleccione "Rutas de Trufis"</li>
+  <li>Elija: <b>Por Sindicato</b> | <b>Por Destino</b> | <b>Cercanas a mí</b></li>
+  <li>Seleccione la ruta de interés</li>
+  <li>Vea detalles: recorrido, horarios, tarifas</li>
+</ol>
+
+<h2>5.2. Información de la Ruta</h2>
+<p>Para cada ruta: <b>Recorrido Completo</b> | <b>Paradas Principales</b> | <b>Horarios de Servicio</b> | <b>Tarifa</b> | <b>Sindicato</b> | <b>Estado</b></p>
+
+<h1>6. CONSULTAR RADIOTAXIS</h1>
+
+<h2>6.1. Localizar Servicios</h2>
+<ol class="steps">
+  <li>Acceda al menú "Radiotaxis"</li>
+  <li>Vea la lista de empresas registradas</li>
+  <li>Seleccione una empresa para ver detalles</li>
+  <li>Use los botones de contacto disponibles</li>
+</ol>
+
+<h2>6.2. Información Disponible</h2>
+<div class="tip">
+  <p>Para cada empresa: Nombre | Teléfonos | Ubicación | Horarios | Tarifas | Servicios especiales</p>
+</div>
+
+<h1>7. CONSULTAR NORMATIVAS</h1>
+
+<h2>7.1. Acceso a Documentos</h2>
+<p>En "Normativas" consulte: <b>Reglamentos Municipales</b> | <b>Tarifas Oficiales</b> | <b>Derechos del Usuario</b> | <b>Obligaciones</b></p>
+
+<div class="tip">
+  <p><b>Consejo:</b> Puede descargar las normativas más importantes para consultarlas sin conexión a internet.</p>
+</div>
+
+<h1>8. REALIZAR RECLAMOS</h1>
+
+<h2>8.1. Tipos de Reclamos</h2>
+<p>Puede presentar reclamos sobre: Mal trato del conductor | Cobro indebido | Vehículo en mal estado | Incumplimiento de horarios | Otros problemas</p>
+
+<h2>8.2. Proceso de Reclamo</h2>
+<ol class="steps">
+  <li>Vaya a "Reclamos" → "Nuevo Reclamo"</li>
+  <li>Seleccione el tipo de problema</li>
+  <li>Complete: Descripción | Fecha/hora | Ruta | Sus datos de contacto</li>
+  <li>Adjunte fotos si es necesario</li>
+  <li>Envíe el reclamo y guarde el número de seguimiento</li>
+</ol>
+
+<div class="important">
+  <p><b>Importante:</b> Recibirá notificación cuando su reclamo sea procesado. Tiempo de respuesta: 3-5 días hábiles.</p>
+</div>
+
+<h1>9. CONFIGURACIÓN</h1>
+
+<table>
+  <tr><th>Opción</th><th>Descripción</th></tr>
+  <tr><td>Ubicación</td><td>Activar/desactivar GPS</td></tr>
+  <tr><td>Notificaciones</td><td>Alertas de la aplicación</td></tr>
+  <tr><td>Tema</td><td>Modo claro u oscuro</td></tr>
+  <tr><td>Idioma</td><td>Español o quechua</td></tr>
+  <tr><td>Cache</td><td>Limpiar datos guardados</td></tr>
+</table>
+
+<h1>10. PREGUNTAS FRECUENTES</h1>
+
+<h2>10.1. Problemas Comunes</h2>
+
+<h3>¿Por qué no funciona el GPS?</h3>
+<div class="step">
+  <ol>
+    <li>Verifique que el GPS esté activado en su dispositivo</li>
+    <li>Verifique los permisos de ubicación en Configuración → Aplicaciones</li>
+    <li>Salga al exterior para mejor recepción de señal</li>
+    <li>Reinicie la aplicación</li>
+  </ol>
+</div>
+
+<h3>¿Cómo actualizar la información?</h3>
+<div class="step">
+  <p>Automático con internet. Para forzar: Configuración → "Actualizar datos"</p>
+</div>
+
+<h3>¿Consume muchos datos móviles?</h3>
+<div class="tip">
+  <p>Consumo optimizado: 2-5 MB por hora de uso normal.</p>
+</div>
+
+<hr/>
+<h1>PARTE II - PANEL DE ADMINISTRACIÓN</h1>
+
+<h1>11. ACCESO AL PANEL</h1>
+
+<h2>11.1. URL de Acceso</h2>
+<div class="important">
+  <p><b>URL del Panel:</b> https://moviruta.colcapirhua.gob.bo/admin</p>
+</div>
+
+<h2>11.2. Inicio de Sesión</h2>
+<ol class="steps">
+  <li>Abra un navegador web</li>
+  <li>Ingrese la URL del panel</li>
+  <li>Introduzca su usuario y contraseña</li>
+  <li>Presione "Iniciar Sesión"</li>
+</ol>
+
+<div class="warning">
+  <p><b>Nota:</b> Solo personal autorizado del municipio tiene acceso al panel de administración.</p>
+</div>
+
+<h1>12. DASHBOARD</h1>
+
+<h2>12.1. Vista General</h2>
+<p>El dashboard muestra: Total de rutas registradas | Vehículos activos | Reclamos recibidos | Usuarios de la aplicación</p>
+
+<h1>13. GESTIÓN DE TRUFIS</h1>
+
+<h2>13.1. Registro de Vehículos</h2>
+<p>Para registrar un nuevo vehículo complete: Placa | Propietario | Conductor asignado | Ruta que opera | Documentos de habilitación</p>
+
+<h1>14. GESTIÓN DE RUTAS</h1>
+
+<h2>14.1. Crear Nueva Ruta</h2>
+<ol class="steps">
+  <li>Vaya a "Rutas" → "Nueva Ruta"</li>
+  <li>Defina el recorrido en el mapa</li>
+  <li>Marque las paradas</li>
+  <li>Establezca horarios y tarifas</li>
+  <li>Asigne el sindicato operador</li>
+  <li>Guarde los cambios</li>
+</ol>
+
+<h1>15. REPORTES</h1>
+
+<h2>15.1. Tipos de Reportes</h2>
+<p>El sistema genera reportes de: Uso de la aplicación móvil | Reclamos por categoría | Rutas más consultadas | Estadísticas de transporte</p>
+
+<div class="tip">
+  <p><b>Exportación:</b> Los reportes se pueden exportar en formato PDF o Excel.</p>
+</div>
+
+<hr/>
+<div style="text-align: center; margin-top: 20px; font-size: 9pt; color: #7f8c8d;">
+  <p><i>Manual de Usuario MoViRuta - ColcaTrufis v1.0.0</i></p>
+  <p>Municipio de Colcapirhua - Cochabamba, Bolivia - Marzo 2026</p>
+</div>
+
+</body>
+</html>

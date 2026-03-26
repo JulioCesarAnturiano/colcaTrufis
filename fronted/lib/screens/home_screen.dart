@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
+import '../config/app_config.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 const Color kPrimary = Color(0xFF09596E);
@@ -71,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isTrufiSelected = true;
   final MapController _mapController = MapController();
 
-  final ApiService _apiService = ApiService(baseUrl: "https://moviruta.colcapirhua.gob.bo/api");
+  final ApiService _apiService = ApiService(baseUrl: AppConfig.baseUrl);
 
   static const String _apiBase = "https://moviruta.colcapirhua.gob.bo/api";
 
@@ -2152,7 +2153,10 @@ Future<void> _fetchTrufis() async {
       // Así el modal abre con TODOS los datos ya listos
       final results = await Future.wait([
         _apiService.getGeoJsonPorTrufi(idtrufi),
-        _apiService.getUbicacionesPorTrufi(idtrufi).catchError((_) => <dynamic>[]),
+        _apiService.getUbicacionesPorTrufi(idtrufi).catchError((e) {
+          print("⚠️ Error cargando ubicaciones para trufi $idtrufi: $e");
+          return <dynamic>[];
+        }),
         _apiService.getReferenciasDestrufi(idtrufi).catchError((_) => <dynamic>[]),
       ]);
 
