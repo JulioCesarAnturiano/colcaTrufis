@@ -1231,6 +1231,11 @@ Future<void> _fetchTrufis() async {
       final lng = double.tryParse((p["longitud"] ?? p["lng"] ?? p["longitude"] ?? p["lon"] ?? "").toString());
       if (lat == null || lng == null) continue;
 
+      final radiotaxiId = int.tryParse(
+        (p["sindicato_radiotaxi_id"] ?? p["radiotaxi_id"] ?? p["idradiotaxi"] ?? p["sindicato_id"] ?? "").toString(),
+      );
+      final name = (radiotaxiId != null) ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId") : "Parada";
+
       markers.add(
         Marker(
           point: LatLng(lat, lng),
@@ -1238,7 +1243,11 @@ Future<void> _fetchTrufis() async {
           height: 38,
           child: GestureDetector(
             onTap: () {
-              _mostrarDireccionParada(p);
+              if (radiotaxiId != null) {
+                _mostrarInfoRadiotaxi(radiotaxiId, nombreRadiotaxi: name);
+              } else {
+                _mostrarDireccionParada(p);
+              }
             },
             child: Container(
               decoration: BoxDecoration(
