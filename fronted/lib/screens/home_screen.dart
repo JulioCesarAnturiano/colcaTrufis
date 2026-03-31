@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as Math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -98,9 +99,16 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Marker> _paradasMarkers = [];
   List<Marker> _paradasLabelMarkers = [];
 
+  // Marcador temporal para mostrar nombre de punto de ruta al tocarlo
+  Marker? _temporaryPointMarker;
+
   int? _selectedTrufiId;
   String? _selectedTrufiName;
   Map<String, dynamic>? _selectedTrufiHorario;
+
+  int? _selectedRadiotaxiId;
+  String? _selectedRadiotaxiName;
+  String? _selectedRadiotaxiDireccion;
 
   List<Map<String, dynamic>> _rutasVias = [];
   List<Map<String, dynamic>> _referenciasSelectedTrufi = [];
@@ -231,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
       "schedule_to": "hasta",
       "no_schedule": "Sin horario registrado",
       "phone": "Teléfono",
+      "radiotaxi_info_message": "Toca las referencias para ver ubicaciones específicas",
       "translating": "Traduciendo...",
     },
     'en': {
@@ -307,6 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
       "schedule_to": "to",
       "no_schedule": "No schedule registered",
       "phone": "Phone",
+      "radiotaxi_info_message": "Tap references to view specific locations",
       "translating": "Translating...",
     },
     'qu': {
@@ -383,6 +393,7 @@ class _HomeScreenState extends State<HomeScreen> {
       "schedule_to": "kama",
       "no_schedule": "Mana pachay qelqasqachu",
       "phone": "Teléfono",
+      "radiotaxi_info_message": "Qhawaykunakunata ñit'iy sapaq kaykunata qhawanapaq",
       "translating": "Tirakushan...",
     },
   };
@@ -964,10 +975,10 @@ Future<void> _fetchTrufis() async {
         polylines.add(
           Polyline(
             points: points,
-            strokeWidth: 3.8,
-            color: kAqua,
-            borderColor: const Color(0xFF032530),
-            borderStrokeWidth: 1.8,
+            strokeWidth: 4.5,
+            color: kAqua.withOpacity(0.7),
+            borderColor: const Color(0xFF032530).withOpacity(0.6),
+            borderStrokeWidth: 2.0,
           ),
         );
         ids.add(idtrufi);
@@ -1348,269 +1359,63 @@ Future<void> _fetchTrufis() async {
     );
     final name = (radiotaxiId != null) ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId") : "Parada";
 
-    if (lat == null || lng == null || radiotaxiId == null) return;
+    if (lat == null || lng == null) return;
 
-    // Cargar referencias del radiotaxi
-    try {
-      print("🔍 Cargando referencias para radiotaxi $radiotaxiId...");
-      final referenciasData = await _apiService.getReferenciasDeRadiotaxi(radiotaxiId);
-      print("📦 Datos de referencias recibidos: $referenciasData");
-      final referencias = referenciasData.map((e) {
-        if (e is Map<String, dynamic>) return e;
-        return <String, dynamic>{};
-      }).toList();
-      
-      if (!mounted) return;
-      
-      setState(() {
-        _referenciasSelectedRadiotaxi = referencias;
-      });
-      
-      // Mostrar modal con referencias
-      _mostrarReferenciasRadiotaxiModal(name, referencias);
-    } catch (e) {
-      print("Error cargando referencias de radiotaxi: $e");
-      // Si falla, mostrar solo la dirección de la parada
-      final isDarkMode = AppSettings.darkMode.value;
-      final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
-      final textColor = isDarkMode ? Colors.white : Colors.black87;
-
-      final direccion = await _getAddressFromLatLng(LatLng(lat, lng));
-
-      if (!mounted) return;
-
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        builder: (_) {
-          return Container(
-            decoration: BoxDecoration(
-              color: sheetColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 50,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                const SizedBox(height: 15),
-                Text(
-                  t("stop_address"),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: kPrimary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ListTile(
-                  leading: const Icon(Icons.local_taxi, color: kPrimary, size: 32),
-                  title: Text(
-                    name,
-                    style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  subtitle: Text(
-                    direccion,
-                    style: TextStyle(color: textColor),
-                  ),
-                ),
-                const SizedBox(height: 10),
-              ],
-            ),
-          );
-        },
-      );
-    }
-  }
-
-  void _mostrarReferenciasRadiotaxiModal(String radiotaxiName, List<Map<String, dynamic>> referencias) {
+    // Mostrar modal simple con la ubicación del radiotaxi
     final isDarkMode = AppSettings.darkMode.value;
     final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
-    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
-    final cardBg = isDarkMode ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
 
-    final items = referencias.where((r) {
-      final n = (r['referencia'] ?? r['nombre'] ?? r['name'] ?? '').toString().trim();
-      return n.isNotEmpty;
-    }).toList();
+    final direccion = await _getAddressFromLatLng(LatLng(lat, lng));
+
+    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) {
         return Container(
-          height: MediaQuery.of(context).size.height * 0.6,
           decoration: BoxDecoration(
             color: sheetColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
+          padding: const EdgeInsets.all(20),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 10),
               Container(
-                width: 46,
+                width: 50,
                 height: 5,
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [kPrimaryDark, kPrimary],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(Icons.local_taxi, color: Colors.white, size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            radiotaxiName,
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                              color: kPrimary,
-                            ),
-                          ),
-                          Text(
-                            t("ubicacion"),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: subTextColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 15),
+              Text(
+                t("ubicacion"),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: kPrimary,
                 ),
               ),
-              const SizedBox(height: 12),
-              const Divider(height: 1),
-              Expanded(
-                child: items.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.location_off_outlined, size: 48, color: subTextColor.withOpacity(0.5)),
-                            const SizedBox(height: 12),
-                            Text(
-                              t("no_ubicaciones"),
-                              style: TextStyle(color: subTextColor, fontSize: 15),
-                            ),
-                          ],
-                        ),
-                      )
-                    : items.length == 1
-                        ? Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(color: kPrimary.withOpacity(0.15), width: 1.5),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 52,
-                                    height: 52,
-                                    decoration: BoxDecoration(
-                                      color: kPrimary.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    child: const Icon(Icons.place_rounded, color: kPrimary, size: 28),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Text(
-                                      (items[0]['referencia'] ?? items[0]['nombre'] ?? items[0]['name'] ?? '').toString(),
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                            itemCount: items.length,
-                            itemBuilder: (context, index) {
-                              final nombre = (items[index]['referencia'] ?? items[index]['nombre'] ?? items[index]['name'] ?? '').toString();
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: cardBg,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: kPrimary.withOpacity(0.10), width: 1),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: kPrimary.withOpacity(0.12),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            '${index + 1}',
-                                            style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w800, fontSize: 13),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Icon(Icons.place_rounded, color: kAqua, size: 18),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          nombre,
-                                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14.5),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+              const SizedBox(height: 10),
+              ListTile(
+                leading: const Icon(Icons.local_taxi, color: kPrimary, size: 32),
+                title: Text(
+                  name,
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                subtitle: Text(
+                  direccion,
+                  style: TextStyle(color: textColor),
+                ),
               ),
+              const SizedBox(height: 10),
             ],
           ),
         );
@@ -2182,23 +1987,34 @@ Future<void> _fetchTrufis() async {
       // Procesar ubicaciones
       List<Map<String, dynamic>> rutasVias = [];
       try {
-        final vias = ubicacionesRaw.whereType<Map<String, dynamic>>().toList();
-        vias.sort((a, b) {
+        // En Flutter Web el JSON puede venir como _JsonMap, hay que convertirlo
+        for (var item in ubicacionesRaw) {
+          if (item is Map) {
+            rutasVias.add(Map<String, dynamic>.from(item));
+          }
+        }
+        rutasVias.sort((a, b) {
           final ordenA = (a['orden'] as num?)?.toInt() ?? 999;
           final ordenB = (b['orden'] as num?)?.toInt() ?? 999;
           return ordenA.compareTo(ordenB);
         });
-        rutasVias = vias;
-      } catch (_) {}
+        print("✅ Ubicaciones procesadas: ${rutasVias.length}");
+      } catch (e) {
+        print("❌ Error procesando ubicaciones: $e");
+      }
 
       // Procesar referencias
       List<Map<String, dynamic>> referenciasData = [];
       try {
-        referenciasData = refRaw
-            .map((e) => e is Map<String, dynamic> ? e : <String, dynamic>{})
-            .where((e) => e.isNotEmpty)
-            .toList();
-      } catch (_) {}
+        for (var item in refRaw) {
+          if (item is Map && (item as Map).isNotEmpty) {
+            referenciasData.add(Map<String, dynamic>.from(item));
+          }
+        }
+        print("✅ Referencias procesadas: ${referenciasData.length}");
+      } catch (e) {
+        print("❌ Error procesando referencias: $e");
+      }
 
       final nombre = nombreLinea ?? _trufiNameById[idtrufi] ?? "Línea $idtrufi";
       final labelMarkers = _buildRouteLabelsDirect(ruta, idtrufi, nombre);
@@ -2214,6 +2030,10 @@ Future<void> _fetchTrufis() async {
         _rutasVias = rutasVias;
         _referenciasSelectedTrufi = referenciasData;
         _isLoadingRutaTrufi = false;
+        // Limpiar selección de radiotaxi
+        _selectedRadiotaxiId = null;
+        _selectedRadiotaxiName = null;
+        _referenciasSelectedRadiotaxi = [];
       });
 
       if (ruta.first.points.isNotEmpty) {
@@ -2392,14 +2212,270 @@ Future<void> _fetchTrufis() async {
                           final nombreVia = (via['nombre_via'] ?? t("no_data")).toString();
                           final isDark = AppSettings.darkMode.value;
                           final cardBg = isDark ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
+                          
+                          // Obtener coordenadas del punto si existen
+                          final lat = double.tryParse((via['latitud'] ?? via['lat'] ?? '').toString());
+                          final lng = double.tryParse((via['longitud'] ?? via['lng'] ?? via['lon'] ?? '').toString());
+                          final hasCoords = lat != null && lng != null;
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
+                            child: GestureDetector(
+                              onTap: hasCoords ? () {
+                                _navigateToPoint(LatLng(lat, lng), nombreVia);
+                              } : null,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: cardBg,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: kPrimary.withOpacity(0.10),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: kPrimary.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '$orden',
+                                          style: const TextStyle(
+                                            color: kPrimary,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Icon(Icons.turn_right_rounded, color: kAqua, size: 16),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        nombreVia,
+                                        style: TextStyle(
+                                          color: textColor,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    if (hasCoords)
+                                      Icon(Icons.chevron_right_rounded, color: kAqua.withOpacity(0.6), size: 20),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _mostrarInfoRadiotaxi(int idradiotaxi, {String? nombreRadiotaxi}) async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingRutaTrufi = true;
+    });
+
+    try {
+      // Obtener ubicación del radiotaxi
+      final radiotaxiData = _paradasRadiotaxis.firstWhere(
+        (p) {
+          final id = int.tryParse((p["sindicato_radiotaxi_id"] ?? p["radiotaxi_id"] ?? p["idradiotaxi"] ?? p["sindicato_id"] ?? "").toString());
+          return id == idradiotaxi;
+        },
+        orElse: () => <String, dynamic>{},
+      );
+
+      final lat = double.tryParse((radiotaxiData["latitud"] ?? radiotaxiData["lat"] ?? "").toString());
+      final lng = double.tryParse((radiotaxiData["longitud"] ?? radiotaxiData["lng"] ?? radiotaxiData["lon"] ?? "").toString());
+
+      // Cargar referencias del radiotaxi
+      final referenciasRaw = await _apiService.getReferenciasDeRadiotaxi(idradiotaxi).catchError((e) {
+        print("⚠️ Error cargando referencias: $e");
+        return <dynamic>[];
+      });
+      
+      // Procesar referencias
+      List<Map<String, dynamic>> referenciasData = [];
+      for (var item in referenciasRaw) {
+        if (item is Map && (item as Map).isNotEmpty) {
+          referenciasData.add(Map<String, dynamic>.from(item));
+        }
+      }
+      print("✅ Referencias de radiotaxi $idradiotaxi procesadas: ${referenciasData.length}");
+
+      final nombre = nombreRadiotaxi ?? _radiotaxiNameById[idradiotaxi] ?? "Radiotaxi $idradiotaxi";
+
+      if (!mounted) return;
+      setState(() {
+        _selectedRadiotaxiId = idradiotaxi;
+        _selectedRadiotaxiName = nombre;
+        _referenciasSelectedRadiotaxi = referenciasData;
+        _isLoadingRutaTrufi = false;
+        // Limpiar selección de trufi
+        _selectedTrufiId = null;
+        _selectedTrufiName = null;
+        _selectedTrufiHorario = null;
+        _referenciasSelectedTrufi = [];
+        _rutasVias = [];
+        // Limpiar rutas visibles para mostrar todas las rutas nuevamente
+        _aplicarFiltroRutas();
+      });
+
+      // Centrar en la ubicación del radiotaxi si existe
+      if (lat != null && lng != null) {
+        _mapController.move(LatLng(lat, lng), 16.0);
+      }
+
+      // Mostrar ventana con ubicación y referencias
+      _mostrarVentanaRadiotaxi();
+    } catch (e) {
+      print("Error cargando info de radiotaxi $idradiotaxi: $e");
+      if (!mounted) return;
+      setState(() => _isLoadingRutaTrufi = false);
+    }
+  }
+
+  void _mostrarVentanaRadiotaxi() {
+    final isDarkMode = AppSettings.darkMode.value;
+    final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final cardBg = isDarkMode ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
+
+    // Obtener la ubicación del radiotaxi desde _paradasRadiotaxis
+    final radiotaxiData = _paradasRadiotaxis.firstWhere(
+      (p) {
+        final id = int.tryParse((p["sindicato_radiotaxi_id"] ?? p["radiotaxi_id"] ?? p["idradiotaxi"] ?? p["sindicato_id"] ?? "").toString());
+        return id == _selectedRadiotaxiId;
+      },
+      orElse: () => <String, dynamic>{},
+    );
+
+    final lat = double.tryParse((radiotaxiData["latitud"] ?? radiotaxiData["lat"] ?? "").toString());
+    final lng = double.tryParse((radiotaxiData["longitud"] ?? radiotaxiData["lng"] ?? radiotaxiData["lon"] ?? "").toString());
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.4,
+          decoration: BoxDecoration(
+            color: sheetColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 15),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        t("ubicacion"),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: kPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_referenciasSelectedRadiotaxi.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kAqua,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () => _mostrarReferenciasModal(false),
+                        icon: const Icon(Icons.location_city, size: 18),
+                        label: Text(
+                          "${t("references_location")} (${_referenciasSelectedRadiotaxi.length})",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if (_selectedRadiotaxiName != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  child: Text(
+                    _selectedRadiotaxiName!,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+              const Divider(),
+              Expanded(
+                child: lat == null || lng == null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.location_off_outlined, size: 48, color: subTextColor.withOpacity(0.5)),
+                            const SizedBox(height: 12),
+                            Text(
+                              t("no_ubicaciones"),
+                              style: TextStyle(color: subTextColor, fontSize: 15),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              // Navegar a la ubicación del radiotaxi, mostrando solo su nombre
+                              Navigator.pop(context);
+                              _navigateToPoint(
+                                LatLng(lat, lng), 
+                                _selectedRadiotaxiName ?? "Radiotaxi",
+                                isRadiotaxi: true,
+                              );
+                            },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                               decoration: BoxDecoration(
                                 color: cardBg,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
                                   color: kPrimary.withOpacity(0.10),
                                   width: 1,
@@ -2408,41 +2484,48 @@ Future<void> _fetchTrufis() async {
                               child: Row(
                                 children: [
                                   Container(
-                                    width: 30,
-                                    height: 30,
+                                    width: 32,
+                                    height: 32,
                                     decoration: BoxDecoration(
                                       color: kPrimary.withOpacity(0.12),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: Center(
-                                      child: Text(
-                                        '$orden',
-                                        style: const TextStyle(
-                                          color: kPrimary,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 12,
-                                        ),
-                                      ),
+                                    child: const Center(
+                                      child: Icon(Icons.local_taxi, color: kPrimary, size: 18),
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
-                                  const Icon(Icons.turn_right_rounded, color: kAqua, size: 16),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 12),
+                                  const Icon(Icons.place_rounded, color: kAqua, size: 18),
+                                  const SizedBox(width: 8),
                                   Expanded(
-                                    child: Text(
-                                      nombreVia,
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                      ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _selectedRadiotaxiName ?? "Radiotaxi",
+                                          style: TextStyle(
+                                            color: textColor,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14.5,
+                                          ),
+                                        ),
+                                        if (_selectedRadiotaxiDireccion != null)
+                                          Text(
+                                            _selectedRadiotaxiDireccion!,
+                                            style: TextStyle(
+                                              color: subTextColor,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
+                                  Icon(Icons.chevron_right_rounded, color: kAqua.withOpacity(0.6), size: 20),
                                 ],
                               ),
                             ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
               ),
             ],
@@ -2495,7 +2578,11 @@ Future<void> _fetchTrufis() async {
                     GestureDetector(
                       onTap: () {
                         Navigator.pop(sheetCtx2);
-                        _mostrarVentanaRecorrido();
+                        if (esTrufi) {
+                          _mostrarVentanaRecorrido();
+                        } else {
+                          _mostrarVentanaRadiotaxi();
+                        }
                       },
                       child: Container(
                         width: 36,
@@ -2565,53 +2652,67 @@ Future<void> _fetchTrufis() async {
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                         itemCount: items.length,
                         itemBuilder: (context, index) {
-                          final nombre = (items[index]['referencia'] ?? items[index]['nombre'] ?? items[index]['name'] ?? '').toString();
+                          final item = items[index];
+                          final nombre = (item['referencia'] ?? item['nombre'] ?? item['name'] ?? '').toString();
+                          
+                          // Obtener coordenadas si existen
+                          final lat = double.tryParse((item['latitud'] ?? item['lat'] ?? '').toString());
+                          final lng = double.tryParse((item['longitud'] ?? item['lng'] ?? item['lon'] ?? '').toString());
+                          final hasCoords = lat != null && lng != null;
+                          
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: kPrimary.withOpacity(0.10),
-                                  width: 1,
+                            child: GestureDetector(
+                              onTap: hasCoords ? () {
+                                _navigateToPoint(LatLng(lat, lng), nombre, isRadiotaxi: !esTrufi);
+                              } : null,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: cardBg,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: kPrimary.withOpacity(0.10),
+                                    width: 1,
+                                  ),
                                 ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: kPrimary.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        '${index + 1}',
-                                        style: const TextStyle(
-                                          color: kPrimary,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 13,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: kPrimary.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '${index + 1}',
+                                          style: const TextStyle(
+                                            color: kPrimary,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Icon(Icons.place_rounded, color: kAqua, size: 18),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      nombre,
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14.5,
+                                    const SizedBox(width: 12),
+                                    const Icon(Icons.place_rounded, color: kAqua, size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        nombre,
+                                        style: TextStyle(
+                                          color: textColor,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14.5,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    if (hasCoords)
+                                      Icon(Icons.chevron_right_rounded, color: kAqua.withOpacity(0.6), size: 20),
+                                  ],
+                                ),
                               ),
                             ),
                           );
@@ -2623,6 +2724,94 @@ Future<void> _fetchTrufis() async {
         );
       },
     );
+  }
+
+  /// Navega a un punto específico y muestra un marcador temporal con el nombre
+  void _navigateToPoint(LatLng point, String name, {bool isRadiotaxi = false}) {
+    // Cerrar modales abiertos
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    
+    // Crear marcador temporal
+    final marker = Marker(
+      point: point,
+      width: 200,
+      height: 80,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isRadiotaxi 
+                    ? [kPrimaryDark, kPrimary]
+                    : [const Color(0xFF15A8A2), kAqua],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withOpacity(0.95), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: (isRadiotaxi ? kPrimary : kAqua).withOpacity(0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isRadiotaxi ? Icons.local_taxi : Icons.place_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Triangulo apuntando hacia abajo
+          Transform.translate(
+            offset: const Offset(0, -2),
+            child: CustomPaint(
+              size: const Size(16, 10),
+              painter: _TrianglePainter(
+                color: isRadiotaxi ? kPrimary : kAqua,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    
+    setState(() {
+      _temporaryPointMarker = marker;
+    });
+    
+    // Mover el mapa al punto
+    _mapController.move(point, 16.5);
+  }
+  
+  /// Limpia el marcador temporal cuando el usuario mueve el mapa
+  void _clearTemporaryMarker() {
+    if (_temporaryPointMarker != null) {
+      setState(() {
+        _temporaryPointMarker = null;
+      });
+    }
   }
 
   Future<void> _handleCenterFab() async {
@@ -3448,6 +3637,10 @@ Future<void> _fetchTrufis() async {
                           final z = pos.zoom;
                           if (z == null) return;
                           _recalcCircleRadiusPx(z);
+                          // Limpiar marcador temporal al mover el mapa
+                          if (hasGesture) {
+                            _clearTemporaryMarker();
+                          }
                         },
                       ),
                       children: [
@@ -3503,13 +3696,17 @@ Future<void> _fetchTrufis() async {
                               ),
                             ],
                           ),
+                          
+                        // Marcador temporal para puntos de ruta
+                        if (_temporaryPointMarker != null)
+                          MarkerLayer(markers: [_temporaryPointMarker!]),
                       ],
                     ),
 
                     if (_isLoadingRutaTrufi)
                       Positioned(
                         left: 16,
-                        top: 90,
+                        top: 70 + MediaQuery.of(context).padding.top + 16,
                         child: _loadingChip(t("loading_route"), Icons.route),
                       ),
 
@@ -3600,7 +3797,7 @@ Future<void> _fetchTrufis() async {
                     if (_selectedTrufiName != null && _selectedTrufiName!.trim().isNotEmpty && isTrufiSelected)
                       Positioned(
                         left: 16,
-                        top: (_isLoadingGeoJSON || _isLoadingRutaTrufi) ? 148 : 90,
+                        top: 70 + MediaQuery.of(context).padding.top + ((_isLoadingGeoJSON || _isLoadingRutaTrufi) ? 56 : 16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
@@ -3796,6 +3993,8 @@ Future<void> _fetchTrufis() async {
                               if (_selectedTrufiId == null) {
                                 _aplicarFiltroRutas();
                               }
+                              // Centrar en Colcapirhua al tocar el botón
+                              _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
                               _showFullWidthBottomSheet(context, t("trufi"));
                             },
                           ),
@@ -3808,6 +4007,8 @@ Future<void> _fetchTrufis() async {
                                 isTrufiSelected = false;
                               });
                               _aplicarFiltroParadas();
+                              // Centrar en Colcapirhua al tocar el botón
+                              _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
                               _showFullWidthBottomSheet(context, t("radiotaxi"));
                             },
                           ),
@@ -4563,9 +4764,6 @@ Future<void> _fetchTrufis() async {
                                           }
 
                                           if (!isLookingForTrufi) {
-                                            final phone =
-                                                (item["telefono_base"] ?? "")
-                                                    .toString();
                                             final id = int.tryParse(
                                                 (item["id"] ?? "").toString());
                                             if (id != null) {
@@ -4574,12 +4772,12 @@ Future<void> _fetchTrufis() async {
                                                 id: id,
                                                 nombre: titulo,
                                                 tipo: 'radiotaxi',
-                                                telefono: phone,
+                                                telefono: (item["telefono_base"] ?? "").toString(),
                                                 fechaUso: DateTime.now(),
                                               ));
+                                              // Mostrar info del radiotaxi con referencias
+                                              _mostrarInfoRadiotaxi(id, nombreRadiotaxi: titulo);
                                             }
-                                            await _confirmAndCall(phone,
-                                                nombre: titulo, id: id);
                                           }
                                         },
                                         child: Padding(
@@ -4664,10 +4862,9 @@ Future<void> _fetchTrufis() async {
 
     return Drawer(
       width: drawerWidth,
-      child: SafeArea(
-        child: ValueListenableBuilder<bool>(
-          valueListenable: AppSettings.darkMode,
-          builder: (context, isDarkMode, _) {
+      child: ValueListenableBuilder<bool>(
+        valueListenable: AppSettings.darkMode,
+        builder: (context, isDarkMode, _) {
             final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
             final textColor = isDarkMode ? Colors.white : Colors.black87;
             final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
@@ -4760,7 +4957,7 @@ Future<void> _fetchTrufis() async {
                   ClipRect(
                     child: Container(
                       width: double.infinity,
-                      height: 148,
+                      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [Color(0xFF032D38), Color(0xFF064656), Color(0xFF09596E)],
@@ -4776,49 +4973,52 @@ Future<void> _fetchTrufis() async {
                           ),
                         ],
                       ),
-                      child: Stack(
-                        children: [
-                          // Large circle — top-right, half clipped
-                          Positioned(
-                            right: -45,
-                            top: -45,
-                            child: Container(
-                              width: 170,
-                              height: 170,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.07),
+                      child: SizedBox(
+                        height: 148,
+                        child: Stack(
+                          children: [
+                            // Large circle — top-right, half clipped
+                            Positioned(
+                              right: -45,
+                              top: -45,
+                              child: Container(
+                                width: 170,
+                                height: 170,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withOpacity(0.07),
+                                ),
                               ),
                             ),
-                          ),
-                          // Medium circle — bottom-right corner
-                          Positioned(
-                            right: -20,
-                            bottom: -20,
-                            child: Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.10),
+                            // Medium circle — bottom-right corner
+                            Positioned(
+                              right: -20,
+                              bottom: -20,
+                              child: Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withOpacity(0.10),
+                                ),
                               ),
                             ),
-                          ),
-                          // Logo — left, vertically centered, slightly larger
-                          Positioned(
-                            left: 20,
-                            top: 0,
-                            bottom: 0,
-                            child: Center(
-                              child: Image.asset(
-                                'assets/images/logo_colca1.png',
-                                width: 112,
-                                height: 112,
-                                fit: BoxFit.contain,
+                            // Logo — left, vertically centered, slightly larger
+                            Positioned(
+                              left: 20,
+                              top: 0,
+                              bottom: 0,
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/images/logo_colca1.png',
+                                  width: 112,
+                                  height: 112,
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -5000,8 +5200,9 @@ Future<void> _fetchTrufis() async {
                                             telefono: phone,
                                             fechaUso: DateTime.now(),
                                           ));
+                                          // Mostrar info del radiotaxi con referencias
+                                          _mostrarInfoRadiotaxi(id, nombreRadiotaxi: nombre);
                                         }
-                                        await _confirmAndCall(phone, nombre: nombre, id: id);
                                       },
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
@@ -5357,7 +5558,6 @@ Future<void> _fetchTrufis() async {
             );
           },
         ),
-      ),
     );
   }
 
@@ -5397,4 +5597,29 @@ Future<void> _fetchTrufis() async {
       ),
     );
   }
+}
+
+/// Pintor personalizado para dibujar un triángulo que apunta hacia abajo
+class _TrianglePainter extends CustomPainter {
+  final Color color;
+  
+  _TrianglePainter({required this.color});
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    
+    final path = ui.Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    
+    canvas.drawPath(path, paint);
+  }
+  
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
