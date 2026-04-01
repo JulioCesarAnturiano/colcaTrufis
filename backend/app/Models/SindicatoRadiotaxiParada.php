@@ -13,6 +13,7 @@ class Sindicatoradiotaxiparada extends Model
         'latitud',
         'longitud',
         'descripcion',
+        'direccion',
         'estado',
     ];
 }

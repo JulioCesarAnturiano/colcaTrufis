@@ -39,6 +39,16 @@
                            value="{{ old('telefono_base', $radiotaxi->telefono_base) }}">
                 </div>
 
+                <div class="col-md-12 mb-3">
+                    <label class="form-label fw-semibold">Dirección</label>
+                    <input type="text"
+                           name="direccion"
+                           class="form-control"
+                           placeholder="Ej: Av. Principal #123, entre calles..."
+                           value="{{ old('direccion', optional($radiotaxi->parada)->direccion) }}">
+                    <small class="text-muted">Dirección de la ubicación del radiotaxi</small>
+                </div>
+
             </div>
 
             <div class="alert alert-info">

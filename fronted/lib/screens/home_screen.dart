@@ -25,9 +25,11 @@ class AppSettings {
   static final ValueNotifier<String> language = ValueNotifier<String>("es");
   static final ValueNotifier<bool> darkMode = ValueNotifier<bool>(false);
 
-  static final ValueNotifier<String> centerMode = ValueNotifier<String>("colcapirhua");
+  static final ValueNotifier<String> centerMode =
+      ValueNotifier<String>("colcapirhua");
 
-  static final ValueNotifier<double> radiusMeters = ValueNotifier<double>(250.0);
+  static final ValueNotifier<double> radiusMeters =
+      ValueNotifier<double>(250.0);
 }
 
 enum RouteFilterMode { nearby, all }
@@ -75,8 +77,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final ApiService _apiService = ApiService(baseUrl: AppConfig.baseUrl);
 
-  static const String _apiBase = "https://moviruta.colcapirhua.gob.bo/api";
-
   Position? _currentPosition;
 
   List<Map<String, dynamic>> _sindicatos = [];
@@ -109,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _selectedRadiotaxiId;
   String? _selectedRadiotaxiName;
   String? _selectedRadiotaxiDireccion;
+  String? _selectedRadiotaxiTelefono;
 
   List<Map<String, dynamic>> _rutasVias = [];
   List<Map<String, dynamic>> _referenciasSelectedTrufi = [];
@@ -228,7 +229,8 @@ class _HomeScreenState extends State<HomeScreen> {
       "reclamos_whatsapp": "WhatsApp de reclamos",
       "reclamos_inactive": "No disponible",
       "outside_title": "Estás fuera de Colcapirhua",
-      "outside_body": "Esta app muestra trufis y radiotaxis de Colcapirhua. Puedes seguir usándola normalmente.",
+      "outside_body":
+          "Esta app muestra trufis y radiotaxis de Colcapirhua. Puedes seguir usándola normalmente.",
       "outside_dismiss": "Entendido",
       "references_location": "Referencias",
       "no_references": "No hay referencias",
@@ -239,7 +241,8 @@ class _HomeScreenState extends State<HomeScreen> {
       "schedule_to": "hasta",
       "no_schedule": "Sin horario registrado",
       "phone": "Teléfono",
-      "radiotaxi_info_message": "Toca las referencias para ver ubicaciones específicas",
+      "radiotaxi_info_message":
+          "Toca las referencias para ver ubicaciones específicas",
       "translating": "Traduciendo...",
     },
     'en': {
@@ -393,7 +396,8 @@ class _HomeScreenState extends State<HomeScreen> {
       "schedule_to": "kama",
       "no_schedule": "Mana pachay qelqasqachu",
       "phone": "Teléfono",
-      "radiotaxi_info_message": "Qhawaykunakunata ñit'iy sapaq kaykunata qhawanapaq",
+      "radiotaxi_info_message":
+          "Qhawaykunakunata ñit'iy sapaq kaykunata qhawanapaq",
       "translating": "Tirakushan...",
     },
   };
@@ -469,7 +473,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final prefs = await SharedPreferences.getInstance();
 
       final trufisJson = prefs.getStringList(_kHistorialTrufisKey) ?? [];
-      final radiotaxisJson = prefs.getStringList(_kHistorialRadiotaxisKey) ?? [];
+      final radiotaxisJson =
+          prefs.getStringList(_kHistorialRadiotaxisKey) ?? [];
 
       if (!mounted) return;
       setState(() {
@@ -514,7 +519,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _historialRadiotaxis.removeWhere((h) => h.id == item.id);
         _historialRadiotaxis.insert(0, item);
         if (_historialRadiotaxis.length > _kMaxHistorial) {
-          _historialRadiotaxis = _historialRadiotaxis.sublist(0, _kMaxHistorial);
+          _historialRadiotaxis =
+              _historialRadiotaxis.sublist(0, _kMaxHistorial);
         }
       }
     });
@@ -546,176 +552,182 @@ class _HomeScreenState extends State<HomeScreen> {
   // ==========================
 // FETCH SINDICATOS (CORREGIDO - usa http.get directo)
 // ==========================
-Future<void> _fetchSindicatos() async {
-  try {
-    if (!mounted) return;
-    setState(() { _isLoadingDatos = true; _isLoadingSindicatos = true; });
+  Future<void> _fetchSindicatos() async {
+    try {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingDatos = true;
+        _isLoadingSindicatos = true;
+      });
 
-    final res = await http.get(
-      Uri.parse("$_apiBase/sindicatos"),
-      headers: const {"Accept": "application/json"},
-    );
+      final res = await http.get(
+        Uri.parse("${AppConfig.baseUrl}/sindicatos"),
+        headers: const {"Accept": "application/json"},
+      );
 
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception("HTTP ${res.statusCode}");
-    }
-
-    final body = jsonDecode(res.body);
-    List<dynamic> data = [];
-
-    if (body is List) {
-      data = body;
-    } else if (body is Map) {
-      if (body["data"] is Map && body["data"]["sindicatos"] is List) {
-        data = body["data"]["sindicatos"] as List;
-      } else if (body["sindicatos"] is List) {
-        data = body["sindicatos"] as List;
-      } else if (body["data"] is List) {
-        data = body["data"] as List;
-      } else if (body["success"] == true && body["data"] is List) {
-        data = body["data"] as List;
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw Exception("HTTP ${res.statusCode}");
       }
-    }
 
-    if (!mounted) return;
-    setState(() {
-      _sindicatos = data.map((e) => e as Map<String, dynamic>).toList();
-      _isLoadingDatos = false;
-      _isLoadingSindicatos = false;
-    });
-  } catch (e) {
-    print("Error fetching sindicatos: $e");
-    if (!mounted) return;
-    setState(() { _isLoadingDatos = false; _isLoadingSindicatos = false; });
+      final body = jsonDecode(res.body);
+      List<dynamic> data = [];
+
+      if (body is List) {
+        data = body;
+      } else if (body is Map) {
+        if (body["data"] is Map && body["data"]["sindicatos"] is List) {
+          data = body["data"]["sindicatos"] as List;
+        } else if (body["sindicatos"] is List) {
+          data = body["sindicatos"] as List;
+        } else if (body["data"] is List) {
+          data = body["data"] as List;
+        } else if (body["success"] == true && body["data"] is List) {
+          data = body["data"] as List;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _sindicatos = data.map((e) => e as Map<String, dynamic>).toList();
+        _isLoadingDatos = false;
+        _isLoadingSindicatos = false;
+      });
+    } catch (e) {
+      print("Error fetching sindicatos: $e");
+      if (!mounted) return;
+      setState(() {
+        _isLoadingDatos = false;
+        _isLoadingSindicatos = false;
+      });
+    }
   }
-}
 
 // ==========================
 // FETCH RADIOTAXIS (CORREGIDO - usa http.get directo)
 // ==========================
-Future<void> _fetchRadioTaxis() async {
-  try {
-    if (!mounted) return;
-    setState(() => _isLoadingRadiotaxis = true);
+  Future<void> _fetchRadioTaxis() async {
+    try {
+      if (!mounted) return;
+      setState(() => _isLoadingRadiotaxis = true);
 
-    final res = await http.get(
-      Uri.parse("$_apiBase/radiotaxis"),
-      headers: const {"Accept": "application/json"},
-    );
+      final res = await http.get(
+        Uri.parse("${AppConfig.baseUrl}/radiotaxis"),
+        headers: const {"Accept": "application/json"},
+      );
 
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception("HTTP ${res.statusCode}");
-    }
-
-    final body = jsonDecode(res.body);
-    List<dynamic> data = [];
-
-    if (body is List) {
-      data = body;
-    } else if (body is Map) {
-      if (body["data"] is Map && body["data"]["radiotaxis"] is List) {
-        data = body["data"]["radiotaxis"] as List;
-      } else if (body["radiotaxis"] is List) {
-        data = body["radiotaxis"] as List;
-      } else if (body["data"] is List) {
-        data = body["data"] as List;
-      } else if (body["success"] == true && body["data"] is List) {
-        data = body["data"] as List;
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw Exception("HTTP ${res.statusCode}");
       }
-    }
 
-    final radioTaxis = data.map((e) => e as Map<String, dynamic>).toList();
+      final body = jsonDecode(res.body);
+      List<dynamic> data = [];
 
-    // Actualizar caché de nombres
-    _radiotaxiNameById.clear();
-    for (final it in radioTaxis) {
-      final id = int.tryParse((it["id"] ?? "").toString());
-      final name = (it["nombre_comercial"] ?? "").toString();
-      if (id != null && name.trim().isNotEmpty) {
-        _radiotaxiNameById[id] = name;
+      if (body is List) {
+        data = body;
+      } else if (body is Map) {
+        if (body["data"] is Map && body["data"]["radiotaxis"] is List) {
+          data = body["data"]["radiotaxis"] as List;
+        } else if (body["radiotaxis"] is List) {
+          data = body["radiotaxis"] as List;
+        } else if (body["data"] is List) {
+          data = body["data"] as List;
+        } else if (body["success"] == true && body["data"] is List) {
+          data = body["data"] as List;
+        }
       }
-    }
 
-    if (!mounted) return;
-    setState(() {
-      _radioTaxis = radioTaxis;
-      _isLoadingRadiotaxis = false;
-    });
+      final radioTaxis = data.map((e) => e as Map<String, dynamic>).toList();
 
-    // Si ya hay paradas cargadas, reconstruir sus labels
-    if (_paradasRadiotaxis.isNotEmpty) {
-      _aplicarFiltroParadas();
+      // Actualizar caché de nombres
+      _radiotaxiNameById.clear();
+      for (final it in radioTaxis) {
+        final id = int.tryParse((it["id"] ?? "").toString());
+        final name = (it["nombre_comercial"] ?? "").toString();
+        if (id != null && name.trim().isNotEmpty) {
+          _radiotaxiNameById[id] = name;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _radioTaxis = radioTaxis;
+        _isLoadingRadiotaxis = false;
+      });
+
+      // Si ya hay paradas cargadas, reconstruir sus labels
+      if (_paradasRadiotaxis.isNotEmpty) {
+        _aplicarFiltroParadas();
+      }
+    } catch (e) {
+      print("Error fetching radiotaxis: $e");
+      if (!mounted) return;
+      setState(() => _isLoadingRadiotaxis = false);
     }
-  } catch (e) {
-    print("Error fetching radiotaxis: $e");
-    if (!mounted) return;
-    setState(() => _isLoadingRadiotaxis = false);
   }
-}
 
 // ==========================
 // FETCH TRUFIS (CORREGIDO - usa http.get directo)
 // ==========================
-Future<void> _fetchTrufis() async {
-  try {
-    if (!mounted) return;
-    setState(() => _isLoadingTrufis = true);
+  Future<void> _fetchTrufis() async {
+    try {
+      if (!mounted) return;
+      setState(() => _isLoadingTrufis = true);
 
-    final res = await http.get(
-      Uri.parse("$_apiBase/trufis"),
-      headers: const {"Accept": "application/json"},
-    );
+      final res = await http.get(
+        Uri.parse("${AppConfig.baseUrl}/trufis"),
+        headers: const {"Accept": "application/json"},
+      );
 
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception("HTTP ${res.statusCode}");
-    }
-
-    final body = jsonDecode(res.body);
-    List<dynamic> data = [];
-
-    if (body is List) {
-      data = body;
-    } else if (body is Map) {
-      if (body["data"] is Map && body["data"]["trufis"] is List) {
-        data = body["data"]["trufis"] as List;
-      } else if (body["trufis"] is List) {
-        data = body["trufis"] as List;
-      } else if (body["data"] is List) {
-        data = body["data"] as List;
-      } else if (body["success"] == true && body["data"] is List) {
-        data = body["data"] as List;
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw Exception("HTTP ${res.statusCode}");
       }
-    }
 
-    final trufis = data.map((e) => e as Map<String, dynamic>).toList();
+      final body = jsonDecode(res.body);
+      List<dynamic> data = [];
 
-    // Actualizar caché de nombres de líneas
-    _trufiNameById.clear();
-    for (final it in trufis) {
-      final id = int.tryParse((it["idtrufi"] ?? "").toString());
-      final name = (it["nom_linea"] ?? "").toString();
-      if (id != null && name.trim().isNotEmpty) {
-        _trufiNameById[id] = name;
+      if (body is List) {
+        data = body;
+      } else if (body is Map) {
+        if (body["data"] is Map && body["data"]["trufis"] is List) {
+          data = body["data"]["trufis"] as List;
+        } else if (body["trufis"] is List) {
+          data = body["trufis"] as List;
+        } else if (body["data"] is List) {
+          data = body["data"] as List;
+        } else if (body["success"] == true && body["data"] is List) {
+          data = body["data"] as List;
+        }
       }
-    }
 
-    if (!mounted) return;
-    setState(() {
-      _trufis = trufis;
-      _isLoadingTrufis = false;
-    });
+      final trufis = data.map((e) => e as Map<String, dynamic>).toList();
 
-    // Si ya hay rutas visibles, reconstruir labels
-    if (_rutasVisibles.isNotEmpty) {
-      _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+      // Actualizar caché de nombres de líneas
+      _trufiNameById.clear();
+      for (final it in trufis) {
+        final id = int.tryParse((it["idtrufi"] ?? "").toString());
+        final name = (it["nom_linea"] ?? "").toString();
+        if (id != null && name.trim().isNotEmpty) {
+          _trufiNameById[id] = name;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _trufis = trufis;
+        _isLoadingTrufis = false;
+      });
+
+      // Si ya hay rutas visibles, reconstruir labels
+      if (_rutasVisibles.isNotEmpty) {
+        _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
+      }
+      if (mounted) setState(() {});
+    } catch (e) {
+      print("Error fetching trufis: $e");
+      if (!mounted) return;
+      setState(() => _isLoadingTrufis = false);
     }
-    if (mounted) setState(() {});
-  } catch (e) {
-    print("Error fetching trufis: $e");
-    if (!mounted) return;
-    setState(() => _isLoadingTrufis = false);
   }
-}
 
   Future<void> _fetchParadasRadiotaxis() async {
     try {
@@ -723,7 +735,7 @@ Future<void> _fetchTrufis() async {
       setState(() => _isLoadingParadas = true);
 
       final res = await http.get(
-        Uri.parse("$_apiBase/radiotaxis/paradas"),
+        Uri.parse("${AppConfig.baseUrl}/radiotaxis/paradas"),
         headers: const {"Accept": "application/json"},
       );
 
@@ -742,7 +754,8 @@ Future<void> _fetchTrufis() async {
 
       if (!mounted) return;
       setState(() {
-        _paradasRadiotaxis = data.map((e) => e as Map<String, dynamic>).toList();
+        _paradasRadiotaxis =
+            data.map((e) => e as Map<String, dynamic>).toList();
         _isLoadingParadas = false;
       });
 
@@ -762,7 +775,8 @@ Future<void> _fetchTrufis() async {
       if (!mounted) return;
       setState(() => _isLoadingGeoJSON = true);
 
-      final String response = await rootBundle.loadString('assets/geojson/colcapirhua.geojson');
+      final String response =
+          await rootBundle.loadString('assets/geojson/colcapirhua.geojson');
 
       // Parsear manualmente para unir todos los LineStrings en un solo polígono cerrado
       final geo = jsonDecode(response) as Map<String, dynamic>;
@@ -817,7 +831,9 @@ Future<void> _fetchTrufis() async {
 
           if (bestIdx == -1) break;
           used[bestIdx] = true;
-          final seg = bestReverse ? segments[bestIdx].reversed.toList() : segments[bestIdx];
+          final seg = bestReverse
+              ? segments[bestIdx].reversed.toList()
+              : segments[bestIdx];
           allPoints.addAll(seg);
         }
       }
@@ -851,7 +867,6 @@ Future<void> _fetchTrufis() async {
       });
 
       _calcularBoundingBoxColca(response);
-
     } catch (e) {
       print("Error loading zona: $e");
       if (!mounted) return;
@@ -909,14 +924,16 @@ Future<void> _fetchTrufis() async {
     } else if (type == 'Polygon' || type == 'MultiLineString') {
       for (final ring in (geom['coordinates'] as List? ?? [])) {
         for (final c in (ring as List? ?? [])) {
-          if (c is List && c.length >= 2) result.add([c[0] as num, c[1] as num]);
+          if (c is List && c.length >= 2)
+            result.add([c[0] as num, c[1] as num]);
         }
       }
     } else if (type == 'MultiPolygon') {
       for (final poly in (geom['coordinates'] as List? ?? [])) {
         for (final ring in (poly as List? ?? [])) {
           for (final c in (ring as List? ?? [])) {
-            if (c is List && c.length >= 2) result.add([c[0] as num, c[1] as num]);
+            if (c is List && c.length >= 2)
+              result.add([c[0] as num, c[1] as num]);
           }
         }
       }
@@ -945,7 +962,8 @@ Future<void> _fetchTrufis() async {
     });
   }
 
-  ({List<Polyline> polylines, List<int?> ids}) _polylinesFromGeoJsonWithIds(Map<String, dynamic> geo) {
+  ({List<Polyline> polylines, List<int?> ids}) _polylinesFromGeoJsonWithIds(
+      Map<String, dynamic> geo) {
     final features = (geo['features'] as List? ?? []);
     final polylines = <Polyline>[];
     final ids = <int?>[];
@@ -953,7 +971,9 @@ Future<void> _fetchTrufis() async {
     for (final f in features) {
       if (f is! Map) continue;
 
-      final props = (f['properties'] is Map) ? (f['properties'] as Map) : <dynamic, dynamic>{};
+      final props = (f['properties'] is Map)
+          ? (f['properties'] as Map)
+          : <dynamic, dynamic>{};
       final idtrufi = int.tryParse((props['idtrufi'] ?? "").toString());
 
       final geom = f['geometry'];
@@ -1020,12 +1040,14 @@ Future<void> _fetchTrufis() async {
         if (id != null) _polylineIdMap[parsed.polylines[i]] = id;
       }
 
-      print("✅ Cargadas ${_todasRutas.length} rutas (${_polylineIdMap.length} con id)");
+      print(
+          "✅ Cargadas ${_todasRutas.length} rutas (${_polylineIdMap.length} con id)");
 
       if (!mounted) return;
       setState(() {
         _rutasVisibles = _todasRutas;
-        _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
+        _inicioFinMarkers =
+            _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
         _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
         _isLoadingRutas = false;
       });
@@ -1063,7 +1085,8 @@ Future<void> _fetchTrufis() async {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         if (!mounted) return;
         setState(() {
           _currentPosition = null;
@@ -1106,7 +1129,6 @@ Future<void> _fetchTrufis() async {
       }, onError: (e) {
         print("Error en stream de ubicación: $e");
       });
-
     } catch (e) {
       print("Error getting location: $e");
       if (!mounted) return;
@@ -1126,7 +1148,9 @@ Future<void> _fetchTrufis() async {
   void _recalcCircleRadiusPx(double zoom, {bool force = false}) {
     if (_currentPosition == null) return;
 
-    if (!force && _lastZoomForCircle != null && (zoom - _lastZoomForCircle!).abs() < 0.05) return;
+    if (!force &&
+        _lastZoomForCircle != null &&
+        (zoom - _lastZoomForCircle!).abs() < 0.05) return;
     _lastZoomForCircle = zoom;
 
     final meters = AppSettings.radiusMeters.value;
@@ -1140,7 +1164,8 @@ Future<void> _fetchTrufis() async {
   double _minDistToPolylineMeters(LatLng pos, List<LatLng> pts) {
     double minD = double.infinity;
     for (final p in pts) {
-      final d = Geolocator.distanceBetween(pos.latitude, pos.longitude, p.latitude, p.longitude);
+      final d = Geolocator.distanceBetween(
+          pos.latitude, pos.longitude, p.latitude, p.longitude);
       if (d < minD) minD = d;
     }
     return minD;
@@ -1170,7 +1195,8 @@ Future<void> _fetchTrufis() async {
     if (_routeFilterMode == RouteFilterMode.all) {
       setState(() {
         _rutasVisibles = _todasRutas;
-        _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
+        _inicioFinMarkers =
+            _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
         _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
         _isLoadingRutas = false;
       });
@@ -1180,14 +1206,16 @@ Future<void> _fetchTrufis() async {
     if (_currentPosition == null) {
       setState(() {
         _rutasVisibles = _todasRutas;
-        _inicioFinMarkers = _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
+        _inicioFinMarkers =
+            _buildInicioFinMarkers(_rutasVisibles, maxRutas: 30);
         _routeLabelMarkers = _buildRouteLabels(_rutasVisibles);
         _isLoadingRutas = false;
       });
       return;
     }
 
-    final user = LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
+    final user =
+        LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
     final radius = AppSettings.radiusMeters.value;
 
     final cerca = _todasRutas.where((pl) {
@@ -1227,14 +1255,24 @@ Future<void> _fetchTrufis() async {
     final markers = <Marker>[];
 
     for (final p in paradas) {
-      final lat = double.tryParse((p["latitud"] ?? p["lat"] ?? p["latitude"] ?? "").toString());
-      final lng = double.tryParse((p["longitud"] ?? p["lng"] ?? p["longitude"] ?? p["lon"] ?? "").toString());
+      final lat = double.tryParse(
+          (p["latitud"] ?? p["lat"] ?? p["latitude"] ?? "").toString());
+      final lng = double.tryParse(
+          (p["longitud"] ?? p["lng"] ?? p["longitude"] ?? p["lon"] ?? "")
+              .toString());
       if (lat == null || lng == null) continue;
 
       final radiotaxiId = int.tryParse(
-        (p["sindicato_radiotaxi_id"] ?? p["radiotaxi_id"] ?? p["idradiotaxi"] ?? p["sindicato_id"] ?? "").toString(),
+        (p["sindicato_radiotaxi_id"] ??
+                p["radiotaxi_id"] ??
+                p["idradiotaxi"] ??
+                p["sindicato_id"] ??
+                "")
+            .toString(),
       );
-      final name = (radiotaxiId != null) ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId") : "Parada";
+      final name = (radiotaxiId != null)
+          ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId")
+          : "Parada";
 
       markers.add(
         Marker(
@@ -1288,14 +1326,24 @@ Future<void> _fetchTrufis() async {
     final markers = <Marker>[];
 
     for (final p in paradas) {
-      final lat = double.tryParse((p["latitud"] ?? p["lat"] ?? p["latitude"] ?? "").toString());
-      final lng = double.tryParse((p["longitud"] ?? p["lng"] ?? p["longitude"] ?? p["lon"] ?? "").toString());
+      final lat = double.tryParse(
+          (p["latitud"] ?? p["lat"] ?? p["latitude"] ?? "").toString());
+      final lng = double.tryParse(
+          (p["longitud"] ?? p["lng"] ?? p["longitude"] ?? p["lon"] ?? "")
+              .toString());
       if (lat == null || lng == null) continue;
 
       final radiotaxiId = int.tryParse(
-        (p["sindicato_radiotaxi_id"] ?? p["radiotaxi_id"] ?? p["idradiotaxi"] ?? p["sindicato_id"] ?? "").toString(),
+        (p["sindicato_radiotaxi_id"] ??
+                p["radiotaxi_id"] ??
+                p["idradiotaxi"] ??
+                p["sindicato_id"] ??
+                "")
+            .toString(),
       );
-      final name = (radiotaxiId != null) ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId") : "Parada";
+      final name = (radiotaxiId != null)
+          ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId")
+          : "Parada";
 
       if (name.trim().isEmpty) continue;
 
@@ -1361,12 +1409,26 @@ Future<void> _fetchTrufis() async {
   }
 
   void _mostrarDireccionParada(Map<String, dynamic> parada) async {
-    final lat = double.tryParse((parada["latitud"] ?? parada["lat"] ?? parada["latitude"] ?? "").toString());
-    final lng = double.tryParse((parada["longitud"] ?? parada["lng"] ?? parada["longitude"] ?? parada["lon"] ?? "").toString());
+    final lat = double.tryParse(
+        (parada["latitud"] ?? parada["lat"] ?? parada["latitude"] ?? "")
+            .toString());
+    final lng = double.tryParse((parada["longitud"] ??
+            parada["lng"] ??
+            parada["longitude"] ??
+            parada["lon"] ??
+            "")
+        .toString());
     final radiotaxiId = int.tryParse(
-      (parada["sindicato_radiotaxi_id"] ?? parada["radiotaxi_id"] ?? parada["idradiotaxi"] ?? parada["sindicato_id"] ?? "").toString(),
+      (parada["sindicato_radiotaxi_id"] ??
+              parada["radiotaxi_id"] ??
+              parada["idradiotaxi"] ??
+              parada["sindicato_id"] ??
+              "")
+          .toString(),
     );
-    final name = (radiotaxiId != null) ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId") : "Parada";
+    final name = (radiotaxiId != null)
+        ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId")
+        : "Parada";
 
     if (lat == null || lng == null) return;
 
@@ -1411,7 +1473,8 @@ Future<void> _fetchTrufis() async {
               ),
               const SizedBox(height: 10),
               ListTile(
-                leading: const Icon(Icons.local_taxi, color: kPrimary, size: 32),
+                leading:
+                    const Icon(Icons.local_taxi, color: kPrimary, size: 32),
                 title: Text(
                   name,
                   style: TextStyle(
@@ -1471,8 +1534,10 @@ Future<void> _fetchTrufis() async {
         final prev = pl.points[i - 1];
         final curr = pl.points[i];
         final dist = Geolocator.distanceBetween(
-          prev.latitude, prev.longitude,
-          curr.latitude, curr.longitude,
+          prev.latitude,
+          prev.longitude,
+          curr.latitude,
+          curr.longitude,
         );
 
         accumulated += dist;
@@ -1491,8 +1556,10 @@ Future<void> _fetchTrufis() async {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Icon(Icons.navigation_rounded, size: 22, color: Colors.white.withOpacity(0.9)),
-                    Icon(Icons.navigation_rounded, size: 16, color: kPrimaryDark.withOpacity(0.8)),
+                    Icon(Icons.navigation_rounded,
+                        size: 22, color: Colors.white.withOpacity(0.9)),
+                    Icon(Icons.navigation_rounded,
+                        size: 16, color: kPrimaryDark.withOpacity(0.8)),
                   ],
                 ),
               ),
@@ -1505,7 +1572,8 @@ Future<void> _fetchTrufis() async {
     return markers;
   }
 
-  List<Marker> _buildInicioFinMarkers(List<Polyline> polylines, {int maxRutas = 30}) {
+  List<Marker> _buildInicioFinMarkers(List<Polyline> polylines,
+      {int maxRutas = 30}) {
     final markers = <Marker>[];
     int count = 0;
 
@@ -1556,7 +1624,8 @@ Future<void> _fetchTrufis() async {
       if (pl.points.isEmpty) continue;
 
       final id = _idOfPolyline(pl);
-      final lineName = (id != null) ? (_trufiNameById[id] ?? "Línea $id") : null;
+      final lineName =
+          (id != null) ? (_trufiNameById[id] ?? "Línea $id") : null;
       if (lineName == null) continue;
 
       String? sindicatoName;
@@ -1641,7 +1710,8 @@ Future<void> _fetchTrufis() async {
                       ),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.directions_bus_filled, color: Colors.white, size: 26),
+                    child: const Icon(Icons.directions_bus_filled,
+                        color: Colors.white, size: 26),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -1656,7 +1726,8 @@ Future<void> _fetchTrufis() async {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        if (sindicatoName != null && sindicatoName.trim().isNotEmpty) ...[
+                        if (sindicatoName != null &&
+                            sindicatoName.trim().isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Row(
                             children: [
@@ -1689,7 +1760,8 @@ Future<void> _fetchTrufis() async {
                         foregroundColor: kPrimary,
                         side: const BorderSide(color: kPrimary),
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.close, size: 18),
@@ -1703,7 +1775,8 @@ Future<void> _fetchTrufis() async {
                         backgroundColor: kPrimary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () {
                         Navigator.pop(context);
@@ -1739,8 +1812,15 @@ Future<void> _fetchTrufis() async {
           shape: BoxShape.circle,
           border: Border.all(color: Colors.white, width: 3),
           boxShadow: [
-            BoxShadow(color: color.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 6), spreadRadius: 2),
-            BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 8, offset: const Offset(0, 4)),
+            BoxShadow(
+                color: color.withOpacity(0.35),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+                spreadRadius: 2),
+            BoxShadow(
+                color: Colors.black.withOpacity(0.18),
+                blurRadius: 8,
+                offset: const Offset(0, 4)),
           ],
         ),
         child: Center(child: Icon(icon, color: Colors.white, size: 19)),
@@ -1802,7 +1882,8 @@ Future<void> _fetchTrufis() async {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.directions_bus_filled, size: 14, color: Colors.white),
+          const Icon(Icons.directions_bus_filled,
+              size: 14, color: Colors.white),
           const SizedBox(width: 6),
           Flexible(
             child: Text(
@@ -1821,7 +1902,8 @@ Future<void> _fetchTrufis() async {
     );
   }
 
-  Future<List<Map<String, dynamic>>> _extraerPuntosRuta(List<LatLng> points) async {
+  Future<List<Map<String, dynamic>>> _extraerPuntosRuta(
+      List<LatLng> points) async {
     final resultado = <Map<String, dynamic>>[];
 
     if (points.isEmpty) return resultado;
@@ -1871,40 +1953,56 @@ Future<void> _fetchTrufis() async {
     return resultado;
   }
 
-  List<Map<String, dynamic>> _convertirUbicacionesAMapas(List<dynamic> ubicaciones) {
+  List<Map<String, dynamic>> _convertirUbicacionesAMapas(
+      List<dynamic> ubicaciones) {
     final resultado = <Map<String, dynamic>>[];
-    
+
     print("📍 _convertirUbicacionesAMapas recibió: $ubicaciones");
     print("📍 Tipo: ${ubicaciones.runtimeType}, Length: ${ubicaciones.length}");
-    
+
     try {
       int numeroPunto = 1;
-      
+
       for (final ubicacion in ubicaciones) {
         print("📍 Procesando ubicación $numeroPunto: $ubicacion");
-        
+
         if (ubicacion is! Map<String, dynamic>) {
           print("⚠️ Ubicación no es Map: ${ubicacion.runtimeType}");
           continue;
         }
-        
-        final lat = double.tryParse((ubicacion['latitud'] ?? ubicacion['lat'] ?? ubicacion['latitude'] ?? '').toString());
-        final lng = double.tryParse((ubicacion['longitud'] ?? ubicacion['lng'] ?? ubicacion['longitude'] ?? '').toString());
-        final direccion = (ubicacion['nombre'] ?? ubicacion['nombre_calle'] ?? ubicacion['direccion'] ?? ubicacion['calle'] ?? '').toString();
-        
+
+        final lat = double.tryParse((ubicacion['latitud'] ??
+                ubicacion['lat'] ??
+                ubicacion['latitude'] ??
+                '')
+            .toString());
+        final lng = double.tryParse((ubicacion['longitud'] ??
+                ubicacion['lng'] ??
+                ubicacion['longitude'] ??
+                '')
+            .toString());
+        final direccion = (ubicacion['nombre'] ??
+                ubicacion['nombre_calle'] ??
+                ubicacion['direccion'] ??
+                ubicacion['calle'] ??
+                '')
+            .toString();
+
         print("📍 Lat: $lat, Lng: $lng, Dirección: $direccion");
-        
+
         if (lat == null || lng == null) {
           print("⚠️ Coordenadas nulas para punto $numeroPunto");
           continue;
         }
-        
+
         resultado.add({
           'punto': numeroPunto,
           'latLng': LatLng(lat, lng),
-          'direccion': direccion.isNotEmpty ? direccion : '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}',
+          'direccion': direccion.isNotEmpty
+              ? direccion
+              : '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}',
         });
-        
+
         print("✅ Punto $numeroPunto agregado correctamente");
         numeroPunto++;
       }
@@ -1912,7 +2010,7 @@ Future<void> _fetchTrufis() async {
     } catch (e) {
       print("❌ Error convirtiendo ubicaciones: $e");
     }
-    
+
     return resultado;
   }
 
@@ -1971,7 +2069,9 @@ Future<void> _fetchTrufis() async {
           print("⚠️ Error cargando ubicaciones para trufi $idtrufi: $e");
           return <dynamic>[];
         }),
-        _apiService.getReferenciasDestrufi(idtrufi).catchError((_) => <dynamic>[]),
+        _apiService
+            .getReferenciasDestrufi(idtrufi)
+            .catchError((_) => <dynamic>[]),
       ]);
 
       final geo = results[0] as Map<String, dynamic>;
@@ -1980,7 +2080,8 @@ Future<void> _fetchTrufis() async {
 
       if (geo['features'] == null || (geo['features'] as List).isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t("no_route"))));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(t("no_route"))));
         return;
       }
 
@@ -1989,7 +2090,8 @@ Future<void> _fetchTrufis() async {
 
       if (ruta.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t("no_route"))));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(t("no_route"))));
         return;
       }
 
@@ -2063,23 +2165,25 @@ Future<void> _fetchTrufis() async {
       _apiService.getTrufiHorario(idtrufi).then((horarioData) {
         if (!mounted) return;
         setState(() {
-          _selectedTrufiHorario = (horarioData['hora_entrada'] != null || horarioData['hora_salida'] != null)
+          _selectedTrufiHorario = (horarioData['hora_entrada'] != null ||
+                  horarioData['hora_salida'] != null)
               ? horarioData
               : null;
         });
       }).catchError((_) {});
-
     } catch (e) {
       print("Error mostrando ruta de trufi $idtrufi: $e");
       if (!mounted) return;
       setState(() => _isLoadingRutaTrufi = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No se pudo cargar la ruta de este trufi")),
+        const SnackBar(
+            content: Text("No se pudo cargar la ruta de este trufi")),
       );
     }
   }
 
-  List<Marker> _buildRouteLabelsDirect(List<Polyline> polylines, int idtrufi, String nombre) {
+  List<Marker> _buildRouteLabelsDirect(
+      List<Polyline> polylines, int idtrufi, String nombre) {
     final markers = <Marker>[];
 
     for (final pl in polylines) {
@@ -2110,8 +2214,11 @@ Future<void> _fetchTrufis() async {
   Future<void> _registrarSeleccionTrufi(int idtrufi) async {
     try {
       await http.post(
-        Uri.parse("$_apiBase/trufis/$idtrufi/seleccion"),
-        headers: const {"Accept": "application/json", "Content-Type": "application/json"},
+        Uri.parse("${AppConfig.baseUrl}/trufis/$idtrufi/seleccion"),
+        headers: const {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
       );
     } catch (e) {
       print("Error registrando selección de trufi $idtrufi: $e");
@@ -2169,8 +2276,10 @@ Future<void> _fetchTrufis() async {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: kAqua,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                         onPressed: () => _mostrarReferenciasModal(true),
                         icon: const Icon(Icons.location_city, size: 18),
@@ -2203,11 +2312,13 @@ Future<void> _fetchTrufis() async {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.route_outlined, size: 48, color: subTextColor.withOpacity(0.5)),
+                            Icon(Icons.route_outlined,
+                                size: 48, color: subTextColor.withOpacity(0.5)),
                             const SizedBox(height: 12),
                             Text(
                               t("no_data"),
-                              style: TextStyle(color: subTextColor, fontSize: 15),
+                              style:
+                                  TextStyle(color: subTextColor, fontSize: 15),
                             ),
                           ],
                         ),
@@ -2218,23 +2329,35 @@ Future<void> _fetchTrufis() async {
                         itemBuilder: (context, index) {
                           final via = _rutasVias[index];
                           final orden = via['orden'] ?? (index + 1);
-                          final nombreVia = (via['nombre_via'] ?? t("no_data")).toString();
+                          final nombreVia =
+                              (via['nombre_via'] ?? t("no_data")).toString();
                           final isDark = AppSettings.darkMode.value;
-                          final cardBg = isDark ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
-                          
+                          final cardBg = isDark
+                              ? const Color(0xFF1A2744)
+                              : const Color(0xFFF4F8FB);
+
                           // Obtener coordenadas del punto si existen
-                          final lat = double.tryParse((via['latitud'] ?? via['lat'] ?? '').toString());
-                          final lng = double.tryParse((via['longitud'] ?? via['lng'] ?? via['lon'] ?? '').toString());
+                          final lat = double.tryParse(
+                              (via['latitud'] ?? via['lat'] ?? '').toString());
+                          final lng = double.tryParse((via['longitud'] ??
+                                  via['lng'] ??
+                                  via['lon'] ??
+                                  '')
+                              .toString());
                           final hasCoords = lat != null && lng != null;
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: GestureDetector(
-                              onTap: hasCoords ? () {
-                                _navigateToPoint(LatLng(lat, lng), nombreVia);
-                              } : null,
+                              onTap: hasCoords
+                                  ? () {
+                                      _navigateToPoint(
+                                          LatLng(lat, lng), nombreVia);
+                                    }
+                                  : null,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
                                 decoration: BoxDecoration(
                                   color: cardBg,
                                   borderRadius: BorderRadius.circular(12),
@@ -2264,7 +2387,8 @@ Future<void> _fetchTrufis() async {
                                       ),
                                     ),
                                     const SizedBox(width: 10),
-                                    const Icon(Icons.turn_right_rounded, color: kAqua, size: 16),
+                                    const Icon(Icons.turn_right_rounded,
+                                        color: kAqua, size: 16),
                                     const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
@@ -2277,7 +2401,9 @@ Future<void> _fetchTrufis() async {
                                       ),
                                     ),
                                     if (hasCoords)
-                                      Icon(Icons.chevron_right_rounded, color: kAqua.withOpacity(0.6), size: 20),
+                                      Icon(Icons.chevron_right_rounded,
+                                          color: kAqua.withOpacity(0.6),
+                                          size: 20),
                                   ],
                                 ),
                               ),
@@ -2293,7 +2419,8 @@ Future<void> _fetchTrufis() async {
     );
   }
 
-  Future<void> _mostrarInfoRadiotaxi(int idradiotaxi, {String? nombreRadiotaxi}) async {
+  Future<void> _mostrarInfoRadiotaxi(int idradiotaxi,
+      {String? nombreRadiotaxi}) async {
     if (!mounted) return;
 
     setState(() {
@@ -2304,21 +2431,55 @@ Future<void> _fetchTrufis() async {
       // Obtener ubicación del radiotaxi
       final radiotaxiData = _paradasRadiotaxis.firstWhere(
         (p) {
-          final id = int.tryParse((p["sindicato_radiotaxi_id"] ?? p["radiotaxi_id"] ?? p["idradiotaxi"] ?? p["sindicato_id"] ?? "").toString());
+          final id = int.tryParse((p["sindicato_radiotaxi_id"] ??
+                  p["radiotaxi_id"] ??
+                  p["idradiotaxi"] ??
+                  p["sindicato_id"] ??
+                  "")
+              .toString());
           return id == idradiotaxi;
         },
         orElse: () => <String, dynamic>{},
       );
 
-      final lat = double.tryParse((radiotaxiData["latitud"] ?? radiotaxiData["lat"] ?? "").toString());
-      final lng = double.tryParse((radiotaxiData["longitud"] ?? radiotaxiData["lng"] ?? radiotaxiData["lon"] ?? "").toString());
+      // Intentar obtener coordenadas de _paradasRadiotaxis
+      double? lat = double.tryParse(
+          (radiotaxiData["latitud"] ?? radiotaxiData["lat"] ?? "").toString());
+      double? lng = double.tryParse((radiotaxiData["longitud"] ??
+              radiotaxiData["lng"] ??
+              radiotaxiData["lon"] ??
+              "")
+          .toString());
+
+      // Obtener dirección y teléfono
+      final direccion = (radiotaxiData["direccion"] ?? "").toString().trim();
+
+      // Buscar el teléfono en la lista de radiotaxis completa
+      final radiotaxiFull = _radioTaxis.firstWhere(
+        (rt) => (rt["id"] ?? rt["idradiotaxi"] ?? 0) == idradiotaxi,
+        orElse: () => <String, dynamic>{},
+      );
+      final telefono = (radiotaxiFull["telefono_base"] ?? "").toString().trim();
+
+      // Si no hay coordenadas en paradas, buscar en _radioTaxis
+      if (lat == null || lng == null) {
+        lat ??= double.tryParse(
+            (radiotaxiFull["latitud"] ?? radiotaxiFull["lat"] ?? "").toString());
+        lng ??= double.tryParse((radiotaxiFull["longitud"] ??
+                radiotaxiFull["lng"] ??
+                radiotaxiFull["lon"] ??
+                "")
+            .toString());
+      }
 
       // Cargar referencias del radiotaxi
-      final referenciasRaw = await _apiService.getReferenciasDeRadiotaxi(idradiotaxi).catchError((e) {
+      final referenciasRaw = await _apiService
+          .getReferenciasDeRadiotaxi(idradiotaxi)
+          .catchError((e) {
         print("⚠️ Error cargando referencias: $e");
         return <dynamic>[];
       });
-      
+
       // Procesar referencias
       List<Map<String, dynamic>> referenciasData = [];
       for (var item in referenciasRaw) {
@@ -2326,14 +2487,19 @@ Future<void> _fetchTrufis() async {
           referenciasData.add(Map<String, dynamic>.from(item));
         }
       }
-      print("✅ Referencias de radiotaxi $idradiotaxi procesadas: ${referenciasData.length}");
+      print(
+          "✅ Referencias de radiotaxi $idradiotaxi procesadas: ${referenciasData.length}");
 
-      final nombre = nombreRadiotaxi ?? _radiotaxiNameById[idradiotaxi] ?? "Radiotaxi $idradiotaxi";
+      final nombre = nombreRadiotaxi ??
+          _radiotaxiNameById[idradiotaxi] ??
+          "Radiotaxi $idradiotaxi";
 
       if (!mounted) return;
       setState(() {
         _selectedRadiotaxiId = idradiotaxi;
         _selectedRadiotaxiName = nombre;
+        _selectedRadiotaxiDireccion = direccion.isNotEmpty ? direccion : null;
+        _selectedRadiotaxiTelefono = telefono.isNotEmpty ? telefono : null;
         _referenciasSelectedRadiotaxi = referenciasData;
         _isLoadingRutaTrufi = false;
         // Limpiar selección de trufi
@@ -2365,19 +2531,47 @@ Future<void> _fetchTrufis() async {
     final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
     final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
-    final cardBg = isDarkMode ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
+    final cardBg =
+        isDarkMode ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
 
     // Obtener la ubicación del radiotaxi desde _paradasRadiotaxis
     final radiotaxiData = _paradasRadiotaxis.firstWhere(
       (p) {
-        final id = int.tryParse((p["sindicato_radiotaxi_id"] ?? p["radiotaxi_id"] ?? p["idradiotaxi"] ?? p["sindicato_id"] ?? "").toString());
+        final id = int.tryParse((p["sindicato_radiotaxi_id"] ??
+                p["radiotaxi_id"] ??
+                p["idradiotaxi"] ??
+                p["sindicato_id"] ??
+                "")
+            .toString());
         return id == _selectedRadiotaxiId;
       },
       orElse: () => <String, dynamic>{},
     );
 
-    final lat = double.tryParse((radiotaxiData["latitud"] ?? radiotaxiData["lat"] ?? "").toString());
-    final lng = double.tryParse((radiotaxiData["longitud"] ?? radiotaxiData["lng"] ?? radiotaxiData["lon"] ?? "").toString());
+    // Intentar obtener coordenadas de _paradasRadiotaxis
+    double? lat = double.tryParse(
+        (radiotaxiData["latitud"] ?? radiotaxiData["lat"] ?? "").toString());
+    double? lng = double.tryParse((radiotaxiData["longitud"] ??
+            radiotaxiData["lng"] ??
+            radiotaxiData["lon"] ??
+            "")
+        .toString());
+
+    // Si no hay coordenadas en paradas, buscar en _radioTaxis
+    if (lat == null || lng == null) {
+      final radiotaxiFull = _radioTaxis.firstWhere(
+        (rt) =>
+            (rt["id"] ?? rt["idradiotaxi"] ?? 0) == _selectedRadiotaxiId,
+        orElse: () => <String, dynamic>{},
+      );
+      lat ??= double.tryParse(
+          (radiotaxiFull["latitud"] ?? radiotaxiFull["lat"] ?? "").toString());
+      lng ??= double.tryParse((radiotaxiFull["longitud"] ??
+              radiotaxiFull["lng"] ??
+              radiotaxiFull["lon"] ??
+              "")
+          .toString());
+    }
 
     showModalBottomSheet(
       context: context,
@@ -2424,8 +2618,10 @@ Future<void> _fetchTrufis() async {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: kAqua,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                         onPressed: () => _mostrarReferenciasModal(false),
                         icon: const Icon(Icons.location_city, size: 18),
@@ -2458,11 +2654,13 @@ Future<void> _fetchTrufis() async {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.location_off_outlined, size: 48, color: subTextColor.withOpacity(0.5)),
+                            Icon(Icons.location_off_outlined,
+                                size: 48, color: subTextColor.withOpacity(0.5)),
                             const SizedBox(height: 12),
                             Text(
                               t("no_ubicaciones"),
-                              style: TextStyle(color: subTextColor, fontSize: 15),
+                              style:
+                                  TextStyle(color: subTextColor, fontSize: 15),
                             ),
                           ],
                         ),
@@ -2472,16 +2670,19 @@ Future<void> _fetchTrufis() async {
                         children: [
                           GestureDetector(
                             onTap: () {
-                              // Navegar a la ubicación del radiotaxi, mostrando solo su nombre
-                              Navigator.pop(context);
+                              // Navegar a la ubicación del radiotaxi usando las coordenadas guardadas
+                              // _navigateToPoint ya cierra el modal
                               _navigateToPoint(
-                                LatLng(lat, lng), 
-                                _selectedRadiotaxiName ?? "Radiotaxi",
+                                LatLng(lat!, lng!),
+                                _selectedRadiotaxiDireccion ??
+                                    _selectedRadiotaxiName ??
+                                    "Radiotaxi",
                                 isRadiotaxi: true,
                               );
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
                               decoration: BoxDecoration(
                                 color: cardBg,
                                 borderRadius: BorderRadius.circular(14),
@@ -2500,40 +2701,126 @@ Future<void> _fetchTrufis() async {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: const Center(
-                                      child: Icon(Icons.local_taxi, color: kPrimary, size: 18),
+                                      child: Icon(Icons.local_taxi,
+                                          color: kPrimary, size: 18),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
-                                  const Icon(Icons.place_rounded, color: kAqua, size: 18),
+                                  const Icon(Icons.place_rounded,
+                                      color: kAqua, size: 18),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          _selectedRadiotaxiName ?? "Radiotaxi",
+                                          _selectedRadiotaxiDireccion ??
+                                              _selectedRadiotaxiName ??
+                                              "Radiotaxi",
                                           style: TextStyle(
                                             color: textColor,
                                             fontWeight: FontWeight.w700,
                                             fontSize: 14.5,
                                           ),
                                         ),
-                                        if (_selectedRadiotaxiDireccion != null)
-                                          Text(
-                                            _selectedRadiotaxiDireccion!,
-                                            style: TextStyle(
-                                              color: subTextColor,
-                                              fontSize: 12,
-                                            ),
-                                          ),
                                       ],
                                     ),
                                   ),
-                                  Icon(Icons.chevron_right_rounded, color: kAqua.withOpacity(0.6), size: 20),
+                                  Icon(Icons.chevron_right_rounded,
+                                      color: kAqua.withOpacity(0.6), size: 20),
                                 ],
                               ),
                             ),
                           ),
+                          // Botón de llamar - Diseño profesional
+                          if (_selectedRadiotaxiTelefono != null &&
+                              _selectedRadiotaxiTelefono!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: GestureDetector(
+                                onTap: () {
+                                  _confirmAndCall(
+                                    _selectedRadiotaxiTelefono!,
+                                    nombre: _selectedRadiotaxiName,
+                                    id: _selectedRadiotaxiId,
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [kPrimaryDark, kPrimary],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: kPrimary.withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.phone,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              "Llamar",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              _selectedRadiotaxiTelefono!,
+                                              style: TextStyle(
+                                                color: Colors.white
+                                                    .withOpacity(0.95),
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.arrow_forward_ios_rounded,
+                                        color: Colors.white.withOpacity(0.8),
+                                        size: 16,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
               ),
@@ -2549,11 +2836,14 @@ Future<void> _fetchTrufis() async {
     final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
     final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
-    final cardBg = isDarkMode ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
+    final cardBg =
+        isDarkMode ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
 
-    final referencias = esTrufi ? _referenciasSelectedTrufi : _referenciasSelectedRadiotaxi;
+    final referencias =
+        esTrufi ? _referenciasSelectedTrufi : _referenciasSelectedRadiotaxi;
     final items = referencias.where((r) {
-      final n = (r['referencia'] ?? r['nombre'] ?? r['name'] ?? '').toString().trim();
+      final n =
+          (r['referencia'] ?? r['nombre'] ?? r['name'] ?? '').toString().trim();
       return n.isNotEmpty;
     }).toList();
 
@@ -2600,7 +2890,8 @@ Future<void> _fetchTrufis() async {
                           color: kPrimary.withOpacity(0.10),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new_rounded, color: kPrimary, size: 18),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded,
+                            color: kPrimary, size: 18),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -2615,7 +2906,8 @@ Future<void> _fetchTrufis() async {
                         ),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.place_rounded, color: Colors.white, size: 20),
+                      child: const Icon(Icons.place_rounded,
+                          color: Colors.white, size: 20),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -2648,11 +2940,13 @@ Future<void> _fetchTrufis() async {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.location_off_outlined, size: 48, color: subTextColor.withOpacity(0.5)),
+                            Icon(Icons.location_off_outlined,
+                                size: 48, color: subTextColor.withOpacity(0.5)),
                             const SizedBox(height: 12),
                             Text(
                               t("no_references"),
-                              style: TextStyle(color: subTextColor, fontSize: 15),
+                              style:
+                                  TextStyle(color: subTextColor, fontSize: 15),
                             ),
                           ],
                         ),
@@ -2662,21 +2956,35 @@ Future<void> _fetchTrufis() async {
                         itemCount: items.length,
                         itemBuilder: (context, index) {
                           final item = items[index];
-                          final nombre = (item['referencia'] ?? item['nombre'] ?? item['name'] ?? '').toString();
-                          
+                          final nombre = (item['referencia'] ??
+                                  item['nombre'] ??
+                                  item['name'] ??
+                                  '')
+                              .toString();
+
                           // Obtener coordenadas si existen
-                          final lat = double.tryParse((item['latitud'] ?? item['lat'] ?? '').toString());
-                          final lng = double.tryParse((item['longitud'] ?? item['lng'] ?? item['lon'] ?? '').toString());
+                          final lat = double.tryParse(
+                              (item['latitud'] ?? item['lat'] ?? '')
+                                  .toString());
+                          final lng = double.tryParse((item['longitud'] ??
+                                  item['lng'] ??
+                                  item['lon'] ??
+                                  '')
+                              .toString());
                           final hasCoords = lat != null && lng != null;
-                          
+
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: GestureDetector(
-                              onTap: hasCoords ? () {
-                                _navigateToPoint(LatLng(lat, lng), nombre, isRadiotaxi: !esTrufi);
-                              } : null,
+                              onTap: hasCoords
+                                  ? () {
+                                      _navigateToPoint(LatLng(lat, lng), nombre,
+                                          isRadiotaxi: !esTrufi);
+                                    }
+                                  : null,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 12),
                                 decoration: BoxDecoration(
                                   color: cardBg,
                                   borderRadius: BorderRadius.circular(14),
@@ -2706,7 +3014,8 @@ Future<void> _fetchTrufis() async {
                                       ),
                                     ),
                                     const SizedBox(width: 12),
-                                    const Icon(Icons.place_rounded, color: kAqua, size: 18),
+                                    const Icon(Icons.place_rounded,
+                                        color: kAqua, size: 18),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
@@ -2719,7 +3028,9 @@ Future<void> _fetchTrufis() async {
                                       ),
                                     ),
                                     if (hasCoords)
-                                      Icon(Icons.chevron_right_rounded, color: kAqua.withOpacity(0.6), size: 20),
+                                      Icon(Icons.chevron_right_rounded,
+                                          color: kAqua.withOpacity(0.6),
+                                          size: 20),
                                   ],
                                 ),
                               ),
@@ -2737,9 +3048,23 @@ Future<void> _fetchTrufis() async {
 
   /// Navega a un punto específico y muestra un marcador temporal con el nombre
   void _navigateToPoint(LatLng point, String name, {bool isRadiotaxi = false}) {
-    // Cerrar modales abiertos
-    Navigator.of(context).popUntil((route) => route.isFirst);
-    
+    // Cerrar todos los modales abiertos hasta llegar a la pantalla principal
+    // Los modales no tienen nombre de ruta, así que cerramos hasta encontrar '/home'
+    // Si no encontramos '/home', cerramos hasta que solo quede una ruta (para evitar volver al splash)
+    int popCount = 0;
+    Navigator.of(context).popUntil((route) {
+      // Si encontramos la ruta '/home', detenemos
+      if (route.settings.name == '/home') return true;
+      // Si es la primera ruta (splash), también detenemos para no cerrarla
+      if (route.isFirst) return true;
+      // Si ya hemos hecho varios pops y no encontramos '/home', 
+      // es probable que estemos en una ruta sin nombre
+      popCount++;
+      // Limitar a máximo 5 pops para evitar loops infinitos
+      if (popCount > 5) return true;
+      return false;
+    });
+
     // Crear marcador temporal
     final marker = Marker(
       point: point,
@@ -2752,14 +3077,15 @@ Future<void> _fetchTrufis() async {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: isRadiotaxi 
+                colors: isRadiotaxi
                     ? [kPrimaryDark, kPrimary]
                     : [const Color(0xFF15A8A2), kAqua],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withOpacity(0.95), width: 2),
+              border:
+                  Border.all(color: Colors.white.withOpacity(0.95), width: 2),
               boxShadow: [
                 BoxShadow(
                   color: (isRadiotaxi ? kPrimary : kAqua).withOpacity(0.35),
@@ -2805,15 +3131,15 @@ Future<void> _fetchTrufis() async {
         ],
       ),
     );
-    
+
     setState(() {
       _temporaryPointMarker = marker;
     });
-    
+
     // Mover el mapa al punto
     _mapController.move(point, 16.5);
   }
-  
+
   /// Limpia el marcador temporal cuando el usuario mueve el mapa
   void _clearTemporaryMarker() {
     if (_temporaryPointMarker != null) {
@@ -2866,11 +3192,13 @@ Future<void> _fetchTrufis() async {
       final openSettings = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(children: [
             Icon(Icons.phone_locked, color: kPrimary),
             SizedBox(width: 10),
-            Text('Permiso de teléfono', style: TextStyle(color: kPrimary, fontWeight: FontWeight.w800)),
+            Text('Permiso de teléfono',
+                style: TextStyle(color: kPrimary, fontWeight: FontWeight.w800)),
           ]),
           content: const Text(
             'Para realizar llamadas necesitas activar el permiso de teléfono. '
@@ -2886,7 +3214,8 @@ Future<void> _fetchTrufis() async {
               style: ElevatedButton.styleFrom(
                 backgroundColor: kPrimary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: () => Navigator.pop(context, true),
               icon: const Icon(Icons.settings, size: 16),
@@ -2924,7 +3253,16 @@ Future<void> _fetchTrufis() async {
     }
   }
 
-  Future<void> _confirmAndCall(String rawPhone, {String? nombre, int? id}) async {
+  /// Launches phone call with a phone number string
+  Future<void> _launchPhoneCall(String phone) async {
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (cleanPhone.trim().isEmpty) return;
+    final uri = Uri.parse('tel:$cleanPhone');
+    await _launchCallUri(uri);
+  }
+
+  Future<void> _confirmAndCall(String rawPhone,
+      {String? nombre, int? id}) async {
     final phone = rawPhone.replaceAll(RegExp(r'[^0-9+]'), '');
     if (phone.trim().isEmpty) return;
 
@@ -2935,28 +3273,46 @@ Future<void> _fetchTrufis() async {
         title: Row(children: [
           const Icon(Icons.local_taxi, color: kPrimary),
           const SizedBox(width: 8),
-          Expanded(child: Text(nombre ?? t("radiotaxi"), style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w800, fontSize: 16))),
+          Expanded(
+              child: Text(nombre ?? t("radiotaxi"),
+                  style: const TextStyle(
+                      color: kPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16))),
         ]),
-        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(t("call_confirm")),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(color: kPrimary.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
-            child: Row(children: [
-              const Icon(Icons.phone, color: kPrimary, size: 18),
-              const SizedBox(width: 8),
-              Text(phone, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: kPrimary)),
+        content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(t("call_confirm")),
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                    color: kPrimary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10)),
+                child: Row(children: [
+                  const Icon(Icons.phone, color: kPrimary, size: 18),
+                  const SizedBox(width: 8),
+                  Text(phone,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: kPrimary)),
+                ]),
+              ),
             ]),
-          ),
-        ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t("cancel"))),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(t("cancel"))),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: kPrimary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(context, true),
             icon: const Icon(Icons.call, size: 16),
@@ -2985,21 +3341,36 @@ Future<void> _fetchTrufis() async {
         title: Row(children: [
           const Icon(Icons.headset_mic, color: kPrimary),
           const SizedBox(width: 8),
-          Expanded(child: Text(t("reclamos_call"), style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w800, fontSize: 16))),
+          Expanded(
+              child: Text(t("reclamos_call"),
+                  style: const TextStyle(
+                      color: kPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16))),
         ]),
-        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(titulo),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(color: kPrimary.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
-            child: Row(children: [
-              const Icon(Icons.phone, color: kPrimary, size: 18),
-              const SizedBox(width: 8),
-              Text(phone, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: kPrimary)),
+        content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(titulo),
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                    color: kPrimary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10)),
+                child: Row(children: [
+                  const Icon(Icons.phone, color: kPrimary, size: 18),
+                  const SizedBox(width: 8),
+                  Text(phone,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: kPrimary)),
+                ]),
+              ),
             ]),
-          ),
-        ]),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -3009,7 +3380,8 @@ Future<void> _fetchTrufis() async {
             style: ElevatedButton.styleFrom(
               backgroundColor: kPrimary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(context, true),
             icon: const Icon(Icons.call, size: 16),
@@ -3050,7 +3422,7 @@ Future<void> _fetchTrufis() async {
 
   Future<List<dynamic>> _fetchNormativas() async {
     final res = await http.get(
-      Uri.parse("$_apiBase/normativas"),
+      Uri.parse("${AppConfig.baseUrl}/normativas"),
       headers: const {"Accept": "application/json"},
     );
 
@@ -3061,7 +3433,8 @@ Future<void> _fetchTrufis() async {
     final body = jsonDecode(res.body);
     if (body is List) return body;
     if (body is Map && body["data"] is List) return (body["data"] as List);
-    if (body is Map && body["success"] == true && body["data"] is List) return (body["data"] as List);
+    if (body is Map && body["success"] == true && body["data"] is List)
+      return (body["data"] as List);
     return [];
   }
 
@@ -3071,7 +3444,7 @@ Future<void> _fetchTrufis() async {
       setState(() => _isLoadingReclamos = true);
 
       final res = await http.get(
-        Uri.parse("$_apiBase/public/settings/reclamos"),
+        Uri.parse("${AppConfig.baseUrl}/public/settings/reclamos"),
         headers: const {"Accept": "application/json"},
       );
 
@@ -3139,7 +3512,8 @@ Future<void> _fetchTrufis() async {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.report_problem_outlined, color: kPrimary, size: 26),
+                  const Icon(Icons.report_problem_outlined,
+                      color: kPrimary, size: 26),
                   const SizedBox(width: 10),
                   Text(
                     t("reclamos"),
@@ -3156,12 +3530,15 @@ Future<void> _fetchTrufis() async {
               if (_isLoadingReclamos)
                 const Padding(
                   padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator(color: kPrimary)),
+                  child:
+                      Center(child: CircularProgressIndicator(color: kPrimary)),
                 )
               else if (_reclamos.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Center(child: Text(t("no_data"), style: TextStyle(color: subText))),
+                  child: Center(
+                      child:
+                          Text(t("no_data"), style: TextStyle(color: subText))),
                 )
               else
                 ListView.separated(
@@ -3186,7 +3563,9 @@ Future<void> _fetchTrufis() async {
                         height: 42,
                         decoration: BoxDecoration(
                           color: activo && value.isNotEmpty
-                              ? (isWhatsApp ? Colors.green.withOpacity(0.12) : kPrimary.withOpacity(0.12))
+                              ? (isWhatsApp
+                                  ? Colors.green.withOpacity(0.12)
+                                  : kPrimary.withOpacity(0.12))
                               : Colors.grey.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -3206,9 +3585,13 @@ Future<void> _fetchTrufis() async {
                         ),
                       ),
                       subtitle: Text(
-                        activo && value.isNotEmpty ? value : t("reclamos_inactive"),
+                        activo && value.isNotEmpty
+                            ? value
+                            : t("reclamos_inactive"),
                         style: TextStyle(
-                          color: activo && value.isNotEmpty ? subText : Colors.grey,
+                          color: activo && value.isNotEmpty
+                              ? subText
+                              : Colors.grey,
                         ),
                       ),
                       trailing: activo && value.isNotEmpty
@@ -3217,11 +3600,11 @@ Future<void> _fetchTrufis() async {
                               color: isWhatsApp ? Colors.green : kPrimary,
                             )
                           : null,
-                    onTap: activo && value.isNotEmpty
-                      ? () async {
-                          await _confirmAndCallReclamo(value, label);
-                        }
-                      : null,
+                      onTap: activo && value.isNotEmpty
+                          ? () async {
+                              await _confirmAndCallReclamo(value, label);
+                            }
+                          : null,
                     );
                   },
                 ),
@@ -3256,37 +3639,55 @@ Future<void> _fetchTrufis() async {
             height: MediaQuery.of(context).size.height * 0.78,
             decoration: BoxDecoration(
               color: bg,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(22)),
             ),
             child: Column(
               children: [
                 const SizedBox(height: 10),
-                Container(width: 46, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+                Container(
+                    width: 46,
+                    height: 5,
+                    decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10))),
                 const SizedBox(height: 14),
                 Text(
                   t("normativas"),
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: kPrimary),
+                  style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: kPrimary),
                 ),
                 const Divider(),
                 Expanded(
                   child: data.isEmpty
-                      ? Center(child: Text(t("no_data"), style: TextStyle(color: subText)))
+                      ? Center(
+                          child: Text(t("no_data"),
+                              style: TextStyle(color: subText)))
                       : ListView.builder(
                           itemCount: data.length,
                           itemBuilder: (context, index) {
                             final item = data[index];
 
-                            final titulo = (item["titulo"] ?? "Normativa").toString();
-                            final descripcion = (item["descripcion"] ?? "").toString();
-                            final id = int.tryParse((item["id"] ?? "").toString());
+                            final titulo =
+                                (item["titulo"] ?? "Normativa").toString();
+                            final descripcion =
+                                (item["descripcion"] ?? "").toString();
+                            final id =
+                                int.tryParse((item["id"] ?? "").toString());
 
                             return Card(
-                              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
                               child: ListTile(
-                                leading: const Icon(Icons.picture_as_pdf, color: kPrimary, size: 32),
+                                leading: const Icon(Icons.picture_as_pdf,
+                                    color: kPrimary, size: 32),
                                 title: Text(
                                   titulo,
-                                  style: TextStyle(color: textColor, fontWeight: FontWeight.w800),
+                                  style: TextStyle(
+                                      color: textColor,
+                                      fontWeight: FontWeight.w800),
                                 ),
                                 subtitle: descripcion.isNotEmpty
                                     ? Text(
@@ -3296,11 +3697,13 @@ Future<void> _fetchTrufis() async {
                                         style: TextStyle(color: subText),
                                       )
                                     : null,
-                                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                                trailing: const Icon(Icons.arrow_forward_ios,
+                                    size: 16),
                                 onTap: () async {
                                   if (id == null) return;
 
-                                  final downloadUrl = "$_apiBase/normativas/$id/download";
+                                  final downloadUrl =
+                                      "${AppConfig.baseUrl}/normativas/$id/download";
 
                                   showDialog(
                                     context: context,
@@ -3308,21 +3711,25 @@ Future<void> _fetchTrufis() async {
                                       title: Text(t("details")),
                                       content: SingleChildScrollView(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               "${t("title")}: $titulo",
-                                              style: const TextStyle(fontWeight: FontWeight.w800),
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.w800),
                                             ),
                                             const SizedBox(height: 10),
                                             if (descripcion.isNotEmpty)
-                                              Text("${t("description")}:\n$descripcion"),
+                                              Text(
+                                                  "${t("description")}:\n$descripcion"),
                                           ],
                                         ),
                                       ),
                                       actions: [
                                         TextButton(
-                                          onPressed: () => Navigator.pop(context),
+                                          onPressed: () =>
+                                              Navigator.pop(context),
                                           child: Text(t("close")),
                                         ),
                                         ElevatedButton.icon(
@@ -3334,7 +3741,8 @@ Future<void> _fetchTrufis() async {
                                             Navigator.pop(context);
                                             await launchUrl(
                                               Uri.parse(downloadUrl),
-                                              mode: LaunchMode.externalApplication,
+                                              mode: LaunchMode
+                                                  .externalApplication,
                                             );
                                           },
                                           icon: const Icon(Icons.open_in_new),
@@ -3382,7 +3790,8 @@ Future<void> _fetchTrufis() async {
               height: MediaQuery.of(context).size.height * 0.72,
               decoration: BoxDecoration(
                 color: bg,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -3434,7 +3843,8 @@ Future<void> _fetchTrufis() async {
                           onItemTap: (item) async {
                             Navigator.pop(ctx);
                             setState(() => isTrufiSelected = true);
-                            await _mostrarRutaDeUnTrufi(item.id, nombreLinea: item.nombre);
+                            await _mostrarRutaDeUnTrufi(item.id,
+                                nombreLinea: item.nombre);
                           },
                         ),
                         _buildHistorialTab(
@@ -3447,8 +3857,10 @@ Future<void> _fetchTrufis() async {
                           onItemTap: (item) async {
                             Navigator.pop(ctx);
                             setState(() => isTrufiSelected = false);
-                            if (item.telefono != null && item.telefono!.isNotEmpty) {
-                              await _confirmAndCall(item.telefono!, nombre: item.nombre, id: item.id);
+                            if (item.telefono != null &&
+                                item.telefono!.isNotEmpty) {
+                              await _confirmAndCall(item.telefono!,
+                                  nombre: item.nombre, id: item.id);
                             }
                           },
                         ),
@@ -3479,7 +3891,9 @@ Future<void> _fetchTrufis() async {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              tipo == 'trufi' ? Icons.directions_bus_outlined : Icons.local_taxi_outlined,
+              tipo == 'trufi'
+                  ? Icons.directions_bus_outlined
+                  : Icons.local_taxi_outlined,
               size: 56,
               color: Colors.grey.withOpacity(0.4),
             ),
@@ -3512,9 +3926,11 @@ Future<void> _fetchTrufis() async {
                           child: Text(t("cancel")),
                         ),
                         ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red),
                           onPressed: () => Navigator.pop(ctx, true),
-                          child: Text(t("history_clear"), style: const TextStyle(color: Colors.white)),
+                          child: Text(t("history_clear"),
+                              style: const TextStyle(color: Colors.white)),
                         ),
                       ],
                     ),
@@ -3524,8 +3940,10 @@ Future<void> _fetchTrufis() async {
                     setModalState(() {});
                   }
                 },
-                icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
-                label: Text(t("history_clear"), style: const TextStyle(color: Colors.red)),
+                icon: const Icon(Icons.delete_outline,
+                    color: Colors.red, size: 18),
+                label: Text(t("history_clear"),
+                    style: const TextStyle(color: Colors.red)),
               ),
             ],
           ),
@@ -3654,39 +4072,48 @@ Future<void> _fetchTrufis() async {
                       ),
                       children: [
                         TileLayer(
-                          urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                          urlTemplate:
+                              "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                           userAgentPackageName: 'com.colcatrufis.app',
                           keepBuffer: 2,
                         ),
 
                         PolygonLayer(polygons: colcapirhuaPolygons),
-                        if (colcapirhuaLines.isNotEmpty) PolylineLayer(polylines: colcapirhuaLines),
+                        if (colcapirhuaLines.isNotEmpty)
+                          PolylineLayer(polylines: colcapirhuaLines),
 
-                        if (_routeFilterMode == RouteFilterMode.nearby && _currentPosition != null)
+                        if (_routeFilterMode == RouteFilterMode.nearby &&
+                            _currentPosition != null)
                           CircleLayer(circles: _buildRadioCircle()),
 
                         if (isTrufiSelected) ...[
                           PolylineLayer(
                             polylines: _rutasVisibles,
                           ),
-                          MarkerLayer(markers: _buildDirectionArrows(_rutasVisibles)),
-                          if (_routeLabelMarkers.isNotEmpty) MarkerLayer(markers: _routeLabelMarkers),
-                          if (_inicioFinMarkers.isNotEmpty) MarkerLayer(markers: _inicioFinMarkers),
+                          MarkerLayer(
+                              markers: _buildDirectionArrows(_rutasVisibles)),
+                          if (_routeLabelMarkers.isNotEmpty)
+                            MarkerLayer(markers: _routeLabelMarkers),
+                          if (_inicioFinMarkers.isNotEmpty)
+                            MarkerLayer(markers: _inicioFinMarkers),
                           if (_selectedRoutePermanentLabels.isNotEmpty)
                             MarkerLayer(markers: _selectedRoutePermanentLabels),
                           MarkerLayer(
                             markers: _buildTapableRouteMarkers(),
                           ),
                         ] else ...[
-                          if (_paradasMarkers.isNotEmpty) MarkerLayer(markers: _paradasMarkers),
-                          if (_paradasLabelMarkers.isNotEmpty) MarkerLayer(markers: _paradasLabelMarkers),
+                          if (_paradasMarkers.isNotEmpty)
+                            MarkerLayer(markers: _paradasMarkers),
+                          if (_paradasLabelMarkers.isNotEmpty)
+                            MarkerLayer(markers: _paradasLabelMarkers),
                         ],
 
                         if (_currentPosition != null)
                           MarkerLayer(
                             markers: [
                               Marker(
-                                point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                                point: LatLng(_currentPosition!.latitude,
+                                    _currentPosition!.longitude),
                                 width: 44,
                                 height: 44,
                                 child: Container(
@@ -3700,12 +4127,13 @@ Future<void> _fetchTrufis() async {
                                       ),
                                     ],
                                   ),
-                                  child: const Icon(Icons.person_pin_circle, size: 42, color: Color(0xFF1565C0)),
+                                  child: const Icon(Icons.person_pin_circle,
+                                      size: 42, color: Color(0xFF1565C0)),
                                 ),
                               ),
                             ],
                           ),
-                          
+
                         // Marcador temporal para puntos de ruta
                         if (_temporaryPointMarker != null)
                           MarkerLayer(markers: [_temporaryPointMarker!]),
@@ -3737,7 +4165,8 @@ Future<void> _fetchTrufis() async {
                       Positioned(
                         bottom: MediaQuery.of(context).size.height * 0.5,
                         left: 16,
-                        child: _loadingChip(t("loading_geojson"), Icons.map_outlined),
+                        child: _loadingChip(
+                            t("loading_geojson"), Icons.map_outlined),
                       ),
 
                     if (_isLoadingRutas && !_isLoadingRutaTrufi)
@@ -3748,7 +4177,10 @@ Future<void> _fetchTrufis() async {
                       ),
 
                     // Loading indicators — organized column on the left
-                    if (_isLoadingTrufis || _isLoadingRadiotaxis || _isLoadingSindicatos || _isLoadingParadas)
+                    if (_isLoadingTrufis ||
+                        _isLoadingRadiotaxis ||
+                        _isLoadingSindicatos ||
+                        _isLoadingParadas)
                       Positioned(
                         left: 16,
                         bottom: 130,
@@ -3756,12 +4188,16 @@ Future<void> _fetchTrufis() async {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (_isLoadingTrufis || _isLoadingRadiotaxis || _isLoadingSindicatos) ...[  
-                              _loadingChip(t("loading_data"), Icons.directions_bus_outlined),
+                            if (_isLoadingTrufis ||
+                                _isLoadingRadiotaxis ||
+                                _isLoadingSindicatos) ...[
+                              _loadingChip(t("loading_data"),
+                                  Icons.directions_bus_outlined),
                               const SizedBox(height: 6),
                             ],
                             if (_isLoadingParadas)
-                              _loadingChip(t("loading_stops"), Icons.local_taxi_outlined),
+                              _loadingChip(t("loading_stops"),
+                                  Icons.local_taxi_outlined),
                           ],
                         ),
                       ),
@@ -3772,7 +4208,8 @@ Future<void> _fetchTrufis() async {
                           color: Colors.black.withOpacity(0.35),
                           child: Center(
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 28, vertical: 20),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(20),
@@ -3780,7 +4217,8 @@ Future<void> _fetchTrufis() async {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const CircularProgressIndicator(color: kPrimary, strokeWidth: 3.5),
+                                  const CircularProgressIndicator(
+                                      color: kPrimary, strokeWidth: 3.5),
                                   const SizedBox(height: 16),
                                   Text(
                                     t("loading_norms"),
@@ -3803,16 +4241,22 @@ Future<void> _fetchTrufis() async {
                       child: _routesFilterDropdown(isDarkMode),
                     ),
 
-                    if (_selectedTrufiName != null && _selectedTrufiName!.trim().isNotEmpty && isTrufiSelected)
+                    if (_selectedTrufiName != null &&
+                        _selectedTrufiName!.trim().isNotEmpty &&
+                        isTrufiSelected)
                       Positioned(
                         left: 16,
-                        top: 70 + MediaQuery.of(context).padding.top + ((_isLoadingGeoJSON || _isLoadingRutaTrufi) ? 56 : 16),
+                        top: 70 +
+                            MediaQuery.of(context).padding.top +
+                            ((_isLoadingGeoJSON || _isLoadingRutaTrufi)
+                                ? 56
+                                : 16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             _selectedTrufiCard(isDarkMode),
-                            if (_selectedTrufiHorario != null) ...[  
+                            if (_selectedTrufiHorario != null) ...[
                               const SizedBox(height: 8),
                               _scheduleCard(isDarkMode),
                             ],
@@ -3826,7 +4270,8 @@ Future<void> _fetchTrufis() async {
                         left: 16,
                         right: 80,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
                             color: const Color(0xFF064656),
                             borderRadius: BorderRadius.circular(16),
@@ -3841,7 +4286,8 @@ Future<void> _fetchTrufis() async {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.gps_off, color: Colors.white, size: 22),
+                              const Icon(Icons.gps_off,
+                                  color: Colors.white, size: 22),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
@@ -3868,14 +4314,18 @@ Future<void> _fetchTrufis() async {
                                       children: [
                                         GestureDetector(
                                           onTap: () async {
-                                            setState(() => _gpsOffBannerDismissed = true);
+                                            setState(() =>
+                                                _gpsOffBannerDismissed = true);
                                             await _getCurrentLocation();
                                           },
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 5),
                                             decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.28),
-                                              borderRadius: BorderRadius.circular(8),
+                                              color: Colors.white
+                                                  .withOpacity(0.28),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: const Text(
                                               "Activar ubicación",
@@ -3889,12 +4339,16 @@ Future<void> _fetchTrufis() async {
                                         ),
                                         const SizedBox(width: 8),
                                         GestureDetector(
-                                          onTap: () => setState(() => _gpsOffBannerDismissed = true),
+                                          onTap: () => setState(() =>
+                                              _gpsOffBannerDismissed = true),
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 5),
                                             decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.12),
-                                              borderRadius: BorderRadius.circular(8),
+                                              color: Colors.white
+                                                  .withOpacity(0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: const Text(
                                               "Cancelar",
@@ -3916,13 +4370,16 @@ Future<void> _fetchTrufis() async {
                         ),
                       ),
 
-                    if (_isOutsideColcapirhua && !_outsideBannerDismissed && _currentPosition != null)
+                    if (_isOutsideColcapirhua &&
+                        !_outsideBannerDismissed &&
+                        _currentPosition != null)
                       Positioned(
                         bottom: 130,
                         left: 16,
                         right: 80,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
                             color: kPrimaryDark,
                             borderRadius: BorderRadius.circular(16),
@@ -3937,7 +4394,8 @@ Future<void> _fetchTrufis() async {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.location_off, color: Colors.white, size: 22),
+                              const Icon(Icons.location_off,
+                                  color: Colors.white, size: 22),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
@@ -3961,12 +4419,15 @@ Future<void> _fetchTrufis() async {
                                     ),
                                     const SizedBox(height: 6),
                                     GestureDetector(
-                                      onTap: () => setState(() => _outsideBannerDismissed = true),
+                                      onTap: () => setState(
+                                          () => _outsideBannerDismissed = true),
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 5),
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.25),
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                         child: Text(
                                           t("outside_dismiss"),
@@ -4003,7 +4464,8 @@ Future<void> _fetchTrufis() async {
                                 _aplicarFiltroRutas();
                               }
                               // Centrar en Colcapirhua al tocar el botón
-                              _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
+                              _mapController.move(
+                                  _colcapirhuaCenter, _colcapirhuaZoom);
                               _showFullWidthBottomSheet(context, t("trufi"));
                             },
                           ),
@@ -4017,8 +4479,10 @@ Future<void> _fetchTrufis() async {
                               });
                               _aplicarFiltroParadas();
                               // Centrar en Colcapirhua al tocar el botón
-                              _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
-                              _showFullWidthBottomSheet(context, t("radiotaxi"));
+                              _mapController.move(
+                                  _colcapirhuaCenter, _colcapirhuaZoom);
+                              _showFullWidthBottomSheet(
+                                  context, t("radiotaxi"));
                             },
                           ),
                           const SizedBox(height: 25),
@@ -4038,7 +4502,8 @@ Future<void> _fetchTrufis() async {
                                     spreadRadius: 1,
                                   ),
                                 ],
-                                border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                                border: Border.all(
+                                    color: Colors.grey.shade200, width: 1.5),
                               ),
                               child: Stack(
                                 children: [
@@ -4049,7 +4514,9 @@ Future<void> _fetchTrufis() async {
                                     child: Container(
                                       height: 22,
                                       decoration: BoxDecoration(
-                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                                        borderRadius:
+                                            const BorderRadius.vertical(
+                                                top: Radius.circular(14)),
                                         gradient: LinearGradient(
                                           colors: [
                                             Colors.white.withOpacity(0.7),
@@ -4066,9 +4533,12 @@ Future<void> _fetchTrufis() async {
                                         ? const SizedBox(
                                             width: 18,
                                             height: 18,
-                                            child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: kPrimary),
                                           )
-                                        : const Icon(Icons.my_location, color: kPrimary, size: 22),
+                                        : const Icon(Icons.my_location,
+                                            color: kPrimary, size: 22),
                                   ),
                                 ],
                               ),
@@ -4128,7 +4598,8 @@ Future<void> _fetchTrufis() async {
   }
 
   Widget _routesFilterDropdown(bool isDarkMode) {
-    final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.96);
+    final bg =
+        (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.96);
     final textColor = isDarkMode ? Colors.white : Colors.black87;
     final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
 
@@ -4171,7 +4642,8 @@ Future<void> _fetchTrufis() async {
               child: _isLoadingRutas
                   ? const Padding(
                       padding: EdgeInsets.all(6),
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
                     )
                   : const Icon(Icons.route, color: Colors.white, size: 18),
             ),
@@ -4192,7 +4664,10 @@ Future<void> _fetchTrufis() async {
                   const SizedBox(height: 1),
                   Text(
                     currentLabel,
-                    style: TextStyle(fontSize: 11.5, color: subTextColor, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        color: subTextColor,
+                        fontWeight: FontWeight.w500),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                   ),
@@ -4234,7 +4709,8 @@ Future<void> _fetchTrufis() async {
               const SizedBox(height: 14),
               Text(
                 t("routes_filter"),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kPrimary),
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w800, color: kPrimary),
               ),
               const SizedBox(height: 8),
               const Divider(),
@@ -4243,14 +4719,21 @@ Future<void> _fetchTrufis() async {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: _routeFilterMode == RouteFilterMode.nearby ? kPrimary : kPrimary.withOpacity(0.10),
+                    color: _routeFilterMode == RouteFilterMode.nearby
+                        ? kPrimary
+                        : kPrimary.withOpacity(0.10),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.my_location, color: _routeFilterMode == RouteFilterMode.nearby ? Colors.white : kPrimary, size: 20),
+                  child: Icon(Icons.my_location,
+                      color: _routeFilterMode == RouteFilterMode.nearby
+                          ? Colors.white
+                          : kPrimary,
+                      size: 20),
                 ),
                 title: Text(
                   "${t("routes_nearby")} (${AppSettings.radiusMeters.value.round()} m)",
-                  style: TextStyle(fontWeight: FontWeight.w700, color: textColor),
+                  style:
+                      TextStyle(fontWeight: FontWeight.w700, color: textColor),
                 ),
                 trailing: _routeFilterMode == RouteFilterMode.nearby
                     ? const Icon(Icons.check_circle, color: kPrimary)
@@ -4268,14 +4751,21 @@ Future<void> _fetchTrufis() async {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: _routeFilterMode == RouteFilterMode.all ? kPrimary : kPrimary.withOpacity(0.10),
+                    color: _routeFilterMode == RouteFilterMode.all
+                        ? kPrimary
+                        : kPrimary.withOpacity(0.10),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.map_outlined, color: _routeFilterMode == RouteFilterMode.all ? Colors.white : kPrimary, size: 20),
+                  child: Icon(Icons.map_outlined,
+                      color: _routeFilterMode == RouteFilterMode.all
+                          ? Colors.white
+                          : kPrimary,
+                      size: 20),
                 ),
                 title: Text(
                   t("routes_all"),
-                  style: TextStyle(fontWeight: FontWeight.w700, color: textColor),
+                  style:
+                      TextStyle(fontWeight: FontWeight.w700, color: textColor),
                 ),
                 trailing: _routeFilterMode == RouteFilterMode.all
                     ? const Icon(Icons.check_circle, color: kPrimary)
@@ -4299,7 +4789,8 @@ Future<void> _fetchTrufis() async {
   }
 
   Widget _selectedTrufiCard(bool isDarkMode) {
-    final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.95);
+    final bg =
+        (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.95);
     final textColor = isDarkMode ? Colors.white : Colors.black87;
 
     return Container(
@@ -4332,10 +4823,14 @@ Future<void> _fetchTrufis() async {
               ),
               borderRadius: BorderRadius.circular(13),
               boxShadow: [
-                BoxShadow(color: kPrimaryDark.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 4)),
+                BoxShadow(
+                    color: kPrimaryDark.withOpacity(0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4)),
               ],
             ),
-            child: const Icon(Icons.directions_bus_filled, color: Colors.white, size: 22),
+            child: const Icon(Icons.directions_bus_filled,
+                color: Colors.white, size: 22),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -4379,7 +4874,8 @@ Future<void> _fetchTrufis() async {
                 color: Colors.black.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.close, size: 18, color: textColor.withOpacity(0.8)),
+              child: Icon(Icons.close,
+                  size: 18, color: textColor.withOpacity(0.8)),
             ),
           ),
         ],
@@ -4388,7 +4884,8 @@ Future<void> _fetchTrufis() async {
   }
 
   Widget _scheduleCard(bool isDarkMode) {
-    final bg = (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.95);
+    final bg =
+        (isDarkMode ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.95);
     final subColor = isDarkMode ? Colors.white70 : Colors.black54;
     final entrada = _selectedTrufiHorario?['hora_entrada']?.toString() ?? '';
     final salida = _selectedTrufiHorario?['hora_salida']?.toString() ?? '';
@@ -4413,7 +4910,12 @@ Future<void> _fetchTrufis() async {
         color: bg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: kPrimary.withOpacity(0.18)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 12, offset: const Offset(0, 6))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 12,
+              offset: const Offset(0, 6))
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -4425,7 +4927,8 @@ Future<void> _fetchTrufis() async {
               color: kPrimary.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.access_time_rounded, color: kPrimary, size: 20),
+            child: const Icon(Icons.access_time_rounded,
+                color: kPrimary, size: 20),
           ),
           const SizedBox(width: 10),
           Column(
@@ -4434,7 +4937,11 @@ Future<void> _fetchTrufis() async {
             children: [
               Text(
                 t('schedule'),
-                style: TextStyle(color: subColor, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.2),
+                style: TextStyle(
+                    color: subColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2),
               ),
               const SizedBox(height: 2),
               Text(
@@ -4508,7 +5015,8 @@ Future<void> _fetchTrufis() async {
               child: Container(
                 height: 28,
                 decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(17)),
                   gradient: LinearGradient(
                     colors: [
                       Colors.white.withOpacity(isActive ? 0.22 : 0.65),
@@ -4521,7 +5029,8 @@ Future<void> _fetchTrufis() async {
               ),
             ),
             Center(
-              child: Icon(icon, color: isActive ? Colors.white : kPrimary, size: 32),
+              child: Icon(icon,
+                  color: isActive ? Colors.white : kPrimary, size: 32),
             ),
           ],
         ),
@@ -4550,9 +5059,11 @@ Future<void> _fetchTrufis() async {
               content: Row(
                 children: [
                   const SizedBox(
-                    width: 18, height: 18,
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white,
+                      strokeWidth: 2,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -4584,9 +5095,11 @@ Future<void> _fetchTrufis() async {
               content: Row(
                 children: [
                   const SizedBox(
-                    width: 18, height: 18,
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white,
+                      strokeWidth: 2,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -4618,19 +5131,22 @@ Future<void> _fetchTrufis() async {
         return StatefulBuilder(
           builder: (sheetCtx, setSheetState) {
             final isDarkMode = AppSettings.darkMode.value;
-            final sheetColor = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+            final sheetColor =
+                isDarkMode ? const Color(0xFF0F172A) : Colors.white;
             final textColor = isDarkMode ? Colors.white : Colors.black87;
             final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
 
             final List<Map<String, dynamic>> dataList =
                 isLookingForTrufi ? _trufis : _radioTaxis;
-            final bool isLoading = isLookingForTrufi ? _isLoadingTrufis : _isLoadingRadiotaxis;
+            final bool isLoading =
+                isLookingForTrufi ? _isLoadingTrufis : _isLoadingRadiotaxis;
 
             return Container(
               width: double.infinity,
               decoration: BoxDecoration(
                 color: sheetColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -4668,7 +5184,9 @@ Future<void> _fetchTrufis() async {
                             ],
                           ),
                           child: Icon(
-                            isLookingForTrufi ? Icons.directions_bus_filled : Icons.local_taxi,
+                            isLookingForTrufi
+                                ? Icons.directions_bus_filled
+                                : Icons.local_taxi,
                             color: Colors.white,
                             size: 26,
                           ),
@@ -4702,7 +5220,11 @@ Future<void> _fetchTrufis() async {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Divider(height: 1, color: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.06)),
+                  Divider(
+                      height: 1,
+                      color: isDarkMode
+                          ? Colors.white10
+                          : Colors.black.withOpacity(0.06)),
                   SizedBox(
                     height: 320,
                     child: isLoading && dataList.isEmpty
@@ -4710,10 +5232,13 @@ Future<void> _fetchTrufis() async {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const CircularProgressIndicator(color: kPrimary, strokeWidth: 3),
+                                const CircularProgressIndicator(
+                                    color: kPrimary, strokeWidth: 3),
                                 const SizedBox(height: 14),
                                 Text(t("loading_data"),
-                                    style: TextStyle(color: subTextColor, fontWeight: FontWeight.w500)),
+                                    style: TextStyle(
+                                        color: subTextColor,
+                                        fontWeight: FontWeight.w500)),
                               ],
                             ),
                           )
@@ -4723,7 +5248,9 @@ Future<void> _fetchTrufis() async {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(
-                                      isLookingForTrufi ? Icons.directions_bus_outlined : Icons.local_taxi_outlined,
+                                      isLookingForTrufi
+                                          ? Icons.directions_bus_outlined
+                                          : Icons.local_taxi_outlined,
                                       size: 48,
                                       color: subTextColor.withOpacity(0.4),
                                     ),
@@ -4736,18 +5263,22 @@ Future<void> _fetchTrufis() async {
                                 ),
                               )
                             : ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
+                                padding:
+                                    const EdgeInsets.fromLTRB(14, 10, 14, 16),
                                 itemCount: dataList.length,
                                 itemBuilder: (context, index) {
                                   final item = dataList[index];
 
                                   final String titulo = isLookingForTrufi
                                       ? (item["nom_linea"] ?? "Sin nombre")
-                                      : (item["nombre_comercial"] ?? "Sin nombre");
+                                      : (item["nombre_comercial"] ??
+                                          "Sin nombre");
 
+                                  // Subtítulo solo para trufis (horario, etc.)
+                                  // Para radiotaxis no mostramos subtítulo
                                   final String? subtitulo = isLookingForTrufi
-                                      ? null
-                                      : "${t("phone")}: ${item["telefono_base"] ?? 'S/N'}";
+                                      ? null // Puedes agregar info de trufi aquí si lo necesitas
+                                      : null;
 
                                   final cardBg = isDarkMode
                                       ? const Color(0xFF1A2744)
@@ -4781,16 +5312,21 @@ Future<void> _fetchTrufis() async {
                                                 id: id,
                                                 nombre: titulo,
                                                 tipo: 'radiotaxi',
-                                                telefono: (item["telefono_base"] ?? "").toString(),
+                                                telefono:
+                                                    (item["telefono_base"] ??
+                                                            "")
+                                                        .toString(),
                                                 fechaUso: DateTime.now(),
                                               ));
                                               // Mostrar info del radiotaxi con referencias
-                                              _mostrarInfoRadiotaxi(id, nombreRadiotaxi: titulo);
+                                              _mostrarInfoRadiotaxi(id,
+                                                  nombreRadiotaxi: titulo);
                                             }
                                           }
                                         },
                                         child: Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 12),
                                           child: Row(
                                             children: [
                                               Container(
@@ -4799,31 +5335,49 @@ Future<void> _fetchTrufis() async {
                                                 decoration: BoxDecoration(
                                                   gradient: LinearGradient(
                                                     colors: isLookingForTrufi
-                                                        ? [kAqua.withOpacity(0.15), kAqua.withOpacity(0.06)]
-                                                        : [kPrimary.withOpacity(0.15), kPrimary.withOpacity(0.06)],
+                                                        ? [
+                                                            kAqua.withOpacity(
+                                                                0.15),
+                                                            kAqua.withOpacity(
+                                                                0.06)
+                                                          ]
+                                                        : [
+                                                            kPrimary
+                                                                .withOpacity(
+                                                                    0.15),
+                                                            kPrimary
+                                                                .withOpacity(
+                                                                    0.06)
+                                                          ],
                                                     begin: Alignment.topLeft,
                                                     end: Alignment.bottomRight,
                                                   ),
-                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                 ),
                                                 child: Icon(
                                                   isLookingForTrufi
-                                                      ? Icons.directions_bus_filled
+                                                      ? Icons
+                                                          .directions_bus_filled
                                                       : Icons.local_taxi,
-                                                  color: isLookingForTrufi ? kAqua : kPrimary,
+                                                  color: isLookingForTrufi
+                                                      ? kAqua
+                                                      : kPrimary,
                                                   size: 22,
                                                 ),
                                               ),
                                               const SizedBox(width: 12),
                                               Expanded(
                                                 child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
                                                       titulo,
                                                       style: TextStyle(
                                                         color: textColor,
-                                                        fontWeight: FontWeight.w700,
+                                                        fontWeight:
+                                                            FontWeight.w700,
                                                         fontSize: 14,
                                                       ),
                                                     ),
@@ -4840,13 +5394,14 @@ Future<void> _fetchTrufis() async {
                                                   ],
                                                 ),
                                               ),
-                                              Icon(
-                                                isLookingForTrufi
-                                                    ? Icons.arrow_forward_ios_rounded
-                                                    : Icons.phone_rounded,
-                                                color: isLookingForTrufi ? kAqua : kPrimary,
-                                                size: 16,
-                                              ),
+                                              // Solo mostrar ícono para trufis
+                                              if (isLookingForTrufi)
+                                                Icon(
+                                                  Icons
+                                                      .arrow_forward_ios_rounded,
+                                                  color: kAqua,
+                                                  size: 16,
+                                                ),
                                             ],
                                           ),
                                         ),
@@ -4874,488 +5429,186 @@ Future<void> _fetchTrufis() async {
       child: ValueListenableBuilder<bool>(
         valueListenable: AppSettings.darkMode,
         builder: (context, isDarkMode, _) {
-            final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
-            final textColor = isDarkMode ? Colors.white : Colors.black87;
-            final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
-            final sectionHeaderColor = isDarkMode ? Colors.white38 : Colors.black38;
-            final dividerColor = isDarkMode ? Colors.white12 : Colors.black12;
+          final bg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
+          final textColor = isDarkMode ? Colors.white : Colors.black87;
+          final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+          final sectionHeaderColor =
+              isDarkMode ? Colors.white38 : Colors.black38;
+          final dividerColor = isDarkMode ? Colors.white12 : Colors.black12;
 
-            Widget sectionHeader(String label) => Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 3,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          color: kAqua,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        label.toUpperCase(),
-                        style: TextStyle(
-                          color: sectionHeaderColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-
-            Widget drawerTile({
-              required IconData icon,
-              required String title,
-              String? subtitle,
-              Widget? trailing,
-              bool loading = false,
-              VoidCallback? onTap,
-            }) =>
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: ListTile(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    leading: Container(
-                      width: 36,
-                      height: 36,
+          Widget sectionHeader(String label) => Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 3,
+                      height: 14,
                       decoration: BoxDecoration(
-                        color: loading ? Colors.transparent : kPrimary.withOpacity(0.10),
-                        borderRadius: BorderRadius.circular(11),
+                        color: kAqua,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                      child: loading
-                          ? Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
-                              ),
-                            )
-                          : Icon(icon, color: kPrimary, size: 20),
                     ),
-                    title: Text(
-                      title,
+                    const SizedBox(width: 8),
+                    Text(
+                      label.toUpperCase(),
                       style: TextStyle(
-                        color: textColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        color: sectionHeaderColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.4,
                       ),
                     ),
-                    subtitle: subtitle != null
-                        ? Text(
-                            subtitle,
-                            style: TextStyle(color: subTextColor, fontSize: 12),
+                  ],
+                ),
+              );
+
+          Widget drawerTile({
+            required IconData icon,
+            required String title,
+            String? subtitle,
+            Widget? trailing,
+            bool loading = false,
+            VoidCallback? onTap,
+          }) =>
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: ListTile(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: loading
+                          ? Colors.transparent
+                          : kPrimary.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: loading
+                        ? Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: kPrimary),
+                            ),
                           )
-                        : null,
-                    trailing: trailing,
-                    onTap: onTap,
-                    minLeadingWidth: 28,
+                        : Icon(icon, color: kPrimary, size: 20),
                   ),
-                );
+                  title: Text(
+                    title,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: subtitle != null
+                      ? Text(
+                          subtitle,
+                          style: TextStyle(color: subTextColor, fontSize: 12),
+                        )
+                      : null,
+                  trailing: trailing,
+                  onTap: onTap,
+                  minLeadingWidth: 28,
+                ),
+              );
 
-            return Container(
-              color: bg,
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  ClipRect(
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF032D38), Color(0xFF064656), Color(0xFF09596E)],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                          stops: [0.0, 0.5, 1.0],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF032D38).withOpacity(0.35),
-                            blurRadius: 20,
-                            offset: const Offset(0, 4),
-                          ),
+          return Container(
+            color: bg,
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                ClipRect(
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.only(
+                        top: MediaQuery.of(context).padding.top),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF032D38),
+                          Color(0xFF064656),
+                          Color(0xFF09596E)
                         ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        stops: [0.0, 0.5, 1.0],
                       ),
-                      child: SizedBox(
-                        height: 148,
-                        child: Stack(
-                          children: [
-                            // Large circle — top-right, half clipped
-                            Positioned(
-                              right: -45,
-                              top: -45,
-                              child: Container(
-                                width: 170,
-                                height: 170,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white.withOpacity(0.07),
-                                ),
-                              ),
-                            ),
-                            // Medium circle — bottom-right corner
-                            Positioned(
-                              right: -20,
-                              bottom: -20,
-                              child: Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white.withOpacity(0.10),
-                                ),
-                              ),
-                            ),
-                            // Logo — left, vertically centered, slightly larger
-                            Positioned(
-                              left: 20,
-                              top: 0,
-                              bottom: 0,
-                              child: Center(
-                                child: Image.asset(
-                                  'assets/images/logo_colca1.png',
-                                  width: 112,
-                                  height: 112,
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                            ),
-                          ],
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF032D38).withOpacity(0.35),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
+                      ],
                     ),
-                  ),
-
-                  sectionHeader("Transporte"),
-
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                    child: Theme(
-                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                      child: ExpansionTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-                        leading: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: kPrimary.withOpacity(0.10),
-                            borderRadius: BorderRadius.circular(11),
-                          ),
-                          child: const Icon(Icons.groups, color: kPrimary, size: 20),
-                        ),
-                        title: Text(
-                          t("sindicatos"),
-                          style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                        childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                        children: _sindicatos.isEmpty
-                            ? [
-                                Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Row(
-                                    children: [
-                                      const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Text(t("loading_data"), style: TextStyle(color: subTextColor, fontSize: 13)),
-                                    ],
-                                  ),
-                                ),
-                              ]
-                            : _sindicatos.map((s) {
-                                final String sindicatoNombre = s["nombre"] ?? "Sin Nombre";
-                                final List trufis = (s["trufis"] as List? ?? []);
-
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 4),
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode ? Colors.white.withOpacity(0.04) : kPrimary.withOpacity(0.03),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Theme(
-                                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                                    child: ExpansionTile(
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-                                      leading: Container(
-                                        width: 30,
-                                        height: 30,
-                                        decoration: BoxDecoration(
-                                          color: kPrimary.withOpacity(0.08),
-                                          borderRadius: BorderRadius.circular(9),
-                                        ),
-                                        child: const Icon(Icons.account_balance, color: kPrimary, size: 16),
-                                      ),
-                                      title: Text(sindicatoNombre, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w600)),
-                                      childrenPadding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
-                                      children: trufis.map<Widget>((tr) {
-                                        final linea = (tr["nom_linea"] ?? "").toString();
-                                        final id = int.tryParse((tr["idtrufi"] ?? "").toString());
-
-                                        return Padding(
-                                          padding: const EdgeInsets.only(bottom: 3),
-                                          child: Material(
-                                            color: isDarkMode ? Colors.white.withOpacity(0.05) : Colors.white,
-                                            borderRadius: BorderRadius.circular(10),
-                                            child: InkWell(
-                                              borderRadius: BorderRadius.circular(10),
-                                              onTap: () {
-                                                Navigator.pop(context);
-                                                setState(() => isTrufiSelected = true);
-                                                if (id != null) _mostrarRutaDeUnTrufi(id, nombreLinea: linea);
-                                              },
-                                              child: Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-                                                child: Row(
-                                                  children: [
-                                                    Container(
-                                                      width: 26,
-                                                      height: 26,
-                                                      decoration: BoxDecoration(
-                                                        color: kAqua.withOpacity(0.12),
-                                                        borderRadius: BorderRadius.circular(7),
-                                                      ),
-                                                      child: const Icon(Icons.directions_bus, color: kAqua, size: 14),
-                                                    ),
-                                                    const SizedBox(width: 10),
-                                                    Expanded(child: Text(linea, style: TextStyle(color: textColor, fontSize: 13))),
-                                                    Icon(Icons.chevron_right_rounded, color: subTextColor.withOpacity(0.4), size: 18),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                      ),
-                    ),
-                  ),
-
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                    child: Theme(
-                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                      child: ExpansionTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-                        leading: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: kPrimary.withOpacity(0.10),
-                            borderRadius: BorderRadius.circular(11),
-                          ),
-                          child: const Icon(Icons.local_taxi, color: kPrimary, size: 20),
-                        ),
-                        title: Text(
-                          t("radiotaxis"),
-                          style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                        childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                        children: _radioTaxis.isEmpty
-                            ? [
-                                Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Row(
-                                    children: [
-                                      const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Text(t("loading_data"), style: TextStyle(color: subTextColor, fontSize: 13)),
-                                    ],
-                                  ),
-                                ),
-                              ]
-                            : _radioTaxis.map((rt) {
-                                final phone = (rt["telefono_base"] ?? "").toString();
-                                final nombre = rt["nombre_comercial"] ?? "Radiotaxi";
-                                final id = int.tryParse((rt["id"] ?? "").toString());
-
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 3),
-                                  child: Material(
-                                    color: isDarkMode ? Colors.white.withOpacity(0.05) : Colors.white,
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(10),
-                                      onTap: () async {
-                                        Navigator.pop(context);
-                                        setState(() => isTrufiSelected = false);
-                                        if (id != null) {
-                                          await _agregarAlHistorial(HistorialItem(
-                                            id: id,
-                                            nombre: nombre,
-                                            tipo: 'radiotaxi',
-                                            telefono: phone,
-                                            fechaUso: DateTime.now(),
-                                          ));
-                                          // Mostrar info del radiotaxi con referencias
-                                          _mostrarInfoRadiotaxi(id, nombreRadiotaxi: nombre);
-                                        }
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 26,
-                                              height: 26,
-                                              decoration: BoxDecoration(
-                                                color: kPrimary.withOpacity(0.10),
-                                                borderRadius: BorderRadius.circular(7),
-                                              ),
-                                              child: const Icon(Icons.local_taxi, color: kPrimary, size: 14),
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(nombre, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w600)),
-                                                  if (phone.isNotEmpty)
-                                                    Text(phone, style: TextStyle(color: subTextColor, fontSize: 11.5)),
-                                                ],
-                                              ),
-                                            ),
-                                            Icon(Icons.phone_rounded, color: kPrimary.withOpacity(0.5), size: 17),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                      ),
-                    ),
-                  ),
-
-                  Divider(height: 1, indent: 20, endIndent: 20, color: dividerColor),
-
-                  sectionHeader("Información y Servicios"),
-
-                  drawerTile(
-                    icon: Icons.history,
-                    title: t("history"),
-                    subtitle: "${_historialTrufis.length + _historialRadiotaxis.length} registros",
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: kPrimary.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        "${_historialTrufis.length + _historialRadiotaxis.length}",
-                        style: const TextStyle(
-                          color: kPrimary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _openHistorialDrawer();
-                    },
-                  ),
-
-                  drawerTile(
-                    icon: Icons.report_problem_outlined,
-                    title: t("reclamos"),
-                    loading: _isLoadingReclamos,
-                    onTap: () async {
-                      Navigator.pop(context);
-                      await _openReclamosDrawer();
-                    },
-                  ),
-
-                  drawerTile(
-                    icon: Icons.menu_book,
-                    title: t("normativas"),
-                    loading: _isLoadingNormativas,
-                    onTap: () async {
-                      Navigator.pop(context);
-                      await _openNormativasDrawer();
-                    },
-                  ),
-
-                  const SizedBox(height: 6),
-                  Divider(height: 1, indent: 20, endIndent: 20, color: dividerColor),
-
-                  sectionHeader("Municipio de Colcapirhua"),
-
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                    child: Theme(
-                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                      child: ExpansionTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-                        leading: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: kPrimary.withOpacity(0.10),
-                            borderRadius: BorderRadius.circular(11),
-                          ),
-                          child: const Icon(Icons.share, color: kPrimary, size: 20),
-                        ),
-                        title: Text(
-                          t("social_networks"),
-                          style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                        childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: SizedBox(
+                      height: 148,
+                      child: Stack(
                         children: [
-                          _socialTile(Icons.music_note, "TikTok", "https://www.tiktok.com/@gamdecolcapirhua?is_from_webapp=1&sender_device=pc", textColor),
-                          _socialTile(Icons.play_circle, "YouTube", "https://www.youtube.com/@gamdecolcapirhua", textColor),
-                          _socialTile(Icons.facebook, "Facebook", "https://www.facebook.com/municipiodecolcapirhua", textColor),
-                          _socialTile(Icons.camera_alt, "Instagram", "https://www.instagram.com/alcaldiadecolcapirhua", textColor),
-                          _socialTile(Icons.close, "X (Twitter)", "https://x.com/GAMColcapirhua", textColor),
+                          // Large circle — top-right, half clipped
+                          Positioned(
+                            right: -45,
+                            top: -45,
+                            child: Container(
+                              width: 170,
+                              height: 170,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(0.07),
+                              ),
+                            ),
+                          ),
+                          // Medium circle — bottom-right corner
+                          Positioned(
+                            right: -20,
+                            bottom: -20,
+                            child: Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(0.10),
+                              ),
+                            ),
+                          ),
+                          // Logo — left, vertically centered, slightly larger
+                          Positioned(
+                            left: 20,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: Image.asset(
+                                'assets/images/logo_colca1.png',
+                                width: 112,
+                                height: 112,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ),
-
-                  drawerTile(
-                    icon: Icons.public,
-                    title: t("official_page"),
-                    onTap: () async {
-                      await launchUrl(
-                        Uri.parse("https://www.colcapirhua.gob.bo/"),
-                        mode: LaunchMode.externalApplication,
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 6),
-                  Divider(height: 1, indent: 20, endIndent: 20, color: dividerColor),
-
-                  sectionHeader("Configuración"),
-
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                    child: ListTile(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                sectionHeader("Transporte"),
+                Container(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  child: Theme(
+                    data: Theme.of(context)
+                        .copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      collapsedShape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 12),
                       leading: Container(
                         width: 36,
                         height: 36,
@@ -5363,210 +5616,645 @@ Future<void> _fetchTrufis() async {
                           color: kPrimary.withOpacity(0.10),
                           borderRadius: BorderRadius.circular(11),
                         ),
-                        child: const Icon(Icons.language, color: kPrimary, size: 20),
+                        child:
+                            const Icon(Icons.groups, color: kPrimary, size: 20),
                       ),
                       title: Text(
-                        t("language"),
-                        style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                        t("sindicatos"),
+                        style: TextStyle(
+                            color: textColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600),
                       ),
-                      trailing: ValueListenableBuilder<String>(
-                        valueListenable: AppSettings.language,
-                        builder: (_, lang, __) {
-                          return DropdownButton<String>(
-                            value: lang,
-                            dropdownColor: bg,
-                            style: TextStyle(color: textColor, fontSize: 13),
-                            underline: const SizedBox.shrink(),
-                            items: const [
-                              DropdownMenuItem(value: "es", child: Text("Español")),
-                              DropdownMenuItem(value: "en", child: Text("English")),
-                              DropdownMenuItem(value: "qu", child: Text("Quechua")),
-                            ],
-                            onChanged: (v) {
-                              if (v != null) AppSettings.language.value = v;
-                            },
-                          );
-                        },
-                      ),
-                      minLeadingWidth: 28,
+                      childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                      children: _sindicatos.isEmpty
+                          ? [
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(
+                                  children: [
+                                    const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: kPrimary),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(t("loading_data"),
+                                        style: TextStyle(
+                                            color: subTextColor, fontSize: 13)),
+                                  ],
+                                ),
+                              ),
+                            ]
+                          : _sindicatos.map((s) {
+                              final String sindicatoNombre =
+                                  s["nombre"] ?? "Sin Nombre";
+                              final List trufis = (s["trufis"] as List? ?? []);
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 4),
+                                decoration: BoxDecoration(
+                                  color: isDarkMode
+                                      ? Colors.white.withOpacity(0.04)
+                                      : kPrimary.withOpacity(0.03),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                      dividerColor: Colors.transparent),
+                                  child: ExpansionTile(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
+                                    collapsedShape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
+                                    tilePadding: const EdgeInsets.symmetric(
+                                        horizontal: 12),
+                                    leading: Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: kPrimary.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(9),
+                                      ),
+                                      child: const Icon(Icons.account_balance,
+                                          color: kPrimary, size: 16),
+                                    ),
+                                    title: Text(sindicatoNombre,
+                                        style: TextStyle(
+                                            color: textColor,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600)),
+                                    childrenPadding:
+                                        const EdgeInsets.fromLTRB(4, 0, 4, 6),
+                                    children: trufis.map<Widget>((tr) {
+                                      final linea =
+                                          (tr["nom_linea"] ?? "").toString();
+                                      final id = int.tryParse(
+                                          (tr["idtrufi"] ?? "").toString());
+
+                                      return Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 3),
+                                        child: Material(
+                                          color: isDarkMode
+                                              ? Colors.white.withOpacity(0.05)
+                                              : Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          child: InkWell(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            onTap: () {
+                                              Navigator.pop(context);
+                                              setState(
+                                                  () => isTrufiSelected = true);
+                                              if (id != null)
+                                                _mostrarRutaDeUnTrufi(id,
+                                                    nombreLinea: linea);
+                                            },
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 9),
+                                              child: Row(
+                                                children: [
+                                                  Container(
+                                                    width: 26,
+                                                    height: 26,
+                                                    decoration: BoxDecoration(
+                                                      color: kAqua
+                                                          .withOpacity(0.12),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              7),
+                                                    ),
+                                                    child: const Icon(
+                                                        Icons.directions_bus,
+                                                        color: kAqua,
+                                                        size: 14),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                      child: Text(linea,
+                                                          style: TextStyle(
+                                                              color: textColor,
+                                                              fontSize: 13))),
+                                                  Icon(
+                                                      Icons
+                                                          .chevron_right_rounded,
+                                                      color: subTextColor
+                                                          .withOpacity(0.4),
+                                                      size: 18),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                     ),
                   ),
-
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                    child: SwitchListTile(
-                      value: AppSettings.darkMode.value,
-                      activeColor: kAqua,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      title: Text(
-                        t("darkmode"),
-                        style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
-                      ),
-                      onChanged: (v) => AppSettings.darkMode.value = v,
-                      secondary: Container(
+                ),
+                Container(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  child: Theme(
+                    data: Theme.of(context)
+                        .copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      collapsedShape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                      leading: Container(
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
                           color: kPrimary.withOpacity(0.10),
                           borderRadius: BorderRadius.circular(11),
                         ),
-                        child: const Icon(Icons.dark_mode, color: kPrimary, size: 20),
+                        child: const Icon(Icons.local_taxi,
+                            color: kPrimary, size: 20),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    ),
-                  ),
-
-                  ValueListenableBuilder<double>(
-                    valueListenable: AppSettings.radiusMeters,
-                    builder: (context, meters, _) {
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: kPrimary.withOpacity(0.10),
-                                    borderRadius: BorderRadius.circular(11),
-                                  ),
-                                  child: const Icon(Icons.radio_button_checked, color: kPrimary, size: 20),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    t("radius_title"),
-                                    style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: kPrimary.withOpacity(0.10),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    "${meters.round()} m",
-                                    style: const TextStyle(color: kPrimary, fontSize: 12, fontWeight: FontWeight.w700),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            SliderTheme(
-                              data: SliderThemeData(
-                                trackHeight: 3,
-                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-                                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
-                                activeTrackColor: kPrimary,
-                                inactiveTrackColor: kPrimary.withOpacity(0.12),
-                                thumbColor: kPrimary,
-                                overlayColor: kPrimary.withOpacity(0.10),
-                              ),
-                              child: Slider(
-                                value: meters.clamp(50, 2000),
-                                min: 50,
-                                max: 2000,
-                                divisions: 39,
-                                onChanged: (v) => AppSettings.radiusMeters.value = v,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-
-                  ValueListenableBuilder<String>(
-                    valueListenable: AppSettings.centerMode,
-                    builder: (_, mode, __) {
-                      return drawerTile(
-                        icon: Icons.center_focus_strong,
-                        title: t("center_title"),
-                        subtitle: mode == "ubicacion" ? t("center_location") : t("center_colcapirhua"),
-                        trailing: Icon(Icons.expand_more, color: subTextColor, size: 18),
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            backgroundColor: Colors.transparent,
-                            builder: (_) {
-                              final sheetBg = isDarkMode ? const Color(0xFF0F172A) : Colors.white;
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: sheetBg,
-                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
+                      title: Text(
+                        t("radiotaxis"),
+                        style: TextStyle(
+                            color: textColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                      children: _radioTaxis.isEmpty
+                          ? [
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(
                                   children: [
-                                    const SizedBox(height: 10),
-                                    Container(width: 46, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
-                                    const SizedBox(height: 10),
-                                    ListTile(
-                                      leading: const Icon(Icons.location_city, color: kPrimary),
-                                      title: Text(t("center_colcapirhua")),
-                                      onTap: () {
-                                        AppSettings.centerMode.value = "colcapirhua";
-                                        Navigator.pop(context);
-                                      },
+                                    const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: kPrimary),
                                     ),
-                                    ListTile(
-                                      leading: const Icon(Icons.my_location, color: kPrimary),
-                                      title: Text(t("center_location")),
-                                      onTap: () {
-                                        AppSettings.centerMode.value = "ubicacion";
-                                        Navigator.pop(context);
-                                      },
-                                    ),
-                                    const SizedBox(height: 10),
+                                    const SizedBox(width: 10),
+                                    Text(t("loading_data"),
+                                        style: TextStyle(
+                                            color: subTextColor, fontSize: 13)),
                                   ],
                                 ),
+                              ),
+                            ]
+                          : _radioTaxis.map((rt) {
+                              final phone =
+                                  (rt["telefono_base"] ?? "").toString();
+                              final nombre =
+                                  rt["nombre_comercial"] ?? "Radiotaxi";
+                              final id =
+                                  int.tryParse((rt["id"] ?? "").toString());
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 3),
+                                child: Material(
+                                  color: isDarkMode
+                                      ? Colors.white.withOpacity(0.05)
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(10),
+                                    onTap: () async {
+                                      Navigator.pop(context);
+                                      setState(() => isTrufiSelected = false);
+                                      if (id != null) {
+                                        await _agregarAlHistorial(HistorialItem(
+                                          id: id,
+                                          nombre: nombre,
+                                          tipo: 'radiotaxi',
+                                          telefono: phone,
+                                          fechaUso: DateTime.now(),
+                                        ));
+                                        // Mostrar info del radiotaxi con referencias
+                                        _mostrarInfoRadiotaxi(id,
+                                            nombreRadiotaxi: nombre);
+                                      }
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 9),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 26,
+                                            height: 26,
+                                            decoration: BoxDecoration(
+                                              color: kPrimary.withOpacity(0.10),
+                                              borderRadius:
+                                                  BorderRadius.circular(7),
+                                            ),
+                                            child: const Icon(Icons.local_taxi,
+                                                color: kPrimary, size: 14),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(nombre,
+                                                style: TextStyle(
+                                                    color: textColor,
+                                                    fontSize: 13,
+                                                    fontWeight:
+                                                        FontWeight.w600)),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               );
-                            },
-                          );
-                        },
-                      );
-                    },
+                            }).toList(),
+                    ),
                   ),
-
-                  const SizedBox(height: 6),
-                  Divider(height: 1, indent: 20, endIndent: 20, color: dividerColor),
-
-                  sectionHeader("Acerca de"),
-
-                  drawerTile(
-                    icon: Icons.info_outline,
-                    title: t("about"),
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: Text(t("about_title")),
-                          content: Text(t("about_body")),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text("OK"),
-                            ),
-                          ],
+                ),
+                Divider(
+                    height: 1, indent: 20, endIndent: 20, color: dividerColor),
+                sectionHeader("Información y Servicios"),
+                drawerTile(
+                  icon: Icons.history,
+                  title: t("history"),
+                  subtitle:
+                      "${_historialTrufis.length + _historialRadiotaxis.length} registros",
+                  trailing: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: kPrimary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      "${_historialTrufis.length + _historialRadiotaxis.length}",
+                      style: const TextStyle(
+                        color: kPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openHistorialDrawer();
+                  },
+                ),
+                drawerTile(
+                  icon: Icons.report_problem_outlined,
+                  title: t("reclamos"),
+                  loading: _isLoadingReclamos,
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _openReclamosDrawer();
+                  },
+                ),
+                drawerTile(
+                  icon: Icons.menu_book,
+                  title: t("normativas"),
+                  loading: _isLoadingNormativas,
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _openNormativasDrawer();
+                  },
+                ),
+                const SizedBox(height: 6),
+                Divider(
+                    height: 1, indent: 20, endIndent: 20, color: dividerColor),
+                sectionHeader("Municipio de Colcapirhua"),
+                Container(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  child: Theme(
+                    data: Theme.of(context)
+                        .copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      collapsedShape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                      leading: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: kPrimary.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(11),
                         ),
-                      );
-                    },
+                        child:
+                            const Icon(Icons.share, color: kPrimary, size: 20),
+                      ),
+                      title: Text(
+                        t("social_networks"),
+                        style: TextStyle(
+                            color: textColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                      children: [
+                        _socialTile(
+                            Icons.music_note,
+                            "TikTok",
+                            "https://www.tiktok.com/@gamdecolcapirhua?is_from_webapp=1&sender_device=pc",
+                            textColor),
+                        _socialTile(
+                            Icons.play_circle,
+                            "YouTube",
+                            "https://www.youtube.com/@gamdecolcapirhua",
+                            textColor),
+                        _socialTile(
+                            Icons.facebook,
+                            "Facebook",
+                            "https://www.facebook.com/municipiodecolcapirhua",
+                            textColor),
+                        _socialTile(
+                            Icons.camera_alt,
+                            "Instagram",
+                            "https://www.instagram.com/alcaldiadecolcapirhua",
+                            textColor),
+                        _socialTile(Icons.close, "X (Twitter)",
+                            "https://x.com/GAMColcapirhua", textColor),
+                      ],
+                    ),
                   ),
-
-                  const SizedBox(height: 16),
-                ],
-              ),
-            );
-          },
-        ),
+                ),
+                drawerTile(
+                  icon: Icons.public,
+                  title: t("official_page"),
+                  onTap: () async {
+                    await launchUrl(
+                      Uri.parse("https://www.colcapirhua.gob.bo/"),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
+                ),
+                const SizedBox(height: 6),
+                Divider(
+                    height: 1, indent: 20, endIndent: 20, color: dividerColor),
+                sectionHeader("Configuración"),
+                Container(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  child: ListTile(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    leading: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: kPrimary.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child:
+                          const Icon(Icons.language, color: kPrimary, size: 20),
+                    ),
+                    title: Text(
+                      t("language"),
+                      style: TextStyle(
+                          color: textColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600),
+                    ),
+                    trailing: ValueListenableBuilder<String>(
+                      valueListenable: AppSettings.language,
+                      builder: (_, lang, __) {
+                        return DropdownButton<String>(
+                          value: lang,
+                          dropdownColor: bg,
+                          style: TextStyle(color: textColor, fontSize: 13),
+                          underline: const SizedBox.shrink(),
+                          items: const [
+                            DropdownMenuItem(
+                                value: "es", child: Text("Español")),
+                            DropdownMenuItem(
+                                value: "en", child: Text("English")),
+                            DropdownMenuItem(
+                                value: "qu", child: Text("Quechua")),
+                          ],
+                          onChanged: (v) {
+                            if (v != null) AppSettings.language.value = v;
+                          },
+                        );
+                      },
+                    ),
+                    minLeadingWidth: 28,
+                  ),
+                ),
+                Container(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  child: SwitchListTile(
+                    value: AppSettings.darkMode.value,
+                    activeColor: kAqua,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    title: Text(
+                      t("darkmode"),
+                      style: TextStyle(
+                          color: textColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600),
+                    ),
+                    onChanged: (v) => AppSettings.darkMode.value = v,
+                    secondary: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: kPrimary.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: const Icon(Icons.dark_mode,
+                          color: kPrimary, size: 20),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                ),
+                ValueListenableBuilder<double>(
+                  valueListenable: AppSettings.radiusMeters,
+                  builder: (context, meters, _) {
+                    return Container(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 2),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: kPrimary.withOpacity(0.10),
+                                  borderRadius: BorderRadius.circular(11),
+                                ),
+                                child: const Icon(Icons.radio_button_checked,
+                                    color: kPrimary, size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  t("radius_title"),
+                                  style: TextStyle(
+                                      color: textColor,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: kPrimary.withOpacity(0.10),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  "${meters.round()} m",
+                                  style: const TextStyle(
+                                      color: kPrimary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          SliderTheme(
+                            data: SliderThemeData(
+                              trackHeight: 3,
+                              thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 7),
+                              overlayShape: const RoundSliderOverlayShape(
+                                  overlayRadius: 16),
+                              activeTrackColor: kPrimary,
+                              inactiveTrackColor: kPrimary.withOpacity(0.12),
+                              thumbColor: kPrimary,
+                              overlayColor: kPrimary.withOpacity(0.10),
+                            ),
+                            child: Slider(
+                              value: meters.clamp(50, 2000),
+                              min: 50,
+                              max: 2000,
+                              divisions: 39,
+                              onChanged: (v) =>
+                                  AppSettings.radiusMeters.value = v,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                ValueListenableBuilder<String>(
+                  valueListenable: AppSettings.centerMode,
+                  builder: (_, mode, __) {
+                    return drawerTile(
+                      icon: Icons.center_focus_strong,
+                      title: t("center_title"),
+                      subtitle: mode == "ubicacion"
+                          ? t("center_location")
+                          : t("center_colcapirhua"),
+                      trailing: Icon(Icons.expand_more,
+                          color: subTextColor, size: 18),
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) {
+                            final sheetBg = isDarkMode
+                                ? const Color(0xFF0F172A)
+                                : Colors.white;
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: sheetBg,
+                                borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(18)),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(height: 10),
+                                  Container(
+                                      width: 46,
+                                      height: 5,
+                                      decoration: BoxDecoration(
+                                          color: Colors.grey[300],
+                                          borderRadius:
+                                              BorderRadius.circular(10))),
+                                  const SizedBox(height: 10),
+                                  ListTile(
+                                    leading: const Icon(Icons.location_city,
+                                        color: kPrimary),
+                                    title: Text(t("center_colcapirhua")),
+                                    onTap: () {
+                                      AppSettings.centerMode.value =
+                                          "colcapirhua";
+                                      Navigator.pop(context);
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(Icons.my_location,
+                                        color: kPrimary),
+                                    title: Text(t("center_location")),
+                                    onTap: () {
+                                      AppSettings.centerMode.value =
+                                          "ubicacion";
+                                      Navigator.pop(context);
+                                    },
+                                  ),
+                                  const SizedBox(height: 10),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 6),
+                Divider(
+                    height: 1, indent: 20, endIndent: 20, color: dividerColor),
+                sectionHeader("Acerca de"),
+                drawerTile(
+                  icon: Icons.info_outline,
+                  title: t("about"),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: Text(t("about_title")),
+                        content: Text(t("about_body")),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text("OK"),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -5579,7 +6267,8 @@ Future<void> _fetchTrufis() async {
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
           onTap: () async {
-            await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+            await launchUrl(Uri.parse(url),
+                mode: LaunchMode.externalApplication);
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
@@ -5596,9 +6285,14 @@ Future<void> _fetchTrufis() async {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(name, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w500)),
+                  child: Text(name,
+                      style: TextStyle(
+                          color: textColor,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500)),
                 ),
-                Icon(Icons.open_in_new, size: 13, color: textColor.withOpacity(0.25)),
+                Icon(Icons.open_in_new,
+                    size: 13, color: textColor.withOpacity(0.25)),
               ],
             ),
           ),
@@ -5611,24 +6305,24 @@ Future<void> _fetchTrufis() async {
 /// Pintor personalizado para dibujar un triángulo que apunta hacia abajo
 class _TrianglePainter extends CustomPainter {
   final Color color;
-  
+
   _TrianglePainter({required this.color});
-  
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
-    
+
     final path = ui.Path()
       ..moveTo(0, 0)
       ..lineTo(size.width, 0)
       ..lineTo(size.width / 2, size.height)
       ..close();
-    
+
     canvas.drawPath(path, paint);
   }
-  
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

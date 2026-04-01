@@ -6,7 +6,7 @@ use App\Models\Sindicatoradiotaxi;
 use App\Models\Sindicatoradiotaxiparada;
 use Illuminate\Http\Request;
 
-class SindicatoradiotaxisController extends Controller
+class SindicatoRadioTaxisController extends Controller
 {
     // GET /api/sindicato-radiotaxis
     // Lista radiotaxis + parada (ideal para Flutter)
@@ -15,7 +15,7 @@ class SindicatoradiotaxisController extends Controller
         return response()->json(
             Sindicatoradiotaxi::query()
                 ->with(['parada' => function ($q) {
-                    $q->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion', 'estado');
+                    $q->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion', 'direccion', 'estado');
                 }])
                 ->select('id', 'nombre_comercial', 'telefono_base', 'created_at')
                 ->orderByDesc('id')
@@ -43,7 +43,7 @@ class SindicatoradiotaxisController extends Controller
     {
         return response()->json(
             Sindicatoradiotaxi::with(['parada' => function ($q) {
-                $q->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion', 'estado');
+                $q->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion', 'direccion', 'estado');
             }])->findOrFail($id)
         );
     }
@@ -76,7 +76,7 @@ class SindicatoradiotaxisController extends Controller
         return response()->json(
             Sindicatoradiotaxiparada::query()
                 ->where('estado', 1)
-                ->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion')
+                ->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion', 'direccion')
                 ->orderByDesc('id')
                 ->get()
         );
@@ -89,7 +89,7 @@ class SindicatoradiotaxisController extends Controller
         $parada = Sindicatoradiotaxiparada::query()
             ->where('sindicato_radiotaxi_id', $id)
             ->where('estado', 1)
-            ->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion', 'estado')
+            ->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion', 'direccion', 'estado')
             ->first();
 
         if (!$parada) {
@@ -102,7 +102,7 @@ class SindicatoradiotaxisController extends Controller
 {
     $paradas = Sindicatoradiotaxiparada::query()
         ->where('estado', 1)
-        ->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion')
+        ->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion', 'direccion')
         ->orderByDesc('id')
         ->get();
 
@@ -113,6 +113,7 @@ class SindicatoradiotaxisController extends Controller
                 "id" => (int) $p->id,
                 "sindicato_radiotaxi_id" => (int) $p->sindicato_radiotaxi_id,
                 "descripcion" => $p->descripcion,
+                "direccion" => $p->direccion,
             ],
             "geometry" => [
                 "type" => "Point",
@@ -135,7 +136,7 @@ public function paradaGeojsonPorRadiotaxi($id)
     $p = Sindicatoradiotaxiparada::query()
         ->where('sindicato_radiotaxi_id', $id)
         ->where('estado', 1)
-        ->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion')
+        ->select('id', 'sindicato_radiotaxi_id', 'latitud', 'longitud', 'descripcion', 'direccion')
         ->first();
 
     if (!$p) {
@@ -154,6 +155,7 @@ public function paradaGeojsonPorRadiotaxi($id)
                     "id" => (int) $p->id,
                     "sindicato_radiotaxi_id" => (int) $p->sindicato_radiotaxi_id,
                     "descripcion" => $p->descripcion,
+                    "direccion" => $p->direccion,
                 ],
                 "geometry" => [
                     "type" => "Point",
