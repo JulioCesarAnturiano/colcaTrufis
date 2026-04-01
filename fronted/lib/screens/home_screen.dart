@@ -2464,7 +2464,8 @@ class _HomeScreenState extends State<HomeScreen> {
       // Si no hay coordenadas en paradas, buscar en _radioTaxis
       if (lat == null || lng == null) {
         lat ??= double.tryParse(
-            (radiotaxiFull["latitud"] ?? radiotaxiFull["lat"] ?? "").toString());
+            (radiotaxiFull["latitud"] ?? radiotaxiFull["lat"] ?? "")
+                .toString());
         lng ??= double.tryParse((radiotaxiFull["longitud"] ??
                 radiotaxiFull["lng"] ??
                 radiotaxiFull["lon"] ??
@@ -2560,8 +2561,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Si no hay coordenadas en paradas, buscar en _radioTaxis
     if (lat == null || lng == null) {
       final radiotaxiFull = _radioTaxis.firstWhere(
-        (rt) =>
-            (rt["id"] ?? rt["idradiotaxi"] ?? 0) == _selectedRadiotaxiId,
+        (rt) => (rt["id"] ?? rt["idradiotaxi"] ?? 0) == _selectedRadiotaxiId,
         orElse: () => <String, dynamic>{},
       );
       lat ??= double.tryParse(
@@ -3057,7 +3057,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (route.settings.name == '/home') return true;
       // Si es la primera ruta (splash), también detenemos para no cerrarla
       if (route.isFirst) return true;
-      // Si ya hemos hecho varios pops y no encontramos '/home', 
+      // Si ya hemos hecho varios pops y no encontramos '/home',
       // es probable que estemos en una ruta sin nombre
       popCount++;
       // Limitar a máximo 5 pops para evitar loops infinitos
@@ -3159,6 +3159,7 @@ class _HomeScreenState extends State<HomeScreen> {
           LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
           15,
         );
+        _mapController.rotate(0.0);
       } else {
         // No GPS yet — request it
         await _getCurrentLocation();
@@ -3167,12 +3168,14 @@ class _HomeScreenState extends State<HomeScreen> {
             LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
             15,
           );
+          _mapController.rotate(0.0);
         }
       }
       return;
     }
 
     _mapController.move(_colcapirhuaCenter, _colcapirhuaZoom);
+    _mapController.rotate(0.0);
   }
 
   /// Asks for CALL_PHONE permission if needed. Returns true if the call can proceed.
@@ -5526,8 +5529,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ClipRect(
                   child: Container(
                     width: double.infinity,
-                    padding: EdgeInsets.only(
-                        top: MediaQuery.of(context).padding.top),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [
@@ -5547,51 +5548,54 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
-                    child: SizedBox(
-                      height: 148,
-                      child: Stack(
-                        children: [
-                          // Large circle — top-right, half clipped
-                          Positioned(
-                            right: -45,
-                            top: -45,
-                            child: Container(
-                              width: 170,
-                              height: 170,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.07),
+                    child: SafeArea(
+                      bottom: false,
+                      child: SizedBox(
+                        height: 148,
+                        child: Stack(
+                          children: [
+                            // Large circle — top-right, half clipped
+                            Positioned(
+                              right: -45,
+                              top: -45,
+                              child: Container(
+                                width: 170,
+                                height: 170,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withOpacity(0.07),
+                                ),
                               ),
                             ),
-                          ),
-                          // Medium circle — bottom-right corner
-                          Positioned(
-                            right: -20,
-                            bottom: -20,
-                            child: Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.10),
+                            // Medium circle — bottom-right corner
+                            Positioned(
+                              right: -20,
+                              bottom: -20,
+                              child: Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withOpacity(0.10),
+                                ),
                               ),
                             ),
-                          ),
-                          // Logo — left, vertically centered, slightly larger
-                          Positioned(
-                            left: 20,
-                            top: 0,
-                            bottom: 0,
-                            child: Center(
-                              child: Image.asset(
-                                'assets/images/logo_colca1.png',
-                                width: 112,
-                                height: 112,
-                                fit: BoxFit.contain,
+                            // Logo — left, vertically centered, slightly larger
+                            Positioned(
+                              left: 20,
+                              top: 0,
+                              bottom: 0,
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/images/logo_colca1.png',
+                                  width: 112,
+                                  height: 112,
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
