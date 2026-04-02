@@ -3136,8 +3136,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _temporaryPointMarker = marker;
     });
 
-    // Mover el mapa al punto
+    // Mover el mapa al punto y enderezarlo (norte arriba)
     _mapController.move(point, 16.5);
+    _mapController.rotate(0.0);
   }
 
   /// Limpia el marcador temporal cuando el usuario mueve el mapa
@@ -5553,11 +5554,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: SizedBox(
                         height: 148,
                         child: Stack(
+                          clipBehavior: Clip.none,
                           children: [
-                            // Large circle — top-right, half clipped
+                            // Large circle — top-right, extended to top
                             Positioned(
                               right: -45,
-                              top: -45,
+                              top: -80,
                               child: Container(
                                 width: 170,
                                 height: 170,
