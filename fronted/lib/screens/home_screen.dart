@@ -2149,6 +2149,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (ruta.first.points.isNotEmpty) {
         _mapController.move(ruta.first.points.first, 14.8);
+        _mapController.rotate(0.0); // Enderezar mapa (norte arriba)
       }
 
       // Abrir el modal — ya tiene todos los datos
@@ -2516,6 +2517,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Centrar en la ubicación del radiotaxi si existe
       if (lat != null && lng != null) {
         _mapController.move(LatLng(lat, lng), 16.0);
+        _mapController.rotate(0.0); // Enderezar mapa (norte arriba)
       }
 
       // Mostrar ventana con ubicación y referencias
