@@ -138,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingRutas = false;
   bool _isLoadingParadas = false;
   bool _isLoadingRutaTrufi = false;
+  bool _isLoadingInfoRadiotaxi = false; // Para mostrar "Cargando información..." en radiotaxis
   bool _isLoadingGPS = false;
   bool _isLoadingNormativas = false;
   bool _isLoadingDatos = false;
@@ -218,6 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
       "history_clear_confirm": "¿Limpiar historial?",
       "used_at": "Usado",
       "loading_route": "Cargando ruta...",
+      "loading_info": "Cargando información...",
       "loading_data": "Cargando datos...",
       "loading_gps": "Obteniendo ubicación...",
       "loading_stops": "Cargando paradas...",
@@ -2425,7 +2427,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
 
     setState(() {
-      _isLoadingRutaTrufi = true;
+      _isLoadingInfoRadiotaxi = true;
     });
 
     try {
@@ -2503,7 +2505,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _selectedRadiotaxiDireccion = direccion.isNotEmpty ? direccion : null;
         _selectedRadiotaxiTelefono = telefono.isNotEmpty ? telefono : null;
         _referenciasSelectedRadiotaxi = referenciasData;
-        _isLoadingRutaTrufi = false;
+        _isLoadingInfoRadiotaxi = false;
         // Limpiar selección de trufi
         _selectedTrufiId = null;
         _selectedTrufiName = null;
@@ -2525,7 +2527,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       print("Error cargando info de radiotaxi $idradiotaxi: $e");
       if (!mounted) return;
-      setState(() => _isLoadingRutaTrufi = false);
+      setState(() => _isLoadingInfoRadiotaxi = false);
     }
   }
 
@@ -4153,6 +4155,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _loadingChip(t("loading_route"), Icons.route),
                       ),
 
+                    if (_isLoadingInfoRadiotaxi)
+                      Positioned(
+                        left: 16,
+                        top: 70 + MediaQuery.of(context).padding.top + 16,
+                        child: _loadingChip(t("loading_info"), Icons.info_outline),
+                      ),
+
                     if (_isLoadingGPS)
                       Positioned(
                         bottom: MediaQuery.of(context).size.height * 0.5,
@@ -4469,9 +4478,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               if (_selectedTrufiId == null) {
                                 _aplicarFiltroRutas();
                               }
-                              // Centrar en Colcapirhua al tocar el botón
+                              // Centrar y enderezar mapa en Colcapirhua al tocar el botón
                               _mapController.move(
                                   _colcapirhuaCenter, _colcapirhuaZoom);
+                              _mapController.rotate(0.0);
                               _showFullWidthBottomSheet(context, t("trufi"));
                             },
                           ),
@@ -4484,9 +4494,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 isTrufiSelected = false;
                               });
                               _aplicarFiltroParadas();
-                              // Centrar en Colcapirhua al tocar el botón
+                              // Centrar y enderezar mapa en Colcapirhua al tocar el botón
                               _mapController.move(
                                   _colcapirhuaCenter, _colcapirhuaZoom);
+                              _mapController.rotate(0.0);
                               _showFullWidthBottomSheet(
                                   context, t("radiotaxi"));
                             },
