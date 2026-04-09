@@ -1243,7 +1243,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void _aplicarFiltroParadas() {
     if (!mounted) return;
 
-    if (_paradasRadiotaxis.isEmpty) {
+    final puntosRadiotaxi = _buildRadiotaxiPointsForMap();
+
+    if (puntosRadiotaxi.isEmpty) {
       setState(() {
         _paradasMarkers = [];
         _paradasLabelMarkers = [];
@@ -1251,12 +1253,168 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    final todasLasParadas = _paradasRadiotaxis;
-
     setState(() {
-      _paradasMarkers = _buildParadasMarkers(todasLasParadas);
-      _paradasLabelMarkers = _buildParadasLabels(todasLasParadas);
+      _paradasMarkers = _buildParadasMarkers(puntosRadiotaxi);
+      _paradasLabelMarkers = _buildParadasLabels(puntosRadiotaxi);
     });
+  }
+
+  int? _parseRadiotaxiIdFromMap(Map<String, dynamic> data) {
+    return int.tryParse(
+      (data["sindicato_radiotaxi_id"] ??
+              data["sindicatoRadiotaxiId"] ??
+              data["radiotaxi_id"] ??
+              data["radiotaxiId"] ??
+              data["idradiotaxi"] ??
+              data["sindicato_id"] ??
+              data["id"] ??
+              "")
+          .toString(),
+    );
+  }
+
+  double? _parseMapCoordinate(dynamic value) {
+    return double.tryParse((value ?? "").toString());
+  }
+
+  String _firstNonEmptyValue(List<dynamic> values) {
+    for (final value in values) {
+      final text = (value ?? '').toString().trim();
+      if (text.isNotEmpty) return text;
+    }
+    return '';
+  }
+
+  String _resolveRadiotaxiDisplayName(Map<String, dynamic> data, int? id) {
+    final inlineName = _firstNonEmptyValue([
+      data["nombre_mostrar"],
+      data["nombre_comercial"],
+      data["nombreComercial"],
+      data["nombre"],
+      data["razon_social"],
+      data["razonSocial"],
+    ]);
+    if (inlineName.isNotEmpty) return inlineName;
+
+    if (id != null) {
+      final mappedName = (_radiotaxiNameById[id] ?? '').trim();
+      if (mappedName.isNotEmpty) return mappedName;
+      return "Radiotaxi $id";
+    }
+
+    return "Parada";
+  }
+
+  List<Map<String, dynamic>> _buildRadiotaxiPointsForMap() {
+    final points = <Map<String, dynamic>>[];
+    final seenIds = <int>{};
+    final seenCoords = <String>{};
+
+    void addPoint({
+      required double? lat,
+      required double? lng,
+      required int? id,
+      required String name,
+      String? direccion,
+      required Map<String, dynamic> source,
+    }) {
+      if (lat == null || lng == null) return;
+
+      final key = '${lat.toStringAsFixed(6)}|${lng.toStringAsFixed(6)}';
+      if (id != null) {
+        if (seenIds.contains(id)) return;
+        seenIds.add(id);
+      } else {
+        if (seenCoords.contains(key)) return;
+      }
+      seenCoords.add(key);
+
+      points.add({
+        ...source,
+        "latitud": lat,
+        "longitud": lng,
+        "sindicato_radiotaxi_id": id,
+        "nombre_mostrar": name,
+        if (direccion != null && direccion.trim().isNotEmpty)
+          "direccion": direccion,
+      });
+    }
+
+    for (final rt in _radioTaxis) {
+      final rtMap = Map<String, dynamic>.from(rt);
+      final paradaRaw = rtMap["parada"];
+      final parada = paradaRaw is Map
+          ? Map<String, dynamic>.from(paradaRaw)
+          : <String, dynamic>{};
+
+      final id = _parseRadiotaxiIdFromMap(rtMap);
+      final lat = _parseMapCoordinate(
+        rtMap["latitud"] ??
+            rtMap["lat"] ??
+            rtMap["latitude"] ??
+            parada["latitud"] ??
+            parada["lat"] ??
+            parada["latitude"],
+      );
+      final lng = _parseMapCoordinate(
+        rtMap["longitud"] ??
+            rtMap["lng"] ??
+            rtMap["longitude"] ??
+            rtMap["lon"] ??
+            parada["longitud"] ??
+            parada["lng"] ??
+            parada["longitude"] ??
+            parada["lon"],
+      );
+
+      final name = _resolveRadiotaxiDisplayName(rtMap, id);
+      final direccion = _firstNonEmptyValue([
+        rtMap["direccion"],
+        rtMap["ubicacion"],
+        rtMap["descripcion"],
+        parada["direccion"],
+        parada["ubicacion"],
+        parada["descripcion"],
+      ]);
+
+      addPoint(
+        lat: lat,
+        lng: lng,
+        id: id,
+        name: name,
+        direccion: direccion,
+        source: rtMap,
+      );
+    }
+
+    for (final p in _paradasRadiotaxis) {
+      final parada = Map<String, dynamic>.from(p);
+      final id = _parseRadiotaxiIdFromMap(parada);
+      final lat = _parseMapCoordinate(
+          parada["latitud"] ?? parada["lat"] ?? parada["latitude"]);
+      final lng = _parseMapCoordinate(parada["longitud"] ??
+          parada["lng"] ??
+          parada["longitude"] ??
+          parada["lon"]);
+
+      final name = _resolveRadiotaxiDisplayName(parada, id);
+      final direccion = _firstNonEmptyValue([
+        parada["direccion"],
+        parada["ubicacion"],
+        parada["descripcion"],
+      ]);
+
+      addPoint(
+        lat: lat,
+        lng: lng,
+        id: id,
+        name: name,
+        direccion: direccion,
+        source: parada,
+      );
+    }
+
+    return points;
   }
 
   List<Marker> _buildParadasMarkers(List<Map<String, dynamic>> paradas) {
@@ -1270,17 +1428,8 @@ class _HomeScreenState extends State<HomeScreen> {
               .toString());
       if (lat == null || lng == null) continue;
 
-      final radiotaxiId = int.tryParse(
-        (p["sindicato_radiotaxi_id"] ??
-                p["radiotaxi_id"] ??
-                p["idradiotaxi"] ??
-                p["sindicato_id"] ??
-                "")
-            .toString(),
-      );
-      final name = (radiotaxiId != null)
-          ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId")
-          : "Parada";
+      final radiotaxiId = _parseRadiotaxiIdFromMap(p);
+      final name = _resolveRadiotaxiDisplayName(p, radiotaxiId);
 
       markers.add(
         Marker(
@@ -1341,17 +1490,8 @@ class _HomeScreenState extends State<HomeScreen> {
               .toString());
       if (lat == null || lng == null) continue;
 
-      final radiotaxiId = int.tryParse(
-        (p["sindicato_radiotaxi_id"] ??
-                p["radiotaxi_id"] ??
-                p["idradiotaxi"] ??
-                p["sindicato_id"] ??
-                "")
-            .toString(),
-      );
-      final name = (radiotaxiId != null)
-          ? (_radiotaxiNameById[radiotaxiId] ?? "Radiotaxi $radiotaxiId")
-          : "Parada";
+      final radiotaxiId = _parseRadiotaxiIdFromMap(p);
+      final name = _resolveRadiotaxiDisplayName(p, radiotaxiId);
 
       if (name.trim().isEmpty) continue;
 
@@ -1428,7 +1568,9 @@ class _HomeScreenState extends State<HomeScreen> {
         .toString());
     final radiotaxiId = int.tryParse(
       (parada["sindicato_radiotaxi_id"] ??
+              parada["sindicatoRadiotaxiId"] ??
               parada["radiotaxi_id"] ??
+              parada["radiotaxiId"] ??
               parada["idradiotaxi"] ??
               parada["sindicato_id"] ??
               "")
@@ -4589,10 +4731,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildMapButton3D(
                             icon: Icons.local_taxi,
                             isActive: !isTrufiSelected,
-                            onPressed: () {
+                            onPressed: () async {
                               setState(() {
                                 isTrufiSelected = false;
                               });
+                              if (_paradasRadiotaxis.isEmpty) {
+                                await _fetchParadasRadiotaxis();
+                              }
                               _aplicarFiltroParadas();
                               // Centrar y enderezar mapa en Colcapirhua al tocar el botón
                               _mapController.move(
@@ -5236,6 +5381,10 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         await _fetchRadioTaxis();
       }
+    }
+
+    if (!isLookingForTrufi && _paradasRadiotaxis.isEmpty) {
+      await _fetchParadasRadiotaxis();
     }
 
     if (!mounted) return;
