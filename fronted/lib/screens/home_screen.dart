@@ -110,6 +110,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _selectedRadiotaxiName;
   String? _selectedRadiotaxiDireccion;
   String? _selectedRadiotaxiTelefono;
+  double? _selectedRadiotaxiLat;
+  double? _selectedRadiotaxiLng;
 
   List<Map<String, dynamic>> _rutasVias = [];
   List<Map<String, dynamic>> _referenciasSelectedTrufi = [];
@@ -644,7 +646,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _radiotaxiNameById.clear();
       for (final it in radioTaxis) {
         final id = int.tryParse((it["id"] ?? "").toString());
-        final name = (it["nombre_comercial"] ?? "").toString();
+        final name = (it["nombre_comercial"] ??
+                it["nombreComercial"] ??
+                it["nombre"] ??
+                "")
+            .toString();
         if (id != null && name.trim().isNotEmpty) {
           _radiotaxiNameById[id] = name;
         }
@@ -2146,6 +2152,10 @@ class _HomeScreenState extends State<HomeScreen> {
         // Limpiar selección de radiotaxi
         _selectedRadiotaxiId = null;
         _selectedRadiotaxiName = null;
+        _selectedRadiotaxiDireccion = null;
+        _selectedRadiotaxiTelefono = null;
+        _selectedRadiotaxiLat = null;
+        _selectedRadiotaxiLng = null;
         _referenciasSelectedRadiotaxi = [];
       });
 
@@ -2431,49 +2441,172 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      // Obtener ubicación del radiotaxi
+      int? parseInt(dynamic value) =>
+          int.tryParse((value ?? '').toString().trim());
+
+      double? parseDouble(dynamic value) =>
+          double.tryParse((value ?? '').toString().trim());
+
+      String firstNonEmpty(List<dynamic> values) {
+        for (final value in values) {
+          final text = (value ?? '').toString().trim();
+          if (text.isNotEmpty) return text;
+        }
+        return '';
+      }
+
+      Map<String, dynamic> asMap(dynamic value) {
+        if (value is Map) {
+          return Map<String, dynamic>.from(value);
+        }
+        return <String, dynamic>{};
+      }
+
       final radiotaxiData = _paradasRadiotaxis.firstWhere(
         (p) {
-          final id = int.tryParse((p["sindicato_radiotaxi_id"] ??
-                  p["radiotaxi_id"] ??
-                  p["idradiotaxi"] ??
-                  p["sindicato_id"] ??
-                  "")
-              .toString());
+          final id = parseInt(
+            p["sindicato_radiotaxi_id"] ??
+                p["sindicatoRadiotaxiId"] ??
+                p["radiotaxi_id"] ??
+                p["radiotaxiId"] ??
+                p["idradiotaxi"] ??
+                p["sindicato_id"],
+          );
           return id == idradiotaxi;
         },
         orElse: () => <String, dynamic>{},
       );
 
-      // Intentar obtener coordenadas de _paradasRadiotaxis
-      double? lat = double.tryParse(
-          (radiotaxiData["latitud"] ?? radiotaxiData["lat"] ?? "").toString());
-      double? lng = double.tryParse((radiotaxiData["longitud"] ??
-              radiotaxiData["lng"] ??
-              radiotaxiData["lon"] ??
-              "")
-          .toString());
-
-      // Obtener dirección y teléfono
-      final direccion = (radiotaxiData["direccion"] ?? "").toString().trim();
-
-      // Buscar el teléfono en la lista de radiotaxis completa
       final radiotaxiFull = _radioTaxis.firstWhere(
-        (rt) => (rt["id"] ?? rt["idradiotaxi"] ?? 0) == idradiotaxi,
+        (rt) =>
+            parseInt(rt["id"] ?? rt["idradiotaxi"] ?? rt["radiotaxi_id"]) ==
+            idradiotaxi,
         orElse: () => <String, dynamic>{},
       );
-      final telefono = (radiotaxiFull["telefono_base"] ?? "").toString().trim();
+      final paradaInLine = asMap(radiotaxiFull["parada"]);
 
-      // Si no hay coordenadas en paradas, buscar en _radioTaxis
+      double? lat = parseDouble(
+        radiotaxiData["latitud"] ??
+            radiotaxiData["lat"] ??
+            radiotaxiData["latitude"] ??
+            radiotaxiData["parada_latitud"] ??
+            paradaInLine["latitud"] ??
+            paradaInLine["lat"] ??
+            paradaInLine["latitude"],
+      );
+      double? lng = parseDouble(
+        radiotaxiData["longitud"] ??
+            radiotaxiData["lng"] ??
+            radiotaxiData["longitude"] ??
+            radiotaxiData["lon"] ??
+            radiotaxiData["parada_longitud"] ??
+            paradaInLine["longitud"] ??
+            paradaInLine["lng"] ??
+            paradaInLine["longitude"] ??
+            paradaInLine["lon"],
+      );
+
+      String direccion = firstNonEmpty([
+        radiotaxiData["direccion"],
+        radiotaxiData["ubicacion"],
+        radiotaxiData["descripcion"],
+        paradaInLine["direccion"],
+        paradaInLine["ubicacion"],
+        paradaInLine["descripcion"],
+        radiotaxiFull["direccion"],
+      ]);
+
+      String telefono = firstNonEmpty([
+        radiotaxiFull["telefono_base"],
+        radiotaxiFull["telefonoBase"],
+        radiotaxiFull["telefono"],
+      ]);
+
       if (lat == null || lng == null) {
-        lat ??= double.tryParse(
-            (radiotaxiFull["latitud"] ?? radiotaxiFull["lat"] ?? "")
-                .toString());
-        lng ??= double.tryParse((radiotaxiFull["longitud"] ??
-                radiotaxiFull["lng"] ??
-                radiotaxiFull["lon"] ??
-                "")
-            .toString());
+        lat ??= parseDouble(
+            radiotaxiFull["latitud"] ?? radiotaxiFull["lat"] ?? radiotaxiFull["latitude"]);
+        lng ??= parseDouble(radiotaxiFull["longitud"] ??
+            radiotaxiFull["lng"] ??
+            radiotaxiFull["longitude"] ??
+            radiotaxiFull["lon"]);
+      }
+
+      if (lat == null || lng == null || direccion.isEmpty || telefono.isEmpty) {
+        try {
+          final detalleRes = await http.get(
+            Uri.parse("${AppConfig.baseUrl}/radiotaxis/$idradiotaxi"),
+            headers: const {"Accept": "application/json"},
+          );
+          if (detalleRes.statusCode >= 200 && detalleRes.statusCode < 300) {
+            final raw = jsonDecode(detalleRes.body);
+            final detalle = asMap(raw);
+            final paradaDetalle = asMap(detalle["parada"]);
+
+            lat ??= parseDouble(detalle["latitud"] ??
+                detalle["lat"] ??
+                detalle["latitude"] ??
+                paradaDetalle["latitud"] ??
+                paradaDetalle["lat"] ??
+                paradaDetalle["latitude"]);
+            lng ??= parseDouble(detalle["longitud"] ??
+                detalle["lng"] ??
+                detalle["longitude"] ??
+                detalle["lon"] ??
+                paradaDetalle["longitud"] ??
+                paradaDetalle["lng"] ??
+                paradaDetalle["longitude"] ??
+                paradaDetalle["lon"]);
+
+            if (direccion.isEmpty) {
+              direccion = firstNonEmpty([
+                detalle["direccion"],
+                detalle["ubicacion"],
+                detalle["descripcion"],
+                paradaDetalle["direccion"],
+                paradaDetalle["ubicacion"],
+                paradaDetalle["descripcion"],
+              ]);
+            }
+
+            if (telefono.isEmpty) {
+              telefono = firstNonEmpty([
+                detalle["telefono_base"],
+                detalle["telefonoBase"],
+                detalle["telefono"],
+              ]);
+            }
+          }
+        } catch (e) {
+          print("⚠️ Error cargando detalle radiotaxi $idradiotaxi: $e");
+        }
+      }
+
+      if (lat == null || lng == null) {
+        try {
+          final paradaRes = await http.get(
+            Uri.parse("${AppConfig.baseUrl}/radiotaxis/$idradiotaxi/parada"),
+            headers: const {"Accept": "application/json"},
+          );
+          if (paradaRes.statusCode >= 200 && paradaRes.statusCode < 300) {
+            final raw = jsonDecode(paradaRes.body);
+            final paradaApi = asMap(raw);
+            lat ??= parseDouble(
+                paradaApi["latitud"] ?? paradaApi["lat"] ?? paradaApi["latitude"]);
+            lng ??= parseDouble(paradaApi["longitud"] ??
+                paradaApi["lng"] ??
+                paradaApi["longitude"] ??
+                paradaApi["lon"]);
+            if (direccion.isEmpty) {
+              direccion = firstNonEmpty([
+                paradaApi["direccion"],
+                paradaApi["ubicacion"],
+                paradaApi["descripcion"],
+              ]);
+            }
+          }
+        } catch (e) {
+          print("⚠️ Error cargando parada radiotaxi $idradiotaxi: $e");
+        }
       }
 
       // Cargar referencias del radiotaxi
@@ -2504,6 +2637,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _selectedRadiotaxiName = nombre;
         _selectedRadiotaxiDireccion = direccion.isNotEmpty ? direccion : null;
         _selectedRadiotaxiTelefono = telefono.isNotEmpty ? telefono : null;
+        _selectedRadiotaxiLat = lat;
+        _selectedRadiotaxiLng = lng;
         _referenciasSelectedRadiotaxi = referenciasData;
         _isLoadingInfoRadiotaxi = false;
         // Limpiar selección de trufi
@@ -2539,43 +2674,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final cardBg =
         isDarkMode ? const Color(0xFF1A2744) : const Color(0xFFF4F8FB);
 
-    // Obtener la ubicación del radiotaxi desde _paradasRadiotaxis
-    final radiotaxiData = _paradasRadiotaxis.firstWhere(
-      (p) {
-        final id = int.tryParse((p["sindicato_radiotaxi_id"] ??
-                p["radiotaxi_id"] ??
-                p["idradiotaxi"] ??
-                p["sindicato_id"] ??
-                "")
-            .toString());
-        return id == _selectedRadiotaxiId;
-      },
-      orElse: () => <String, dynamic>{},
-    );
-
-    // Intentar obtener coordenadas de _paradasRadiotaxis
-    double? lat = double.tryParse(
-        (radiotaxiData["latitud"] ?? radiotaxiData["lat"] ?? "").toString());
-    double? lng = double.tryParse((radiotaxiData["longitud"] ??
-            radiotaxiData["lng"] ??
-            radiotaxiData["lon"] ??
-            "")
-        .toString());
-
-    // Si no hay coordenadas en paradas, buscar en _radioTaxis
-    if (lat == null || lng == null) {
-      final radiotaxiFull = _radioTaxis.firstWhere(
-        (rt) => (rt["id"] ?? rt["idradiotaxi"] ?? 0) == _selectedRadiotaxiId,
-        orElse: () => <String, dynamic>{},
-      );
-      lat ??= double.tryParse(
-          (radiotaxiFull["latitud"] ?? radiotaxiFull["lat"] ?? "").toString());
-      lng ??= double.tryParse((radiotaxiFull["longitud"] ??
-              radiotaxiFull["lng"] ??
-              radiotaxiFull["lon"] ??
-              "")
-          .toString());
-    }
+    final lat = _selectedRadiotaxiLat;
+    final lng = _selectedRadiotaxiLng;
 
     showModalBottomSheet(
       context: context,
